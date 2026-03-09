@@ -3,29 +3,6 @@ _Last updated: 2026-03-09_
 
 ## In Progress
 (none)
-
-## Todo
-
-- [ ] **[JP-008]** Extend `host.js` — Board rendering + clue selection [engine]
-  - Acceptance: 6×5 board grid renders with category headers and dollar values; clicking a cell writes `currentClue` to Firebase and shows full-screen clue overlay; asked clues appear dimmed; "Open Buzzing" button transitions state to `buzzing`
-  - Files: `games/jeopardy/host.js`
-  - Render the Jeopardy board grid: 6 category headers + 5×6 dollar-value cells
-  - Style asked clues differently (dimmed/empty)
-  - Click a cell → write `currentClue` to Firebase (categoryIndex, clueIndex, state: `reading`, text, answer, value)
-  - Full-screen clue overlay with the clue text on deep blue background
-  - "Open Buzzing" button on clue overlay to transition state to `buzzing`
-  - Depends on: JP-006
-
-- [ ] **[JP-009]** Extend `host.js` — Core game flow: buzzing → judging → score [engine]
-  - Acceptance: Buzzer opens with countdown timer; first buzz (by server timestamp) is recognized; Correct adds value to score, Incorrect deducts and locks out; no-buzz timeout reveals answer and returns to board; scoreboard updates after every judgment
-  - Files: `games/jeopardy/host.js`
-  - Buzzing state: open buzzer in Firebase, start buzz window countdown timer (5s default)
-  - Listen for buzz timestamps, determine first buzzer (earliest server timestamp)
-  - Display who buzzed in; transition to `answering` state
-  - Judging controls: Correct button → add clue value to player score, set picking player, return to board
-  - Incorrect button → deduct value, lock out player, reopen buzzing for remaining players
-  - If no one buzzes in time or all locked out → reveal answer, return to board
-  - Picking player: track last correct answerer (or random for first clue)
   - Display picking player name on board view
   - Update scoreboard after every judgment
   - Depends on: JP-008
@@ -127,6 +104,16 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-009]** Extend `host.js` — Core game flow: buzzing → judging → score [engine]
+  - Acceptance: Buzzer opens with countdown timer; first buzz (by server timestamp) is recognized; Correct adds value to score, Incorrect deducts and locks out; no-buzz timeout reveals answer and returns to board; scoreboard updates after every judgment
+  - Files: `games/jeopardy/host.js`
+  _Completed: Extended `games/jeopardy/host.js` with full buzzing → judging → score flow. Added 7 new state variables (`config`, `buzzTimerId`, `buzzStartTime`, `buzzRemainingMs`, `lockedOutPlayers`, `buzzListenerRef`, `currentBuzzer`) and 4 new DOM element refs (`buzzTimerFill`, `buzzedPlayer`, `judgeCorrectBtn`, `judgeIncorrectBtn`). `onOpenBuzzing()` now writes `game/buzzer` node to Firebase (isOpen + server timestamp), starts visual countdown timer, and listens for player buzzes. `listenForBuzzes()` uses Firebase `on('value')` listener on `buzzedPlayers`; `processBuzzes()` finds earliest non-locked-out buzz by server timestamp. `showAnsweringUI()` stops timer, updates Firebase state to `answering`, shows player name + Correct/Incorrect buttons. `onJudgeCorrect()` adds clue value to player score, sets picking player to correct answerer, cleans up buzzer, reveals answer. `onJudgeIncorrect()` deducts value, locks out player in Firebase + local state, checks if all connected players locked out (→ reveal answer) or reopens buzzing with remaining time. `reopenBuzzing()` resumes timer bar with remaining time and checks for pending buzzes from other players via `once('value')`. `onBuzzTimeout()` fires when timer expires — cleans up and reveals answer. `revealAnswer()` shows answer text + "Return to Board" button. `cleanupBuzzer()` is idempotent — clears interval, removes Firebase listener, nulls buzzer node, resets all local state. `updatePlayerScore()` reads current score from local `players` cache and writes new total. `returnToBoard()` now calls `cleanupBuzzer()` and `renderScoreboard()` for fresh score display. Also cached `config` at game start for buzz window duration. Added `#clue-answering` CSS in host.html (flex column, centered, gap) for proper answering UI layout. Browser validated: page loads, all DOM elements found, CSS applied correctly, zero JS errors. Files changed: `games/jeopardy/host.js`, `games/jeopardy/host.html`._
+
+- [x] **[JP-008]** Extend `host.js` — Board rendering + clue selection [engine]
+  - Acceptance: 6×5 board grid renders with category headers and dollar values; clicking a cell writes `currentClue` to Firebase and shows full-screen clue overlay; asked clues appear dimmed; "Open Buzzing" button transitions state to `buzzing`
+  - Files: `games/jeopardy/host.js`
+  _Completed: Extended `games/jeopardy/host.js` with full board phase logic. New state vars: `currentRound`, `boardState`, `currentClueData`. `enterBoardPhase()` initializes round 1, sets up picking player listener, loads board from Firebase. `loadRoundBoard(n)` reads `rooms/{code}/board/round{n}` and renders on callback. `renderBoard()` builds 6-col CSS grid: category headers (gold text on `#0d1a3a`) + 5×6 dollar-value cells with click handlers; asked clues get `.asked` class (dimmed, no pointer events). `onCellClick()` writes `game/currentClue` (categoryIndex, clueIndex, state: reading, text, answer, value) + marks `asked: true` in Firebase via single `update()` call, dims cell immediately, shows clue overlay. `showClueOverlay()` displays full-screen deep blue overlay with gold value label + white clue text + "Open Buzzing" button. `onOpenBuzzing()` writes `state: buzzing` to Firebase, hides reading controls, shows "BUZZERS OPEN" label with timer bar. `returnToBoard()` clears currentClue in Firebase + returns to board view. `renderScoreboard()` builds score chips for all players (name + formatted dollar value, negative in terracotta). `listenForPickingPlayer()` subscribes to `game/pickingPlayer` changes. Player listener also calls `renderScoreboard()` for live score updates. Extended `cacheDom()` with 13 new board/clue DOM elements. Wired `openBuzzingBtn` and `returnBoardBtn` click handlers in `init()`. Browser validated: board grid renders correctly at desktop resolution, clue overlay displays properly, buzzing state transition works, all DOM elements present, zero JS errors. Files changed: `games/jeopardy/host.js`._
 
 - [x] **[JP-007]** Build `player.js` — Join + lobby phase logic [engine]
   - Acceptance: Player can enter room code and name, join room via Firebase, see lobby with player list; game start transitions player to playing view
