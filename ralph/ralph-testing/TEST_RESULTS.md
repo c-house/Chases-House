@@ -67,3 +67,28 @@ None.
 - `screenshots/tictactoe-hard-loss.png` — AI win on Hard Game 1 (row 1 highlighted)
 - `screenshots/tictactoe-hard-draw.png` — Draw on Hard Game 2 (full board)
 - `screenshots/tictactoe-extreme-loss.png` — AI win on Extreme (column 1 highlighted)
+
+---
+
+## TEST-003: Tic Tac Toe — Edge Cases & Responsiveness — PASS
+Date: 2026-03-09
+
+### Checks
+- [x] **Occupied cell test (player X)**: clicked center cell with X already placed → no change, move rejected — PASS
+- [x] **Occupied cell test (AI O)**: clicked cell with O already placed → no change, move rejected — PASS
+- [x] **Click during AI turn**: used evaluate_script to click cell immediately after player move (during 300ms AI delay) → cell stayed empty, status showed "AI is thinking...", `currentTurn !== PLAYER` guard worked — PASS
+- [x] **New Game mid-game**: played 4 moves (2X, 2O), clicked "New Game" → all 9 cells cleared to empty labels, status reset to "Your turn — place your X", X goes first — PASS
+- [x] **Draw game on Easy**: forced draw via controlled random (X O X / X X O / O X O) → status shows "It's a draw." — PASS
+- [x] **Win highlighting**: won on Easy with top row (indices 0, 1, 2) → `win-cell` class applied to exactly those 3 cells, status shows "You win!" — PASS
+- [x] **Back link**: clicked "← Back to Games" → navigated to `/games/` gallery page with all 6 game cards — PASS
+- [x] **Responsive at 480px**: board scales proportionally, difficulty buttons fit in one row, status/buttons visible, "Back to Games" link accessible — PASS
+- [x] **Console errors**: checked at multiple points throughout testing → zero errors — PASS
+
+### Bugs Found
+None.
+
+### Screenshots
+- `screenshots/tictactoe-midgame-before-reset.png` — Mid-game board before New Game reset (2X, 2O)
+- `screenshots/tictactoe-draw.png` — Draw state with full board (X O X / X X O / O X O)
+- `screenshots/tictactoe-win-highlight.png` — Player win with top row highlighted (indices 0, 1, 2)
+- `screenshots/tictactoe-mobile-480.png` — Mobile layout at 480px width

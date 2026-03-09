@@ -9,18 +9,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-003**: Tic Tac Toe — Edge Cases & Responsiveness (ADR-004)
-  - Navigate to `http://localhost:3003/games/tic-tac-toe/`
-  - **Occupied cell test**: make a move, then click the same cell again → verify nothing happens
-  - **Click during AI turn**: make a move, immediately click another cell → verify it's rejected while AI is thinking
-  - **New Game mid-game**: play 2-3 moves, click "New Game" → verify board clears, status resets, X goes first
-  - **Draw game**: intentionally force a draw on Easy (play specific pattern) → verify "It's a draw." status
-  - **Win highlighting**: win a game on Easy, verify `win-cell` class is applied to the winning line cells
-  - **Back link**: click "← Back to Games" → verify navigation to /games/
-  - **Responsive**: `resize_page` to 480px width → `take_screenshot` → verify board scales, buttons wrap nicely
-  - **Console check**: `list_console_messages` with `types: ["error"]` at every step
-  - Save screenshots, log results to TEST_RESULTS.md
-
 - [ ] **TEST-004**: Checkers — Full Playthrough (ADR-005)
   - **Pre-check**: verify `games/checkers/index.html` exists; if not, mark SKIPPED
   - Navigate to `http://localhost:3003/games/checkers/`
@@ -103,3 +91,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-002**: Tic Tac Toe — Full Playthrough (ADR-004)
   _Completed: PASS. All 4 difficulty levels tested. Easy: player wins easily (AI random). Medium: draw (AI blocks ~70% optimally). Hard: AI unbeatable — Game 1 AI won, Game 2 draw. Extreme: AI unbeatable — AI won (same as Hard). Win highlighting verified with win-cell class on correct cells. Status text correct for win/loss/draw. Zero console errors. 6 screenshots saved. No bugs found._
+
+- [x] **TEST-003**: Tic Tac Toe — Edge Cases & Responsiveness (ADR-004)
+  _Completed: PASS. All edge cases verified. Occupied cell clicks rejected (both X and O cells). Clicks during AI turn (300ms delay) rejected via currentTurn guard. New Game mid-game clears board and resets status. Draw state tested with controlled game (X O X / X X O / O X O) — "It's a draw." displayed. Win highlighting confirmed with win-cell class on indices 0,1,2 (top row). Back link navigates to /games/ gallery. Mobile layout at 480px scales properly. Zero console errors throughout. 4 screenshots saved. No bugs found._
