@@ -6,17 +6,6 @@ _Last updated: 2026-03-09_
 
 ## Todo
 
-- [ ] **[JP-006]** Build `host.js` — Lobby phase logic [engine]
-  - Acceptance: Host page creates a Firebase room with 4-letter code; QR code renders; player joins appear in lobby list; Start Game button validates ≥1 player and transitions to `playing` status
-  - Files: `games/jeopardy/host.js`
-  - On load: Firebase anonymous auth, generate host ID
-  - Board selection: load shipped `boards/sample.json` + any localStorage boards from builder
-  - Rules config: wire toggle switches to config object (Daily Doubles, Final Jeopardy, buzz window)
-  - Create room: call `Jeopardy.createRoom()`, display 4-letter room code and QR code
-  - Player list: listen for player joins/leaves in Firebase, update lobby UI
-  - Start Game: validate ≥1 player, randomly place Daily Doubles, transition to `playing` status
-  - Depends on: JP-001, JP-002, JP-004
-
 - [ ] **[JP-007]** Build `player.js` — Join + lobby phase logic [engine]
   - Acceptance: Player can enter room code and name, join room via Firebase, see lobby with player list; game start transitions player to playing view
   - Files: `games/jeopardy/player.js`
@@ -147,6 +136,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-006]** Build `host.js` — Lobby phase logic [engine]
+  - Acceptance: Host page creates a Firebase room with 4-letter code; QR code renders; player joins appear in lobby list; Start Game button validates ≥1 player and transitions to `playing` status
+  - Files: `games/jeopardy/host.js`
+  _Completed: Built `games/jeopardy/host.js` with full lobby phase logic using IIFE + `window.Jeopardy` module pattern. On load: Firebase anonymous auth → host ID generation → auto-creates room. Board selection: fetches shipped `boards/sample.json` + loads any `jeopardy-board-*` localStorage boards from builder, validates with `J.validateBoard()`, populates `<select>` dropdown dynamically. Config: reads toggle checkboxes (Double Jeopardy, Daily Doubles, Final Jeopardy) and buzz window select into config object. Room creation: calls `J.createRoom()`, displays 4-letter room code, renders QR code via QRCode.js (cdnjs CDN), sets join URL. Host disconnect handler sets room status to `paused` via `onDisconnect()`. Player list: Firebase `.on('value')` listener on `rooms/{code}/players` — renders player items with sage dot (faded when disconnected), updates count, enables Start Game button when ≥1 player. Start Game: places Daily Doubles randomly (1 in Round 1, 2 in Round 2 — avoids top row matching real show), picks random first player, writes `meta/status: playing` + `game/pickingPlayer` to Firebase, transitions to board phase. Phase management via `showPhase()` toggles `.active` class. Verified: page loads, lobby UI renders correctly at desktop resolution, board selector populated, all toggles functional, Start button disabled by default. Files changed: `games/jeopardy/host.js`._
 
 - [x] **[JP-005]** Build `play.html` — Player screen HTML structure + inline CSS [ui]
   - Acceptance: `play.html` loads with no console errors; all phase sections present (hidden by default except join); mobile-first portrait layout works at 375px; buzzer button is 120px+ tap target
