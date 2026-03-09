@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(2rem, 6vh, 5rem) clamp(1.5rem, 5vw, 4rem) clamp(2rem, 5vh, 4rem);
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2rem, 5vw + 0.5rem, 3.5rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-align: center;
+      animation: fadeSlideUp 800ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    /* ── Difficulty Selector ──────────────────────────── */
+    .difficulty-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 250ms;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.4rem 1rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .difficulty-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent-gold);
+    }
+
+    .difficulty-btn.active {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.08);
+    }
+
+    /* ── Canvas Container ────────────────────────────── */
+    .canvas-container {
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 400ms;
+      position: relative;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      border: 2px solid var(--accent-ember);
+      border-radius: 6px;
+      background: var(--bg-surface);
+    }
+
+    /* ── Overlay (start / pause / game over) ─────────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 11, 0.85);
+      border-radius: 6px;
+      gap: 0.8rem;
+      z-index: 2;
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 350;
+      color: var(--text-heading);
+    }
+
+    .overlay-score {
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    .overlay-score .highlight {
+      color: var(--accent-gold);
+    }
+
+    .overlay-hint {
+      font-size: 0.85rem;
+      color: var(--text-faint);
+      margin-top: 0.3rem;
+    }
+
+    .play-btn {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.55rem 1.6rem;
+      background: transparent;
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+      margin-top: 0.3rem;
+    }
+
+    .play-btn:hover {
+      background: rgba(200, 148, 62, 0.12);
+      color: var(--accent-glow);
+    }
+
+    /* ── Status Bar ───────────────────────────────────── */
+    .status-bar {
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 550ms;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .status-text {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 1, 'SOFT' 40;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-weight: 400;
+      color: var(--text-muted);
+      min-height: 1.5em;
+    }
+
+    .status-text .highlight {
+      color: var(--accent-gold);
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.25s ease;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 650ms;
+    }
+
+    .back-link:hover {
+      color: var(--accent-gold);
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page-content {
+        padding-top: clamp(1.5rem, 4vh, 3rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (hidden) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Snake</h1>
+
+    <div class="difficulty-selector" role="group" aria-label="Difficulty">
+      <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+      <button class="difficulty-btn active" data-difficulty="medium">Medium</button>
+      <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+      <button class="difficulty-btn" data-difficulty="extreme">Extreme</button>
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="game-canvas" width="400" height="400"></canvas>
+      <div class="overlay" id="start-overlay">
+        <span class="overlay-title">Snake</span>
+        <span class="overlay-hint">Arrow keys / WASD to move</span>
+        <button class="play-btn" id="start-btn">Play</button>
+      </div>
+      <div class="overlay" id="pause-overlay" hidden>
+        <span class="overlay-title">Paused</span>
+        <span class="overlay-hint">Press Space or tap to resume</span>
+      </div>
+      <div class="overlay" id="gameover-overlay" hidden>
+        <span class="overlay-title">Game Over</span>
+        <span class="overlay-score">Score: <span class="highlight" id="final-score">0</span></span>
+        <span class="overlay-score">Best: <span class="highlight" id="best-score">0</span></span>
+        <button class="play-btn" id="restart-btn">Play Again</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-text">Score: <span class="highlight" id="score-display">0</span> &middot; Best: <span class="highlight" id="highscore-display">0</span></span>
+    </div>
+
+    <a class="back-link" href="/games/">&larr; Back to Games</a>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="game.js"></script>
+</body>
+</html>

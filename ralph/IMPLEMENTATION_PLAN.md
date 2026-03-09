@@ -8,14 +8,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **GAME-006**: Snake (ADR-008)
-  - Create `games/snake/index.html` and `games/snake/game.js`
-  - Canvas-based grid movement, snake in accent-gold, food as glowing ember dot
-  - Difficulty = speed: Easy (~200ms), Medium (~130ms), Hard (~80ms), Extreme (~50ms)
-  - Arrow keys + WASD input, swipe gestures on mobile, pause with spacebar/tap
-  - High score in `localStorage`, game over screen with "Play Again"
-  - Add Snake card to `games/index.html` gallery
-
 - [ ] **GAME-007**: Sudoku (ADR-009)
   - Create `games/sudoku/index.html` and `games/sudoku/game.js`
   - 9x9 CSS Grid with 3x3 box borders, backtracking puzzle generator with unique-solution verification
@@ -42,3 +34,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **GAME-003**: Checkers (ADR-005)
   _Completed: Created `games/checkers/index.html` and `games/checkers/game.js`. 8x8 board with alternating light/dark squares. Player pieces accent-gold with radial gradient, AI pieces terracotta with radial gradient, kings distinguished with crown symbol overlay. Full American checkers rules: diagonal movement, mandatory captures with visual cues, multi-jump chain enforcement, king promotion on back row. Alpha-beta pruning AI with positional evaluation (material, advancement, center control, mobility): Easy (2 plies), Medium (4 plies), Hard (7 plies), Extreme (9 plies). Click-to-select with valid move/capture highlighting, piece count score display, animated AI multi-jump sequences, last-move highlighting. Added Checkers card to `games/index.html` gallery. Responsive layout matching existing game page patterns. Files changed: `games/checkers/index.html`, `games/checkers/game.js`, `games/index.html`._
+
+- [x] **GAME-006**: Snake (ADR-008)
+  _Completed: Created `games/snake/index.html` and `games/snake/game.js`. Canvas-based 20x20 grid with snake rendered in accent-gold gradient (head brightest, body fading to ember tail) with rounded-rect segments and directional eyes. Food as glowing ember dot with radial gradient and shadow glow. Difficulty controls speed: Easy (200ms), Medium (130ms), Hard (80ms), Extreme (50ms). Arrow keys + WASD keyboard input with 180-degree reversal prevention. Touch/swipe gestures on mobile with configurable threshold; tap to pause. Start overlay, pause overlay, and game over overlay with score/best display. High scores persisted per-difficulty in localStorage. Canvas auto-sizes responsively based on viewport. Added Snake card with "solo" tag to `games/index.html` gallery. Files changed: `games/snake/index.html`, `games/snake/game.js`, `games/index.html`._
