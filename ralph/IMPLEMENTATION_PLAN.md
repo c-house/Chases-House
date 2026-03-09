@@ -8,14 +8,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **GAME-005**: Chess (ADR-007)
-  - Create `games/chess/index.html`, `games/chess/game.js`, and `games/chess/ai.js`
-  - Full rules: all piece movement, castling, en passant, pawn promotion (with piece selection UI), fifty-move rule, threefold repetition, stalemate
-  - AI in separate file: Easy (2 plies), Medium (3-4 plies + piece-square tables), Hard (4-5 plies + alpha-beta + move ordering), Extreme (5-6 plies + iterative deepening + transposition table + quiescence search)
-  - Unicode chess symbols or SVGs, legal move highlighting, check/checkmate indicators, algebraic notation move history
-  - Player is White, AI is Black. AI responds <3s at each difficulty.
-  - Add Chess card to `games/index.html` gallery
-
 - [ ] **GAME-006**: Snake (ADR-008)
   - Create `games/snake/index.html` and `games/snake/game.js`
   - Canvas-based grid movement, snake in accent-gold, food as glowing ember dot
@@ -44,6 +36,9 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **GAME-004**: Connect Four (ADR-006)
   _Completed: Created `games/connect-four/index.html` and `games/connect-four/game.js`. 7-column, 6-row CSS Grid board with disc drop animation (CSS keyframes with bounce easing). Player discs accent-gold, AI discs terracotta with radial gradients matching existing game style. Column hover preview shows landing position with subtle gold glow. Win state highlights four connected discs with pulsing animation. Alpha-beta pruning AI with center-column move ordering and window-based evaluation (horizontal, vertical, diagonal scoring): Easy (2 plies + 40% random), Medium (4 plies), Hard (7 plies), Extreme (11 plies). Win detection across all four directions, draw detection on full board. Added Connect Four card to `games/index.html` gallery. Responsive layout matching existing game page patterns. Files changed: `games/connect-four/index.html`, `games/connect-four/game.js`, `games/index.html`._
+
+- [x] **GAME-005**: Chess (ADR-007)
+  _Completed: Created `games/chess/index.html`, `games/chess/game.js`, and `games/chess/ai.js`. Full chess implementation with all standard rules: piece movement for all 6 piece types, castling (kingside and queenside), en passant, pawn promotion with piece selection modal UI, fifty-move rule, threefold repetition, stalemate, and insufficient material detection. Unicode chess symbols for pieces, click-to-select with legal move dots and capture rings, check/checkmate square highlighting, last-move highlighting, rank/file labels. Algebraic notation move history panel with auto-scroll. AI in separate file with difficulty-layered enhancements: Easy (2 plies, material-only), Medium (3 plies + piece-square tables), Hard (4 plies + alpha-beta + MVV-LVA move ordering), Extreme (5 plies + iterative deepening + transposition table + quiescence search). Board layout with side panel for move history on desktop, stacked on mobile. Added Chess card to `games/index.html` gallery. Responsive layout matching existing game page patterns. Files changed: `games/chess/index.html`, `games/chess/game.js`, `games/chess/ai.js`, `games/index.html`._
 
 - [x] **GAME-003**: Checkers (ADR-005)
   _Completed: Created `games/checkers/index.html` and `games/checkers/game.js`. 8x8 board with alternating light/dark squares. Player pieces accent-gold with radial gradient, AI pieces terracotta with radial gradient, kings distinguished with crown symbol overlay. Full American checkers rules: diagonal movement, mandatory captures with visual cues, multi-jump chain enforcement, king promotion on back row. Alpha-beta pruning AI with positional evaluation (material, advancement, center control, mobility): Easy (2 plies), Medium (4 plies), Hard (7 plies), Extreme (9 plies). Click-to-select with valid move/capture highlighting, piece count score display, animated AI multi-jump sequences, last-move highlighting. Added Checkers card to `games/index.html` gallery. Responsive layout matching existing game page patterns. Files changed: `games/checkers/index.html`, `games/checkers/game.js`, `games/index.html`._
