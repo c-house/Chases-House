@@ -8,14 +8,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **GAME-003**: Checkers (ADR-005)
-  - Create `games/checkers/index.html` and `games/checkers/game.js`
-  - 8x8 board, standard American rules: diagonal moves, mandatory captures, multi-jump chains, king promotion
-  - Alpha-beta AI: Easy (2 plies), Medium (4 plies), Hard (6-8 plies), Extreme (8-10 plies)
-  - Player pieces accent-gold, AI pieces terracotta/ember, kings visually distinguished
-  - Click-to-select, click-to-move, valid move highlighting, mandatory jump enforcement
-  - Add Checkers card to `games/index.html` gallery
-
 - [ ] **GAME-004**: Connect Four (ADR-006)
   - Create `games/connect-four/index.html` and `games/connect-four/game.js`
   - 7-column, 6-row board with drop animation
@@ -57,3 +49,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **GAME-002**: Tic Tac Toe (ADR-004)
   _Completed: Created `games/tic-tac-toe/index.html` and `games/tic-tac-toe/game.js`. 3x3 CSS Grid board with player X (accent-gold) and AI O (text-faint). Minimax AI with depth-aware scoring: Easy (random), Medium (minimax + 30% random fallback), Hard/Extreme (optimal minimax). Difficulty selector with 4 levels, status bar with turn/result display, win-cell highlighting, "New Game" button, back link to games gallery. Replaced empty state in `games/index.html` with Tic Tac Toe game card. Keyboard accessible (Enter/Space on cells), responsive layout. Files changed: `games/tic-tac-toe/index.html`, `games/tic-tac-toe/game.js`, `games/index.html`._
+
+- [x] **GAME-003**: Checkers (ADR-005)
+  _Completed: Created `games/checkers/index.html` and `games/checkers/game.js`. 8x8 board with alternating light/dark squares. Player pieces accent-gold with radial gradient, AI pieces terracotta with radial gradient, kings distinguished with crown symbol overlay. Full American checkers rules: diagonal movement, mandatory captures with visual cues, multi-jump chain enforcement, king promotion on back row. Alpha-beta pruning AI with positional evaluation (material, advancement, center control, mobility): Easy (2 plies), Medium (4 plies), Hard (7 plies), Extreme (9 plies). Click-to-select with valid move/capture highlighting, piece count score display, animated AI multi-jump sequences, last-move highlighting. Added Checkers card to `games/index.html` gallery. Responsive layout matching existing game page patterns. Files changed: `games/checkers/index.html`, `games/checkers/game.js`, `games/index.html`._
