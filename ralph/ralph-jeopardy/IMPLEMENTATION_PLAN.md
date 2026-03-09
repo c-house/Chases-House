@@ -6,30 +6,9 @@ _Last updated: 2026-03-09_
 
 ## Todo
 
-- [ ] **[JP-003]** Build `index.html` — Jeopardy landing page [ui]
-  - Create `games/jeopardy/index.html` with three action cards: Host a Game, Join a Game, Board Builder
-  - Host links to `host.html`, Join links to `play.html`, Builder links to `builder.html`
-  - Inline CSS matching Warm Hearth theme (deep blue Jeopardy accent, gold text)
-  - Consistent site header/footer/nav via `/styles.css`
-  - Responsive layout
-  - Depends on: (none)
-
-- [ ] **[JP-004]** Build `host.html` — Host screen HTML structure + inline CSS [ui]
-  - Create `games/jeopardy/host.html` with all phase sections (hidden/shown via JS):
-    - Lobby: room code display, QR code area, player list, board selector, rules config toggles, Start Game button
-    - Board: 6-column grid with category headers and 5 dollar-value rows
-    - Clue overlay: full-screen blue background with white clue text
-    - Buzzer status: who buzzed, timer bar
-    - Judging controls: Correct / Incorrect buttons, current player name
-    - Scoreboard: all player names and scores
-    - Daily Double: wager display
-    - Final Jeopardy: category reveal, wager collection status, clue, answer reveals, per-player judging
-    - Game Over: final standings, play again button
-  - Landscape-optimized for 1080p+; show "designed for large screen" warning on mobile
-  - Include `<script>` tags for Firebase CDN SDK, QR code library CDN, `shared.js`, `host.js`
-  - Depends on: (none)
-
 - [ ] **[JP-005]** Build `play.html` — Player screen HTML structure + inline CSS [ui]
+  - Acceptance: `play.html` loads with no console errors; all phase sections present (hidden by default except join); mobile-first portrait layout works at 375px; buzzer button is 120px+ tap target
+  - Files: `games/jeopardy/play.html`
   - Create `games/jeopardy/play.html` with all phase sections:
     - Join: room code input, name input, Join button
     - Lobby: waiting message, player list, host status
@@ -42,7 +21,8 @@ _Last updated: 2026-03-09_
   - Depends on: (none)
 
 - [ ] **[JP-006]** Build `host.js` — Lobby phase logic [engine]
-  - Create `games/jeopardy/host.js`
+  - Acceptance: Host page creates a Firebase room with 4-letter code; QR code renders; player joins appear in lobby list; Start Game button validates ≥1 player and transitions to `playing` status
+  - Files: `games/jeopardy/host.js`
   - On load: Firebase anonymous auth, generate host ID
   - Board selection: load shipped `boards/sample.json` + any localStorage boards from builder
   - Rules config: wire toggle switches to config object (Daily Doubles, Final Jeopardy, buzz window)
@@ -52,7 +32,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-001, JP-002, JP-004
 
 - [ ] **[JP-007]** Build `player.js` — Join + lobby phase logic [engine]
-  - Create `games/jeopardy/player.js`
+  - Acceptance: Player can enter room code and name, join room via Firebase, see lobby with player list; game start transitions player to playing view
+  - Files: `games/jeopardy/player.js`
   - On load: Firebase anonymous auth, generate player ID
   - Join flow: validate room code, call `Jeopardy.joinRoom()`, transition to lobby view
   - Lobby: listen for room status changes, display player list, show "Waiting for host" message
@@ -60,6 +41,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-002, JP-005
 
 - [ ] **[JP-008]** Extend `host.js` — Board rendering + clue selection [engine]
+  - Acceptance: 6×5 board grid renders with category headers and dollar values; clicking a cell writes `currentClue` to Firebase and shows full-screen clue overlay; asked clues appear dimmed; "Open Buzzing" button transitions state to `buzzing`
+  - Files: `games/jeopardy/host.js`
   - Render the Jeopardy board grid: 6 category headers + 5×6 dollar-value cells
   - Style asked clues differently (dimmed/empty)
   - Click a cell → write `currentClue` to Firebase (categoryIndex, clueIndex, state: `reading`, text, answer, value)
@@ -68,6 +51,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-006
 
 - [ ] **[JP-009]** Extend `host.js` — Core game flow: buzzing → judging → score [engine]
+  - Acceptance: Buzzer opens with countdown timer; first buzz (by server timestamp) is recognized; Correct adds value to score, Incorrect deducts and locks out; no-buzz timeout reveals answer and returns to board; scoreboard updates after every judgment
+  - Files: `games/jeopardy/host.js`
   - Buzzing state: open buzzer in Firebase, start buzz window countdown timer (5s default)
   - Listen for buzz timestamps, determine first buzzer (earliest server timestamp)
   - Display who buzzed in; transition to `answering` state
@@ -80,6 +65,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-008
 
 - [ ] **[JP-010]** Extend `player.js` — Buzzer + live game state [engine]
+  - Acceptance: Player sees clue text when host selects a clue; buzzer button enables only during `buzzing` state with pulse animation; buzzing writes server timestamp to Firebase; lockout disables buzzer after incorrect answer; score updates live
+  - Files: `games/jeopardy/player.js`
   - Listen for `currentClue` changes in Firebase → display clue text on player screen
   - Buzzer button: enabled only during `buzzing` state, terracotta color with pulse animation
   - On buzz: write player ID + `firebase.database.ServerValue.TIMESTAMP` to `buzzer/buzzedPlayers`
@@ -90,6 +77,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-007, JP-009
 
 - [ ] **[JP-011]** Daily Double handling on host + player [engine]
+  - Acceptance: Daily Double cell triggers wager flow instead of buzzing; only picking player sees wager input; wager min/max enforced; host sees wager, judges correct/incorrect, score adjusts by wager amount
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
   - At game start (JP-006 already places randomly): mark Daily Double cells in Firebase board data
   - When host clicks a Daily Double cell: transition to `dailyDouble` state instead of normal buzzing
   - Host UI: show "Daily Double!" overlay, display picking player name, wait for wager
@@ -100,6 +89,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-009, JP-010
 
 - [ ] **[JP-012]** Round transitions — Single → Double Jeopardy [engine]
+  - Acceptance: After all Round 1 clues asked, "Round 1 Complete" overlay appears; Round 2 board loads with doubled values and 2 Daily Doubles; lowest-scoring player picks first in Round 2; Double Jeopardy skipped if disabled in config
+  - Files: `games/jeopardy/host.js`
   - Track current round (1 or 2) in Firebase `game/currentRound`
   - After all clues in Round 1 asked → "Round 1 Complete" overlay → transition to Round 2
   - Load Round 2 board data (doubled values: $400–$2000, 2 Daily Doubles)
@@ -109,6 +100,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-011
 
 - [ ] **[JP-013]** Final Jeopardy flow [engine]
+  - Acceptance: Final Jeopardy category reveals first; all players submit wagers (clamped 0–score); clue shown with 30s timer; players type answers; host judges each player; scores adjust; game transitions to Game Over
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
   - After last round complete → check if Final Jeopardy enabled in config
   - Host: display Final Jeopardy category (text only, no clue yet)
   - All players: wager input (min $0, max = current score; players with $0 or less can't wager)
@@ -120,6 +113,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-012
 
 - [ ] **[JP-014]** Game over + connection management [engine]
+  - Acceptance: Game Over shows final standings sorted by score with winner highlighted; "Play Again" returns to lobby with same room; host disconnect shows "Host disconnected" on players; player disconnect allows rejoin with state restoration
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
   - Game Over screen: final standings sorted by score, winner highlighted
   - "Play Again" button → return to lobby with same room code, reset game state
   - Host disconnect: set room `meta/status` to `paused` via `onDisconnect()` handler
@@ -130,6 +125,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-013
 
 - [ ] **[JP-015]** Build `builder.html` — Board builder UI [ui]
+  - Acceptance: `builder.html` loads with no console errors; tabbed interface shows Round 1 / Round 2 / Final Jeopardy; each round has 6 category inputs with 5 clue/answer pairs; dollar values are auto-filled and non-editable; action buttons (Save/Load/Export/Import/Clear) are present
+  - Files: `games/jeopardy/builder.html`
   - Create `games/jeopardy/builder.html` with form-based board authoring UI
   - Tabbed interface: Round 1 / Round 2 / Final Jeopardy tabs
   - Each round tab: 6 category name inputs, each with 5 clue/answer text field pairs
@@ -142,7 +139,8 @@ _Last updated: 2026-03-09_
   - Depends on: (none)
 
 - [ ] **[JP-016]** Build `builder.js` — Builder logic + persistence [engine]
-  - Create `games/jeopardy/builder.js`
+  - Acceptance: Form data serializes to valid board JSON matching ADR-011 schema; validation highlights missing fields; Save persists to localStorage; Load populates form; Export downloads .json file; Import accepts file upload and populates form; Clear resets with confirmation
+  - Files: `games/jeopardy/builder.js`
   - Form handling: read all inputs into board JSON matching ADR-011 schema
   - Live validation: highlight missing clues, empty answers, wrong category count; show error summary
   - Save to localStorage: key = `jeopardy-board-{title}`, store board JSON
@@ -154,6 +152,8 @@ _Last updated: 2026-03-09_
   - Depends on: JP-015
 
 - [ ] **[JP-017]** Add Jeopardy card to `games/index.html` gallery [ui]
+  - Acceptance: Jeopardy card appears in games gallery with "Multiplayer" badge; card links to `games/jeopardy/`; styling matches existing cards
+  - Files: `games/index.html`
   - Add a Jeopardy game card to the games gallery page
   - Include "Multiplayer" tag/badge to distinguish from single-player games
   - Card links to `games/jeopardy/`
@@ -163,7 +163,21 @@ _Last updated: 2026-03-09_
 ## Done
 
 - [x] **[JP-001]** Seed sample board JSON data file [data]
+  - Acceptance: Valid JSON matching ADR-011 board schema with 2 rounds + Final Jeopardy
+  - Files: `games/jeopardy/boards/sample.json`
   _Completed: Created `games/jeopardy/boards/sample.json` with a full "General Knowledge" board. Round 1 has 6 categories (Science, World Geography, American History, Pop Culture, Food & Drink, Literature) × 5 clues ($200–$1000, dailyDoubles: 1). Round 2 has 6 categories (Space Exploration, Music, World Leaders, Technology, Sports, Mythology) × 5 clues ($400–$2000, dailyDoubles: 2). Final Jeopardy: "Ancient Wonders" — The Great Pyramid of Giza. All trivia is accurate and real. Schema matches ADR-011 exactly. Files changed: `games/jeopardy/boards/sample.json`._
 
 - [x] **[JP-002]** Build `shared.js` — Firebase init, room management, `window.Jeopardy` module [infra]
+  - Acceptance: `window.Jeopardy` module loads with createRoom/joinRoom/leaveRoom/validateBoard functions; Firebase initializes; constants exported
+  - Files: `games/jeopardy/shared.js`
   _Completed: Created `games/jeopardy/shared.js` using IIFE + `window.Jeopardy` pattern (matching chess game's `window.ChessEngine`). Includes: Firebase v10 compat SDK init with inlined config, anonymous auth via `signInAnonymously()`, collision-checked 4-letter room code generation (omits I/O to avoid confusion), `createRoom()` / `joinRoom()` / `leaveRoom()` with full Firebase writes and `onDisconnect()` handler for player connection tracking, `validateBoard()` that checks all ADR-011 schema requirements (title, rounds, categories, clues, values, final). Constants exported: `STATUS` (lobby/playing/final/ended/paused), `CLUE_STATE` (picking/reading/buzzing/answering/judging/revealed), `FINAL_STATE`, `DEFAULT_CONFIG` (buzzWindowMs: 5000), `ROUND_VALUES`. All 19 browser tests pass (module loading, constants, validation of sample.json, invalid board rejection). Files changed: `games/jeopardy/shared.js`._
+
+- [x] **[JP-003]** Build `index.html` — Jeopardy landing page [ui]
+  - Acceptance: Landing page loads with 3 action cards (Host/Join/Builder) linking to correct pages; no console errors; responsive layout
+  - Files: `games/jeopardy/index.html`
+  _Completed: Created `games/jeopardy/index.html` with three action cards: Host a Game (links to host.html, "big screen" tag), Join a Game (links to play.html, "mobile" tag), Board Builder (links to builder.html, "tool" tag). Inline CSS matching Warm Hearth theme with shared `/styles.css` for header/footer/nav. Responsive layout — cards use `auto-fit` grid that stacks on mobile. Icons use HTML entities (TV, phone, notepad). Verified desktop (1525px) and mobile (375px) rendering with no console errors. Files changed: `games/jeopardy/index.html`._
+
+- [x] **[JP-004]** Build `host.html` — Host screen HTML structure + inline CSS [ui]
+  - Acceptance: `host.html` loads with no console errors; all phase sections present (hidden by default except lobby); landscape layout renders correctly at 1080p+; mobile shows "designed for large screen" warning
+  - Files: `games/jeopardy/host.html`
+  _Completed: Built `games/jeopardy/host.html` with all 8 phase sections: Lobby (room code, QR area, 3-column grid with join panel/config/player list, board selector dropdown, rule toggles for Double Jeopardy/Daily Doubles/Final Jeopardy/Buzz Window, Start Game button), Board (6-col grid with category headers, score chips bar, picking player display, round label), Clue Overlay (full-screen deep blue with value label, clue text, Open Buzzing/judging/answer reveal controls, buzz timer bar), Daily Double (title, player name, wager status/amount, clue text, judging), Round Transition (title, subtitle, Continue button), Final Jeopardy (category, wager status chips, clue text, timer bar, per-player reveal with judging), Game Over (standings list with winner highlight, Play Again button). Mobile warning at ≤768px shows "Designed for Large Screens" with link to play.html. Switched QR CDN from jsdelivr (blocked by ORB) to cdnjs. Created placeholder `host.js` stub to avoid 404. Zero console errors on load. Files changed: `games/jeopardy/host.html`, `games/jeopardy/host.js`._
