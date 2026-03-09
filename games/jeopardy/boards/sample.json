@@ -1,0 +1,141 @@
+{
+  "title": "General Knowledge",
+  "author": "Chase",
+  "rounds": [
+    {
+      "categories": [
+        {
+          "name": "Science",
+          "clues": [
+            { "value": 200, "clue": "This gas makes up about 78% of Earth's atmosphere", "answer": "Nitrogen" },
+            { "value": 400, "clue": "The chemical symbol Au represents this precious metal", "answer": "Gold" },
+            { "value": 600, "clue": "This organ in the human body produces insulin", "answer": "The pancreas" },
+            { "value": 800, "clue": "This physicist developed the general theory of relativity in 1915", "answer": "Albert Einstein" },
+            { "value": 1000, "clue": "This subatomic particle was confirmed at CERN in 2012, completing the Standard Model", "answer": "The Higgs boson" }
+          ]
+        },
+        {
+          "name": "World Geography",
+          "clues": [
+            { "value": 200, "clue": "This is the longest river in Africa", "answer": "The Nile" },
+            { "value": 400, "clue": "This European country is shaped like a boot", "answer": "Italy" },
+            { "value": 600, "clue": "Mount Kilimanjaro is located in this African country", "answer": "Tanzania" },
+            { "value": 800, "clue": "This Central Asian sea has been shrinking dramatically since the 1960s due to Soviet irrigation projects", "answer": "The Aral Sea" },
+            { "value": 1000, "clue": "This tiny European principality is landlocked within Switzerland and Austria", "answer": "Liechtenstein" }
+          ]
+        },
+        {
+          "name": "American History",
+          "clues": [
+            { "value": 200, "clue": "This document, adopted on July 4, 1776, declared the colonies free from British rule", "answer": "The Declaration of Independence" },
+            { "value": 400, "clue": "He was the 16th President of the United States during the Civil War", "answer": "Abraham Lincoln" },
+            { "value": 600, "clue": "This 1803 land deal with France doubled the size of the United States", "answer": "The Louisiana Purchase" },
+            { "value": 800, "clue": "Rosa Parks refused to give up her bus seat in this Alabama city in 1955", "answer": "Montgomery" },
+            { "value": 1000, "clue": "This 1787 compromise determined that enslaved people would count as three-fifths for representation", "answer": "The Three-Fifths Compromise" }
+          ]
+        },
+        {
+          "name": "Pop Culture",
+          "clues": [
+            { "value": 200, "clue": "This boy wizard attends Hogwarts School of Witchcraft and Wizardry", "answer": "Harry Potter" },
+            { "value": 400, "clue": "This streaming service produced the hit series 'Stranger Things'", "answer": "Netflix" },
+            { "value": 600, "clue": "Michael Jackson's best-selling album released in 1982", "answer": "Thriller" },
+            { "value": 800, "clue": "This Pixar film features a rat named Remy who dreams of becoming a chef in Paris", "answer": "Ratatouille" },
+            { "value": 1000, "clue": "This video game franchise features a plumber who rescues Princess Peach from Bowser", "answer": "Super Mario Bros." }
+          ]
+        },
+        {
+          "name": "Food & Drink",
+          "clues": [
+            { "value": 200, "clue": "This Italian dish consists of flat dough topped with sauce, cheese, and various toppings", "answer": "Pizza" },
+            { "value": 400, "clue": "Champagne is named after a region in this European country", "answer": "France" },
+            { "value": 600, "clue": "This Japanese rice wine is traditionally served warm or cold", "answer": "Sake" },
+            { "value": 800, "clue": "Saffron, the world's most expensive spice by weight, comes from the flower of this plant", "answer": "The crocus (Crocus sativus)" },
+            { "value": 1000, "clue": "This fermented Korean side dish is made primarily from salted and seasoned napa cabbage", "answer": "Kimchi" }
+          ]
+        },
+        {
+          "name": "Literature",
+          "clues": [
+            { "value": 200, "clue": "This Dr. Seuss character tried to steal Christmas from the Whos", "answer": "The Grinch" },
+            { "value": 400, "clue": "George Orwell wrote this dystopian novel set in the year of its title", "answer": "1984" },
+            { "value": 600, "clue": "This Shakespeare play features the star-crossed lovers of Verona", "answer": "Romeo and Juliet" },
+            { "value": 800, "clue": "Gabriel Garcia Marquez wrote this landmark novel about the Buendia family in the town of Macondo", "answer": "One Hundred Years of Solitude" },
+            { "value": 1000, "clue": "This Russian novelist wrote both 'War and Peace' and 'Anna Karenina'", "answer": "Leo Tolstoy" }
+          ]
+        }
+      ],
+      "dailyDoubles": 1
+    },
+    {
+      "categories": [
+        {
+          "name": "Space Exploration",
+          "clues": [
+            { "value": 400, "clue": "This was the first human-made satellite, launched by the Soviet Union in 1957", "answer": "Sputnik" },
+            { "value": 800, "clue": "Neil Armstrong and Buzz Aldrin landed on the Moon during this Apollo mission", "answer": "Apollo 11" },
+            { "value": 1200, "clue": "This NASA rover, which landed on Mars in 2021, carries the Ingenuity helicopter", "answer": "Perseverance" },
+            { "value": 1600, "clue": "This space telescope, launched in 2021, observes the universe in infrared from the L2 Lagrange point", "answer": "The James Webb Space Telescope" },
+            { "value": 2000, "clue": "This 1970 Apollo mission was called a 'successful failure' after an oxygen tank explosion forced the crew to abort their lunar landing", "answer": "Apollo 13" }
+          ]
+        },
+        {
+          "name": "Music",
+          "clues": [
+            { "value": 400, "clue": "This four-member band from Liverpool led the British Invasion in the 1960s", "answer": "The Beatles" },
+            { "value": 800, "clue": "Ludwig van Beethoven composed this famous symphony also known as the 'Choral' symphony", "answer": "Symphony No. 9" },
+            { "value": 1200, "clue": "This American jazz trumpeter recorded the iconic album 'Kind of Blue' in 1959", "answer": "Miles Davis" },
+            { "value": 1600, "clue": "This Icelandic singer released the experimental albums 'Homogenic' and 'Vespertine'", "answer": "Bjork" },
+            { "value": 2000, "clue": "This Baroque composer wrote over 1,000 works including 'The Well-Tempered Clavier' and the 'Brandenburg Concertos'", "answer": "Johann Sebastian Bach" }
+          ]
+        },
+        {
+          "name": "World Leaders",
+          "clues": [
+            { "value": 400, "clue": "This British Prime Minister led the UK through most of World War II", "answer": "Winston Churchill" },
+            { "value": 800, "clue": "This South African leader spent 27 years in prison before becoming the country's first Black president", "answer": "Nelson Mandela" },
+            { "value": 1200, "clue": "This French military leader crowned himself Emperor in 1804", "answer": "Napoleon Bonaparte" },
+            { "value": 1600, "clue": "This Indian leader used nonviolent civil disobedience to lead India to independence from British rule", "answer": "Mahatma Gandhi" },
+            { "value": 2000, "clue": "This Carthaginian general famously crossed the Alps with war elephants to invade Italy during the Second Punic War", "answer": "Hannibal Barca" }
+          ]
+        },
+        {
+          "name": "Technology",
+          "clues": [
+            { "value": 400, "clue": "This company, founded by Steve Jobs, Steve Wozniak, and Ronald Wayne, created the Macintosh", "answer": "Apple" },
+            { "value": 800, "clue": "Tim Berners-Lee invented this system of interlinked hypertext documents in 1989", "answer": "The World Wide Web" },
+            { "value": 1200, "clue": "This programming language, created by Guido van Rossum in 1991, is named after a British comedy group", "answer": "Python" },
+            { "value": 1600, "clue": "This cryptographic currency, described in a 2008 whitepaper by Satoshi Nakamoto, was the first blockchain", "answer": "Bitcoin" },
+            { "value": 2000, "clue": "Alan Turing proposed this test in 1950 to determine whether a machine can exhibit intelligent behavior indistinguishable from a human", "answer": "The Turing Test" }
+          ]
+        },
+        {
+          "name": "Sports",
+          "clues": [
+            { "value": 400, "clue": "This international soccer tournament is held every four years and is the most-watched sporting event in the world", "answer": "The FIFA World Cup" },
+            { "value": 800, "clue": "This boxer, born Cassius Clay, proclaimed himself 'The Greatest'", "answer": "Muhammad Ali" },
+            { "value": 1200, "clue": "This Jamaican sprinter holds the world record for the 100-meter dash at 9.58 seconds", "answer": "Usain Bolt" },
+            { "value": 1600, "clue": "This American gymnast has won the most World Championship medals in gymnastics history", "answer": "Simone Biles" },
+            { "value": 2000, "clue": "In cricket, this term describes a bowler taking three wickets on three consecutive deliveries", "answer": "A hat trick" }
+          ]
+        },
+        {
+          "name": "Mythology",
+          "clues": [
+            { "value": 400, "clue": "In Greek mythology, this hero traveled to Troy and was known for the 'wooden horse' stratagem", "answer": "Odysseus (Ulysses)" },
+            { "value": 800, "clue": "This Norse god wields the hammer Mjolnir and is the god of thunder", "answer": "Thor" },
+            { "value": 1200, "clue": "In Egyptian mythology, this jackal-headed god presided over mummification and the afterlife", "answer": "Anubis" },
+            { "value": 1600, "clue": "This Greek Titan was punished by Zeus to hold up the sky for eternity", "answer": "Atlas" },
+            { "value": 2000, "clue": "In Hindu mythology, this epic poem describes the battle between the Pandavas and Kauravas and contains the Bhagavad Gita", "answer": "The Mahabharata" }
+          ]
+        }
+      ],
+      "dailyDoubles": 2
+    }
+  ],
+  "final": {
+    "category": "Ancient Wonders",
+    "clue": "Of the Seven Wonders of the Ancient World, this is the only one still standing today",
+    "answer": "The Great Pyramid of Giza"
+  }
+}
