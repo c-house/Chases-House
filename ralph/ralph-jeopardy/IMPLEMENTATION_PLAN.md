@@ -6,18 +6,6 @@ _Last updated: 2026-03-09_
 
 ## Todo
 
-- [ ] **[JP-002]** Build `shared.js` — Firebase init, room management, `window.Jeopardy` module [infra]
-  - Create `games/jeopardy/shared.js` exposing `window.Jeopardy` global
-  - Firebase v10 compat SDK init via CDN (config inlined — public API key, standard for client-side Firebase)
-  - Anonymous authentication
-  - Room code generation (4-letter uppercase, collision-checked)
-  - `createRoom(hostId, boardData, config)` — writes room to Firebase
-  - `joinRoom(roomCode, playerName)` — adds player to room
-  - `leaveRoom(roomCode, playerId)` — removes player
-  - Constants: game states, default config values, buzz window duration
-  - `validateBoard(boardData)` — validates board JSON against expected schema
-  - Depends on: (none)
-
 - [ ] **[JP-003]** Build `index.html` — Jeopardy landing page [ui]
   - Create `games/jeopardy/index.html` with three action cards: Host a Game, Join a Game, Board Builder
   - Host links to `host.html`, Join links to `play.html`, Builder links to `builder.html`
@@ -176,3 +164,6 @@ _Last updated: 2026-03-09_
 
 - [x] **[JP-001]** Seed sample board JSON data file [data]
   _Completed: Created `games/jeopardy/boards/sample.json` with a full "General Knowledge" board. Round 1 has 6 categories (Science, World Geography, American History, Pop Culture, Food & Drink, Literature) × 5 clues ($200–$1000, dailyDoubles: 1). Round 2 has 6 categories (Space Exploration, Music, World Leaders, Technology, Sports, Mythology) × 5 clues ($400–$2000, dailyDoubles: 2). Final Jeopardy: "Ancient Wonders" — The Great Pyramid of Giza. All trivia is accurate and real. Schema matches ADR-011 exactly. Files changed: `games/jeopardy/boards/sample.json`._
+
+- [x] **[JP-002]** Build `shared.js` — Firebase init, room management, `window.Jeopardy` module [infra]
+  _Completed: Created `games/jeopardy/shared.js` using IIFE + `window.Jeopardy` pattern (matching chess game's `window.ChessEngine`). Includes: Firebase v10 compat SDK init with inlined config, anonymous auth via `signInAnonymously()`, collision-checked 4-letter room code generation (omits I/O to avoid confusion), `createRoom()` / `joinRoom()` / `leaveRoom()` with full Firebase writes and `onDisconnect()` handler for player connection tracking, `validateBoard()` that checks all ADR-011 schema requirements (title, rounds, categories, clues, values, final). Constants exported: `STATUS` (lobby/playing/final/ended/paused), `CLUE_STATE` (picking/reading/buzzing/answering/judging/revealed), `FINAL_STATE`, `DEFAULT_CONFIG` (buzzWindowMs: 5000), `ROUND_VALUES`. All 19 browser tests pass (module loading, constants, validation of sample.json, invalid board rejection). Files changed: `games/jeopardy/shared.js`._
