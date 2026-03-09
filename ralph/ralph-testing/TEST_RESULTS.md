@@ -92,3 +92,44 @@ None.
 - `screenshots/tictactoe-draw.png` — Draw state with full board (X O X / X X O / O X O)
 - `screenshots/tictactoe-win-highlight.png` — Player win with top row highlighted (indices 0, 1, 2)
 - `screenshots/tictactoe-mobile-480.png` — Mobile layout at 480px width
+
+---
+
+## TEST-004: Checkers — Full Playthrough — PASS
+Date: 2026-03-09
+
+### Checks
+- [x] **Initial board**: 12 player pieces (accent-gold, rows 5-7), 12 AI pieces (terracotta, rows 0-2), 64-cell 8x8 grid — PASS
+- [x] **Default difficulty**: Medium selected by default, 4 difficulty buttons (Easy, Medium, Hard, Extreme) — PASS
+- [x] **Piece selection**: clicking a player piece highlights it (`.selected` class, scale 1.1x), valid moves shown as gold dots (`.valid-move`) — PASS
+- [x] **Valid move highlighting**: selected piece at (5,2) showed two valid moves at (4,1) and (4,3) — PASS
+- [x] **AI response**: AI responds after each player move, status shows "AI is thinking..." during computation — PASS
+- [x] **Captures**: player captured AI piece by jumping diagonally, piece count updated correctly — PASS
+- [x] **Valid capture highlighting**: capture squares shown with gold ring border (`.valid-capture`), distinct from simple move dots — PASS
+- [x] **Mandatory captures**: when a jump is available, only jump moves are legal — non-jumping pieces show zero moves. Tested with multiple pieces: only pieces with capture available could be selected — PASS
+- [x] **Multi-jump (chain jump)**: player executed double-jump chain (6,1)→(4,3)→(2,1) capturing two AI pieces. Status showed "Continue jumping — mandatory capture" between jumps — PASS
+- [x] **AI multi-jump**: AI executed chain double-jump (1,6)→(3,4)→(5,6) capturing two player pieces in one turn — PASS
+- [x] **King promotion (visual)**: `.king` CSS class adds crown icon (♚ U+265A) via `::after` pseudo-element. Verified on both player (gold tint) and AI (terracotta tint) king pieces — PASS
+- [x] **King promotion (code logic)**: `promoteIfNeeded()` correctly promotes PLAYER at row 0 → PLAYER_KING, AI_PIECE at row 7 → AI_KING. `renderBoard()` applies `.king` class. Kings get bidirectional movement via `getMoveDirs()` — PASS (code review)
+- [x] **Easy difficulty**: 2-ply search depth, AI makes basic moves, player can capture but AI also captures aggressively — PASS
+- [x] **Medium difficulty**: 4-ply search depth, AI responds with deeper tactical play, mandatory captures enforced — PASS
+- [x] **Hard difficulty**: 7-ply search depth, AI responded in ~425ms at opening, board resets on difficulty switch — PASS
+- [x] **Difficulty switch resets game**: switching from Medium to Hard reset board to 12v12, cleared all state — PASS
+- [x] **Score display**: "You: X" and "AI: Y" update correctly after each capture — PASS
+- [x] **Console errors**: zero errors across all testing (Easy, Medium, Hard, desktop, mobile) — PASS
+- [x] **Responsive at 480px**: board scales to fit viewport, difficulty buttons wrap and remain tappable, status/score/back-link all visible — PASS
+
+### Bugs Found
+None.
+
+### Notes
+- King promotion was verified via CSS class injection (adding `.king` to existing pieces) and code review. Natural gameplay king promotion was not reached in test games — the AI on Easy aggressively captures advancing pieces. The promotion logic is correctly implemented in code (lines 326-328 of game.js).
+- AI difficulty progression is confirmed by code: Easy=2-ply, Medium=4-ply, Hard=7-ply, Extreme=9-ply minimax with alpha-beta pruning.
+
+### Screenshots
+- `screenshots/checkers-initial.png` — Initial board: 12 gold player pieces, 12 terracotta AI pieces
+- `screenshots/checkers-piece-selected.png` — Piece selected with valid moves highlighted
+- `screenshots/checkers-after-captures.png` — Mid-game state after captures
+- `screenshots/checkers-king-visual.png` — King crown icon (♚) on both player and AI pieces
+- `screenshots/checkers-hard-game.png` — Hard difficulty game in progress
+- `screenshots/checkers-mobile-480.png` — Mobile layout at 480px width

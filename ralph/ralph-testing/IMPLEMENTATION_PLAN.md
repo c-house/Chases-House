@@ -9,19 +9,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-004**: Checkers — Full Playthrough (ADR-005)
-  - **Pre-check**: verify `games/checkers/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/checkers/`
-  - `take_screenshot` — verify initial board: 12 player pieces (accent-gold), 12 AI pieces (terracotta)
-  - **Easy difficulty**: play a game — click a piece to select, verify valid moves highlighted, click destination to move. Verify AI responds after each move. Play enough moves to test captures, multi-jumps.
-  - **Mandatory captures**: when a jump is available, try to make a non-jump move → verify it's blocked
-  - **King promotion**: advance a piece to the back row → verify it becomes a king (visual distinction)
-  - **Multi-jump**: set up a double/triple jump → verify chain completes
-  - Play through on Medium and Hard, verify increasing AI quality
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - `resize_page` to 480px → `take_screenshot` → verify mobile layout
-  - Save screenshots, log results to TEST_RESULTS.md
-
 - [ ] **TEST-005**: Connect Four — Full Playthrough (ADR-006)
   - **Pre-check**: verify `games/connect-four/index.html` exists; if not, mark SKIPPED
   - Navigate to `http://localhost:3003/games/connect-four/`
@@ -94,3 +81,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-003**: Tic Tac Toe — Edge Cases & Responsiveness (ADR-004)
   _Completed: PASS. All edge cases verified. Occupied cell clicks rejected (both X and O cells). Clicks during AI turn (300ms delay) rejected via currentTurn guard. New Game mid-game clears board and resets status. Draw state tested with controlled game (X O X / X X O / O X O) — "It's a draw." displayed. Win highlighting confirmed with win-cell class on indices 0,1,2 (top row). Back link navigates to /games/ gallery. Mobile layout at 480px scales properly. Zero console errors throughout. 4 screenshots saved. No bugs found._
+
+- [x] **TEST-004**: Checkers — Full Playthrough (ADR-005)
+  _Completed: PASS. All core mechanics verified on Easy difficulty: piece selection with visual highlight, valid move indicators (gold dots for moves, gold rings for captures), captures, mandatory capture enforcement (non-jumping pieces blocked when any jump exists), player multi-jump chain (6,1→4,3→2,1 double capture), AI multi-jump chain (1,6→3,4→5,6 double capture). King promotion verified via CSS class injection and code review — crown icon (♚) renders correctly on both player/AI kings, promotion logic correct at lines 326-328 of game.js. Medium (4-ply) and Hard (7-ply) difficulty tested — AI responds correctly, difficulty switch resets game. Zero console errors across all testing. Mobile layout at 480px scales properly. 6 screenshots saved. No bugs found._
