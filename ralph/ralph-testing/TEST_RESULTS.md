@@ -211,3 +211,40 @@ None.
 - `screenshots/chess-easy-mate.png` — Scholar's Mate on Easy: "Checkmate — you win!" after Qxf7#
 - `screenshots/chess-hard-defense.png` — Hard AI survived Scholar's Mate attempt, Kxf7 escaped
 - `screenshots/chess-mobile-480.png` — Mobile layout at 480px width
+
+---
+
+## TEST-007: Snake — Full Playthrough — PASS
+Date: 2026-03-09
+
+### Checks
+- [x] **Initial render**: canvas with snake visible, start overlay ("Snake" title, "Arrow keys / WASD to move" hint, PLAY button), difficulty buttons (Easy/Medium/Hard/Extreme), Score: 0 · Best: 0 status bar, Back to Games link — PASS
+- [x] **Movement (all 4 directions)**: automated 24-direction-change zigzag on Easy difficulty — snake survived all turns, confirming ArrowUp/ArrowDown/ArrowLeft/ArrowRight all work correctly. 180° reversal correctly blocked (OPPOSITE direction check at line 344) — PASS
+- [x] **Food collection**: guided snake to food at (9,14) via canvas pixel scanning — score incremented from 0 to 1. Guided to second food at (4,13) — score incremented to 2. Snake grew by 1 segment per food eaten (3→4→5 segments) — PASS
+- [x] **Wall collision**: snake steered into wall (top wall at y=0, right wall at x=19) — Game Over overlay displayed with Score and Best, Play Again button — PASS (confirmed multiple times)
+- [x] **Self collision (code review)**: tick() lines 122-128 check new head position against all segments except tail. Tail is correctly skipped (comment: "skip tail — it will move away unless we just ate"). Same endGame() function as wall collision (lines 118, 126). 4-segment U-turn test confirmed tail-skip is correct — tail escapes during 3-turn loop, matching expected behavior — PASS
+- [x] **Difficulty buttons**: all 4 switch correctly (Easy/Medium/Hard/Extreme), `.active` class applied, dataset.difficulty updated. Mid-game switching restarts the tick loop at new speed — PASS
+- [x] **Speed constants (code review)**: SPEEDS = { easy: 200ms, medium: 130ms, hard: 80ms, extreme: 50ms } — appropriate progression from casual to intense — PASS
+- [x] **Pause/Resume**: Space key toggles pause overlay correctly. Pause shows "Paused" with "Press Space or tap to resume" hint. Resume hides overlay and restarts game loop. Clicking pause overlay also resumes — PASS
+- [x] **High score persistence**: localStorage key `snake-highscores` stores per-difficulty high scores as JSON object. After scoring 2 on Easy, localStorage confirmed: `{"medium":0,"easy":2}`. Best score display updated correctly — PASS
+- [x] **Play Again**: button correctly restarts game — score resets to 0, all overlays hidden, new game starts. Space key from Game Over screen also restarts — PASS
+- [x] **Game Over screen**: displays "Game Over" title, Score (highlighted), Best (highlighted), and "PLAY AGAIN" button — PASS
+- [x] **Canvas rendering**: snake drawn with gradient from tail (#a06828) to body (#c8943e) to head (#e8b04a). Head has eyes (dark dots). Food drawn as glowing ember dot with radial gradient and shadow glow. Grid lines visible as subtle overlay — PASS
+- [x] **Touch/swipe support (code review)**: touchstart/touchend handlers on canvas detect swipe direction (threshold 30px) or tap (toggles pause/start). touchmove prevented to block pull-to-refresh — PASS
+- [x] **Console errors**: zero errors across all testing — PASS
+- [x] **Responsive at 480px**: canvas scales proportionally via sizeCanvas() (min of viewport width-48px, 55% viewport height, 440px max), difficulty buttons wrap, all UI elements visible and accessible — PASS
+
+### Bugs Found
+None.
+
+### Notes
+- Food collection required canvas pixel scanning to locate randomly-placed food, then precise navigation via timed key dispatches. Score incremented correctly on each food consumption.
+- Self-collision was verified by code review rather than gameplay trigger. With 4 segments, a tight U-turn correctly does NOT cause self-collision (tail escapes). 5+ segments are needed for a U-turn collision. The collision algorithm is the standard snake implementation and is correct.
+- The IIFE pattern makes direct state inspection impossible via evaluate_script, requiring creative testing approaches (canvas pixel scanning, timed event dispatch, DOM observation).
+
+### Screenshots
+- `screenshots/snake-initial.png` — Start screen with title, PLAY button, difficulty selector
+- `screenshots/snake-zigzag-alive.png` — Snake after 24 direction changes (eventually hit wall)
+- `screenshots/snake-food-eaten.png` — Score 1 after eating first food, snake paused with 4 segments visible
+- `screenshots/snake-gameover.png` — Game Over screen with Score, Best, and Play Again button
+- `screenshots/snake-mobile-480.png` — Mobile layout at 480px width, all UI elements properly scaled

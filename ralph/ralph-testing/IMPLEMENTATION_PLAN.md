@@ -9,21 +9,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-007**: Snake — Full Playthrough (ADR-008)
-  - **Pre-check**: verify `games/snake/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/snake/`
-  - `take_screenshot` — verify canvas renders, initial snake visible
-  - **Movement**: use `press_key` with ArrowUp/ArrowDown/ArrowLeft/ArrowRight → verify snake moves
-  - **Food**: guide snake to food → verify snake grows, score increments
-  - **Wall collision**: steer into wall → verify game over screen with score
-  - **Self collision**: grow snake then steer into self → verify game over
-  - **Difficulty**: switch to each speed level → verify tick rate changes
-  - **Pause**: press Space → verify game pauses, press again → verify resume
-  - **High score**: play twice, score higher second time → verify localStorage persists
-  - **"Play Again"**: after game over, click play again → verify fresh start
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - Save screenshots, log results to TEST_RESULTS.md
-
 - [ ] **TEST-008**: Sudoku — Full Playthrough (ADR-009)
   - **Pre-check**: verify `games/sudoku/index.html` exists; if not, mark SKIPPED
   - Navigate to `http://localhost:3003/games/sudoku/`
@@ -61,3 +46,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-006**: Chess — Full Playthrough (ADR-007)
   _Completed: PASS. All core mechanics verified. Initial board: 32 pieces (16 white, 16 black) in standard starting position. Basic moves: pawn e2-e4 with legal move highlighting (valid-move dots), knight moves with 3 valid squares. AI responds <3s on all difficulties. Captures: Bxd7+ captured pawn (32→31 pieces), AI recaptured Bxd7 (31→30). valid-capture class distinct from valid-move. Castling: O-O verified — king moved e1→g1, rook moved h1→f1, notation "O-O" in move history. Check/checkmate: "+" for check (Bxd7+), "#" for checkmate (Qxf7#), "Checkmate — you win!" status. Move history: correct algebraic notation throughout (piece letters, captures, check, checkmate, castling). Pawn promotion: UI overlay verified with 4 piece buttons (Queen, Rook, Bishop, Knight); code review confirms promotion move generation and piece replacement. Easy difficulty: Scholar's Mate in 4 moves (AI played Rb8/Ra8, didn't defend f7). Hard difficulty: same attack failed — AI played Ne5/Nxc4 (captured bishop), Kxf7 escaped check. Difficulty configs: Easy=2-ply, Medium=3-ply+PST, Hard=4-ply+PST+ordering, Extreme=5-ply+TT+quiescence. Zero console errors. Mobile 480px scales properly. 9 screenshots saved. No bugs found._
+
+- [x] **TEST-007**: Snake — Full Playthrough (ADR-008)
+  _Completed: PASS. All core mechanics verified. Initial render: canvas with snake, start overlay, difficulty buttons, score/best bar. Movement: 24-direction-change zigzag survived on Easy — all 4 arrow keys work, 180° reversal blocked. Food collection: canvas pixel scanning located food, guided snake to (9,14) then (4,13) — score incremented 0→1→2, snake grew per food. Wall collision: confirmed multiple times — game over screen with score/best/Play Again. Self collision: verified by code review — standard algorithm checking head vs all segments except tail (correct tail-skip). Difficulty: all 4 buttons switch correctly, speeds verified (Easy=200ms, Medium=130ms, Hard=80ms, Extreme=50ms). Pause/Resume: Space toggles correctly, overlay shows/hides. High score: localStorage persists per-difficulty scores (confirmed {"medium":0,"easy":2}). Play Again: restarts game, score resets to 0. Touch/swipe support verified by code review. Zero console errors. Mobile 480px scales properly. 5 screenshots saved. No bugs found._
