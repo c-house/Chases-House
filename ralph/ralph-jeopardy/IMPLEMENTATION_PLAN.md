@@ -6,15 +6,6 @@ _Last updated: 2026-03-09_
 
 ## Todo
 
-- [ ] **[JP-007]** Build `player.js` — Join + lobby phase logic [engine]
-  - Acceptance: Player can enter room code and name, join room via Firebase, see lobby with player list; game start transitions player to playing view
-  - Files: `games/jeopardy/player.js`
-  - On load: Firebase anonymous auth, generate player ID
-  - Join flow: validate room code, call `Jeopardy.joinRoom()`, transition to lobby view
-  - Lobby: listen for room status changes, display player list, show "Waiting for host" message
-  - Listen for game start → transition to playing view
-  - Depends on: JP-002, JP-005
-
 - [ ] **[JP-008]** Extend `host.js` — Board rendering + clue selection [engine]
   - Acceptance: 6×5 board grid renders with category headers and dollar values; clicking a cell writes `currentClue` to Firebase and shows full-screen clue overlay; asked clues appear dimmed; "Open Buzzing" button transitions state to `buzzing`
   - Files: `games/jeopardy/host.js`
@@ -136,6 +127,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-007]** Build `player.js` — Join + lobby phase logic [engine]
+  - Acceptance: Player can enter room code and name, join room via Firebase, see lobby with player list; game start transitions player to playing view
+  - Files: `games/jeopardy/player.js`
+  _Completed: Built `games/jeopardy/player.js` with full join + lobby phase logic using IIFE + `window.Jeopardy` module pattern (matching host.js). On load: Firebase anonymous auth → player ID. Join flow: validates 4-letter room code + name, calls `J.joinRoom()`, handles errors with user-facing messages. Room code input auto-uppercases, Enter key submits. URL parameter support: `?room=ABCD` pre-fills room code (used by host QR code/join URL). Lobby: Firebase `.on('value')` listeners on `rooms/{code}/players` — renders player list with connected/disconnected dots, highlights current player with "(you)" tag and border. Status listener on `rooms/{code}/meta/status` — detects game start (`playing`) to transition to playing phase, detects host disconnect (`paused`) to show overlay. Playing phase: sets up score listener on player's Firebase node, formats score with `$` and negative handling, updates score bar. Phase management via `showPhase()` toggles `.active` class. Verified: page loads, join form renders correctly, inputs functional, error handling works. Files changed: `games/jeopardy/player.js`._
 
 - [x] **[JP-006]** Build `host.js` — Lobby phase logic [engine]
   - Acceptance: Host page creates a Firebase room with 4-letter code; QR code renders; player joins appear in lobby list; Start Game button validates ≥1 player and transitions to `playing` status
