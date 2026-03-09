@@ -6,20 +6,6 @@ _Last updated: 2026-03-09_
 
 ## Todo
 
-- [ ] **[JP-005]** Build `play.html` — Player screen HTML structure + inline CSS [ui]
-  - Acceptance: `play.html` loads with no console errors; all phase sections present (hidden by default except join); mobile-first portrait layout works at 375px; buzzer button is 120px+ tap target
-  - Files: `games/jeopardy/play.html`
-  - Create `games/jeopardy/play.html` with all phase sections:
-    - Join: room code input, name input, Join button
-    - Lobby: waiting message, player list, host status
-    - Playing: buzzer button (120px+ tap target, terracotta with pulse animation), current score, clue text copy
-    - Daily Double wager: wager input (only shown to picking player)
-    - Final Jeopardy: wager input, clue text, answer text input, submit button
-    - Game Over: final score, standings
-  - Mobile-first portrait layout; large tap targets; minimal chrome
-  - Include `<script>` tags for Firebase CDN SDK, `shared.js`, `player.js`
-  - Depends on: (none)
-
 - [ ] **[JP-006]** Build `host.js` — Lobby phase logic [engine]
   - Acceptance: Host page creates a Firebase room with 4-letter code; QR code renders; player joins appear in lobby list; Start Game button validates ≥1 player and transitions to `playing` status
   - Files: `games/jeopardy/host.js`
@@ -161,6 +147,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-005]** Build `play.html` — Player screen HTML structure + inline CSS [ui]
+  - Acceptance: `play.html` loads with no console errors; all phase sections present (hidden by default except join); mobile-first portrait layout works at 375px; buzzer button is 120px+ tap target
+  - Files: `games/jeopardy/play.html`
+  _Completed: Built `games/jeopardy/play.html` with all 6 game phases: Join (room code input with uppercase styling, name input, Join button with gold CTA), Lobby (room code display, player name, waiting pulse animation, player list), Playing (score bar with name/value, game status message, deep blue clue area with value label, 120px+ circular buzzer button with terracotta color and pulse animation), Daily Double (gold title with text shadow, wager input with range display, submit button, waiting state), Final Jeopardy (category display, wager input, clue area, timer bar, answer text input, submit button, waiting state), Game Over (large final score display, ranked standings list with winner/you highlighting). Also includes host-disconnected overlay (fixed z-200, warning icon + reconnect message) and back-to-Jeopardy link. Mobile-first portrait layout with max-width 480px, clamp-based fluid sizing, all inputs full-width. Buzzer is `clamp(120px, 40vw, 180px)` circular tap target. Script tags: Firebase v10 compat SDK (app, database, auth) + shared.js + player.js. Zero console errors on desktop and mobile (375px). Files changed: `games/jeopardy/play.html`._
 
 - [x] **[JP-001]** Seed sample board JSON data file [data]
   - Acceptance: Valid JSON matching ADR-011 board schema with 2 rounds + Final Jeopardy

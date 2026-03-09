@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Play — Jeopardy — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Phase Visibility ────────────────────────────── */
+    .phase { display: none; }
+    .phase.active { display: flex; }
+
+    /* ── Page Content ────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1.5rem, 3vh, 3rem) clamp(1rem, 4vw, 2rem) clamp(1rem, 2vh, 2rem);
+      width: 100%;
+    }
+
+    /* ── Player Content Wrapper ──────────────────────── */
+    .player-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+      flex: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       JOIN PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-join {
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 1.5rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    .join-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      text-align: center;
+    }
+
+    .join-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      width: 100%;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      transition: border-color 0.25s ease;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .form-input.room-code-input {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 0, 'SOFT' 0;
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 1rem;
+    }
+
+    .join-btn {
+      width: 100%;
+      padding: 1rem;
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.15s ease;
+      letter-spacing: 0.02em;
+      min-height: 52px;
+    }
+
+    .join-btn:hover {
+      background: var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .join-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .join-error {
+      font-size: 0.88rem;
+      color: var(--terracotta);
+      text-align: center;
+      min-height: 1.25em;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       LOBBY PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-lobby {
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 1.5rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+    }
+
+    .lobby-status {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      text-align: center;
+    }
+
+    .lobby-room-code {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 0, 'SOFT' 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      letter-spacing: 0.15em;
+    }
+
+    .lobby-your-name {
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+
+    .lobby-your-name strong {
+      color: var(--text-heading);
+    }
+
+    .lobby-waiting {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    @keyframes waitingPulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .lobby-waiting-dot {
+      display: inline-block;
+      animation: waitingPulse 1.5s ease-in-out infinite;
+    }
+
+    .lobby-player-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 6px;
+    }
+
+    .lobby-player-list-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .lobby-player-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.6rem;
+      background: var(--bg-elevated);
+      border-radius: 3px;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .lobby-player-item.you {
+      border: 1px solid var(--accent-ember);
+    }
+
+    .lobby-player-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--sage);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       PLAYING PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-playing {
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 1.5rem;
+      flex: 1;
+      animation: fadeSlideUp 500ms ease-out backwards;
+    }
+
+    /* ── Score Display ────────────────────────────────── */
+    .player-score-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0.6rem 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 6px;
+    }
+
+    .player-score-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .player-score-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 0, 'SOFT' 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .player-score-value.negative {
+      color: var(--terracotta);
+    }
+
+    /* ── Game Status Message ──────────────────────────── */
+    .game-status {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 1.25em;
+    }
+
+    .game-status-highlight {
+      color: var(--accent-gold);
+      font-weight: 600;
+    }
+
+    /* ── Clue Text (readable copy) ────────────────────── */
+    .player-clue-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      padding: 1.25rem;
+      background: #0d1a3a;
+      border-radius: 6px;
+      text-align: center;
+      min-height: 80px;
+    }
+
+    .player-clue-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 20, 'WONK' 0, 'SOFT' 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .player-clue-text {
+      font-size: clamp(1rem, 3vw, 1.25rem);
+      color: #ffffff;
+      line-height: 1.5;
+    }
+
+    .player-clue-placeholder {
+      font-size: 0.92rem;
+      color: rgba(255, 255, 255, 0.4);
+      font-style: italic;
+    }
+
+    /* ── Buzzer Button ────────────────────────────────── */
+    .buzzer-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .buzzer-btn {
+      width: clamp(120px, 40vw, 180px);
+      height: clamp(120px, 40vw, 180px);
+      border-radius: 50%;
+      border: 4px solid var(--terracotta);
+      background: var(--terracotta);
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 30;
+      font-size: clamp(1.1rem, 3vw, 1.4rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .buzzer-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .buzzer-btn.active {
+      box-shadow: 0 0 0 6px rgba(176, 90, 58, 0.25), 0 0 30px rgba(176, 90, 58, 0.3);
+      animation: buzzerPulse 1.5s ease-in-out infinite;
+    }
+
+    .buzzer-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      animation: none;
+      box-shadow: none;
+    }
+
+    .buzzer-btn.buzzed {
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+      opacity: 1;
+      animation: none;
+    }
+
+    @keyframes buzzerPulse {
+      0%, 100% { box-shadow: 0 0 0 6px rgba(176, 90, 58, 0.25), 0 0 30px rgba(176, 90, 58, 0.3); }
+      50% { box-shadow: 0 0 0 12px rgba(176, 90, 58, 0.15), 0 0 50px rgba(176, 90, 58, 0.4); }
+    }
+
+    .buzzer-status-text {
+      font-size: 0.85rem;
+      color: var(--text-faint);
+      text-align: center;
+      min-height: 1.1em;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       DAILY DOUBLE WAGER PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-daily-double {
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 1.5rem;
+      animation: fadeSlideUp 500ms ease-out backwards;
+    }
+
+    .dd-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 700;
+      color: var(--accent-gold);
+      text-align: center;
+      text-shadow: 0 2px 16px rgba(200, 148, 62, 0.3);
+    }
+
+    .dd-instruction {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .dd-wager-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .dd-wager-input {
+      width: 100%;
+      padding: 1rem;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 0, 'SOFT' 0;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .dd-wager-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .dd-wager-range {
+      font-size: 0.82rem;
+      color: var(--text-faint);
+      text-align: center;
+    }
+
+    .dd-wager-btn {
+      width: 100%;
+      padding: 1rem;
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.15s ease;
+      min-height: 52px;
+    }
+
+    .dd-wager-btn:hover {
+      background: var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .dd-wager-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .dd-waiting {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       FINAL JEOPARDY PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-final {
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 1.25rem;
+      flex: 1;
+      animation: fadeSlideUp 500ms ease-out backwards;
+    }
+
+    .final-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .final-category {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      text-align: center;
+    }
+
+    .final-clue-area {
+      width: 100%;
+      padding: 1.25rem;
+      background: #0d1a3a;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .final-clue-text {
+      font-size: clamp(1rem, 3vw, 1.2rem);
+      color: #ffffff;
+      line-height: 1.5;
+    }
+
+    .final-timer-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .final-timer-fill {
+      height: 100%;
+      background: var(--accent-gold);
+      border-radius: 3px;
+      transition: width 0.1s linear;
+      width: 100%;
+    }
+
+    .final-wager-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .final-wager-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .final-wager-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 0, 'SOFT' 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .final-wager-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .final-answer-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .final-answer-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .final-answer-input {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      font-family: var(--font-body);
+      font-size: 1.15rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .final-answer-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .final-submit-btn {
+      width: 100%;
+      padding: 1rem;
+      font-family: var(--font-body);
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.15s ease;
+      min-height: 52px;
+    }
+
+    .final-submit-btn:hover {
+      background: var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .final-submit-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .final-waiting {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       GAME OVER PHASE
+       ═══════════════════════════════════════════════════ */
+    .phase-game-over {
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+      animation: fadeSlideUp 700ms ease-out backwards;
+    }
+
+    .game-over-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      text-align: center;
+    }
+
+    .player-final-score {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .player-final-score-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .player-final-score-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 0, 'SOFT' 0;
+      font-size: clamp(2.5rem, 8vw, 4rem);
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .player-final-score-value.negative {
+      color: var(--terracotta);
+    }
+
+    .standings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+    }
+
+    .standing-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+    }
+
+    .standing-row.winner {
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.08);
+    }
+
+    .standing-row.you {
+      border-color: var(--accent-ember);
+      background: rgba(160, 104, 40, 0.08);
+    }
+
+    .standing-row.winner.you {
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.12);
+    }
+
+    .standing-rank {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--text-faint);
+      width: 1.75rem;
+      text-align: center;
+    }
+
+    .standing-row.winner .standing-rank {
+      color: var(--accent-gold);
+    }
+
+    .standing-name {
+      flex: 1;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      padding: 0 0.75rem;
+    }
+
+    .standing-score {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+    }
+
+    .standing-score.negative {
+      color: var(--terracotta);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       HOST DISCONNECTED OVERLAY
+       ═══════════════════════════════════════════════════ */
+    .host-disconnected-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(10, 10, 11, 0.92);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .host-disconnected-overlay.active {
+      display: flex;
+    }
+
+    .host-disconnected-icon {
+      font-size: 2.5rem;
+      opacity: 0.7;
+    }
+
+    .host-disconnected-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.4rem;
+      font-weight: 400;
+      color: var(--text-heading);
+    }
+
+    .host-disconnected-text {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      max-width: 20rem;
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: clamp(1.5rem, 3vw, 2rem);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.25s ease;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 300ms;
+    }
+
+    .back-link:hover {
+      color: var(--accent-gold);
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (hidden) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <div class="player-content">
+      <!-- ═══ JOIN PHASE ═══════════════════════════════ -->
+      <section id="phase-join" class="phase phase-join active" aria-label="Join a game">
+        <h1 class="join-title">Join a Game</h1>
+
+        <div class="join-form">
+          <div class="form-group">
+            <label class="form-label" for="room-code-input">Room Code</label>
+            <input id="room-code-input" class="form-input room-code-input" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD" aria-label="4-letter room code">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="player-name-input">Your Name</label>
+            <input id="player-name-input" class="form-input" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="Enter your name" aria-label="Player name">
+          </div>
+
+          <button id="join-btn" class="join-btn" disabled>Join Game</button>
+          <p id="join-error" class="join-error" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <!-- ═══ LOBBY PHASE ══════════════════════════════ -->
+      <section id="phase-lobby" class="phase phase-lobby" aria-label="Game lobby">
+        <div class="lobby-status">
+          <span id="lobby-room-code" class="lobby-room-code"></span>
+          <p id="lobby-your-name" class="lobby-your-name">Joined as <strong id="lobby-name-display"></strong></p>
+          <p class="lobby-waiting">Waiting for host to start<span class="lobby-waiting-dot">...</span></p>
+        </div>
+
+        <div id="lobby-player-list" class="lobby-player-list">
+          <span class="lobby-player-list-title">Players</span>
+        </div>
+      </section>
+
+      <!-- ═══ PLAYING PHASE ════════════════════════════ -->
+      <section id="phase-playing" class="phase phase-playing" aria-label="Game in progress">
+        <!-- Score bar -->
+        <div class="player-score-bar">
+          <span id="player-score-name" class="player-score-name"></span>
+          <span id="player-score-value" class="player-score-value">$0</span>
+        </div>
+
+        <!-- Game status -->
+        <p id="game-status" class="game-status"></p>
+
+        <!-- Clue text area -->
+        <div id="player-clue-area" class="player-clue-area">
+          <span id="player-clue-value" class="player-clue-value" style="display:none"></span>
+          <p id="player-clue-text" class="player-clue-text" style="display:none"></p>
+          <p class="player-clue-placeholder" id="player-clue-placeholder">Waiting for host to select a clue...</p>
+        </div>
+
+        <!-- Buzzer -->
+        <div class="buzzer-area">
+          <button id="buzzer-btn" class="buzzer-btn" disabled>Buzz</button>
+          <span id="buzzer-status-text" class="buzzer-status-text"></span>
+        </div>
+      </section>
+
+      <!-- ═══ DAILY DOUBLE WAGER PHASE ════════════════ -->
+      <section id="phase-daily-double" class="phase phase-daily-double" aria-label="Daily Double wager">
+        <h2 class="dd-title">Daily Double!</h2>
+        <p id="dd-instruction" class="dd-instruction">Enter your wager</p>
+
+        <!-- Wager form (shown to picking player) -->
+        <div id="dd-wager-form" class="dd-wager-form">
+          <input id="dd-wager-input" class="dd-wager-input" type="number" min="5" step="1" placeholder="0" aria-label="Daily Double wager amount">
+          <span id="dd-wager-range" class="dd-wager-range"></span>
+          <button id="dd-wager-btn" class="dd-wager-btn">Submit Wager</button>
+        </div>
+
+        <!-- Waiting message (shown after submitting or to non-picking players) -->
+        <p id="dd-waiting" class="dd-waiting" style="display:none">Waiting for host...</p>
+      </section>
+
+      <!-- ═══ FINAL JEOPARDY PHASE ════════════════════ -->
+      <section id="phase-final" class="phase phase-final" aria-label="Final Jeopardy">
+        <span class="final-label">Final Jeopardy</span>
+
+        <!-- Category -->
+        <h2 id="final-category" class="final-category"></h2>
+
+        <!-- Wager input (before clue) -->
+        <div id="final-wager-form" class="final-wager-form" style="display:none">
+          <span class="final-wager-label">Your Wager</span>
+          <input id="final-wager-input" class="final-wager-input" type="number" min="0" step="1" placeholder="0" aria-label="Final Jeopardy wager">
+          <button id="final-wager-btn" class="final-submit-btn">Lock In Wager</button>
+        </div>
+
+        <!-- Clue + answer area (after wagers) -->
+        <div id="final-clue-area" class="final-clue-area" style="display:none">
+          <p id="final-clue-text" class="final-clue-text"></p>
+        </div>
+
+        <!-- Timer bar -->
+        <div id="final-timer" class="final-timer-bar" style="display:none">
+          <div id="final-timer-fill" class="final-timer-fill"></div>
+        </div>
+
+        <!-- Answer input -->
+        <div id="final-answer-form" class="final-answer-form" style="display:none">
+          <span class="final-answer-label">Your Answer</span>
+          <input id="final-answer-input" class="final-answer-input" type="text" maxlength="200" autocomplete="off" spellcheck="false" placeholder="What is..." aria-label="Final Jeopardy answer">
+          <button id="final-answer-btn" class="final-submit-btn">Submit Answer</button>
+        </div>
+
+        <!-- Waiting message -->
+        <p id="final-waiting" class="final-waiting" style="display:none"></p>
+      </section>
+
+      <!-- ═══ GAME OVER PHASE ══════════════════════════ -->
+      <section id="phase-game-over" class="phase phase-game-over" aria-label="Game over">
+        <h2 class="game-over-title">Game Over</h2>
+
+        <div class="player-final-score">
+          <span class="player-final-score-label">Your Score</span>
+          <span id="final-score-display" class="player-final-score-value">$0</span>
+        </div>
+
+        <div id="standings-list" class="standings-list"></div>
+      </section>
+
+      <a class="back-link" href="/games/jeopardy/">&larr; Back to Jeopardy</a>
+    </div>
+  </main>
+
+  <!-- Host Disconnected Overlay -->
+  <div id="host-disconnected" class="host-disconnected-overlay" aria-live="assertive">
+    <span class="host-disconnected-icon" aria-hidden="true">&#9888;</span>
+    <h2 class="host-disconnected-title">Host Disconnected</h2>
+    <p class="host-disconnected-text">The host has lost connection. The game will resume when they reconnect.</p>
+  </div>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <!-- Firebase v10 Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <!-- Game Scripts -->
+  <script src="shared.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
