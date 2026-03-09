@@ -9,18 +9,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-002**: Tic Tac Toe — Full Playthrough (ADR-004)
-  - **Pre-check**: verify `games/tic-tac-toe/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/tic-tac-toe/`
-  - `take_screenshot` — verify initial state: empty board, "Your turn" status, Medium selected
-  - **Easy difficulty**: click Easy button → play a full game by clicking cells. After each click, `wait_for` AI response (300ms delay), then `take_snapshot` to see updated board. Play to completion (win/draw/loss). `take_screenshot` of final state.
-  - **Medium difficulty**: click Medium → click "New Game" → play a full game. Verify AI sometimes makes suboptimal moves.
-  - **Hard difficulty**: click Hard → "New Game" → play strategically, trying to win. Verify AI is unbeatable (should always draw or win). Play at least 2 full games. `take_screenshot` results.
-  - **Extreme difficulty**: click Extreme → "New Game" → play to completion. Verify same behavior as Hard.
-  - Verify at each game end: status text shows correct result, win cells highlighted if applicable
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - Save screenshots, log results to TEST_RESULTS.md
-
 - [ ] **TEST-003**: Tic Tac Toe — Edge Cases & Responsiveness (ADR-004)
   - Navigate to `http://localhost:3003/games/tic-tac-toe/`
   - **Occupied cell test**: make a move, then click the same cell again → verify nothing happens
@@ -112,3 +100,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-001**: Environment Setup & Games Gallery
   _Completed: PASS. Gallery renders correctly with heading, description, and 6 game cards (Tic Tac Toe, Checkers, Connect Four, Chess, Snake, Sudoku). All card links navigate to the correct game pages. Responsive layout works at 768px (2-col grid) and 480px (single-col stack). Zero console errors. Screenshots saved. No bugs found._
+
+- [x] **TEST-002**: Tic Tac Toe — Full Playthrough (ADR-004)
+  _Completed: PASS. All 4 difficulty levels tested. Easy: player wins easily (AI random). Medium: draw (AI blocks ~70% optimally). Hard: AI unbeatable — Game 1 AI won, Game 2 draw. Extreme: AI unbeatable — AI won (same as Hard). Win highlighting verified with win-cell class on correct cells. Status text correct for win/loss/draw. Zero console errors. 6 screenshots saved. No bugs found._
