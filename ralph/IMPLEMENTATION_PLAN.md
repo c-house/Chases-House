@@ -8,17 +8,15 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **GAME-007**: Sudoku (ADR-009)
-  - Create `games/sudoku/index.html` and `games/sudoku/game.js`
-  - 9x9 CSS Grid with 3x3 box borders, backtracking puzzle generator with unique-solution verification
-  - Difficulty = givens: Easy (~36-40), Medium (~30-35), Hard (~25-29), Extreme (~20-24)
-  - Given cells bold/non-editable, number pad input, pencil marks, real-time conflict highlighting
-  - Puzzle state saved to `localStorage`, "New Puzzle" button
-  - Add Sudoku card to `games/index.html` gallery
+(none)
 
 ---
 
 ## Done
+
+- [x] **GAME-007**: Sudoku (ADR-009)
+  _Completed: Created `games/sudoku/index.html` and `games/sudoku/game.js`. 9x9 CSS Grid board with thicker 2px borders for 3x3 box boundaries. Backtracking puzzle generator: fills a complete valid board with randomized candidate ordering, then removes cells one at a time verifying unique solution remains via solution-counting solver (capped at 2). Difficulty scales via givens count: Easy (~36-40), Medium (~30-35), Hard (~25-29), Extreme (~20-24). Given cells displayed bold in heading color and non-editable; player-placed values in accent-gold. Click/tap cell selection with same-number highlighting across the board. Number pad (1-9) for input on desktop and mobile, pencil mark mode with 3x3 mini-grid display per cell, erase button, keyboard support (1-9 to place, P to toggle pencil, Delete/Backspace to erase, arrow keys to navigate). Real-time conflict highlighting in terracotta for row/column/box violations. Puzzle state persisted to localStorage (board, givens, solution, pencil marks, difficulty). Win detection triggers overlay with difficulty label. "New Puzzle" button regenerates at current difficulty. Added Sudoku card with "solo" tag to `games/index.html` gallery. Responsive layout matching existing game page patterns (header, footer, difficulty selector, status bar, back link). Files changed: `games/sudoku/index.html`, `games/sudoku/game.js`, `games/index.html`._
+
 
 - [x] **GAME-001**: Games gallery page (ADR-003)
   _Completed: Rewrote `games/index.html` from placeholder to a gallery layout with heading, description, and a `.game-grid` container ready for game cards. Added shared game-card styles to `styles.css` (`.game-grid`, `.game-card`, `.game-card-icon`, `.game-card-title`, `.game-card-desc`, `.game-card-tag`) following the `.room-card` pattern — ember border, hover lift/glow, CSS Grid 1–3 columns responsive. Empty state shown with dashed border until first game ships. Files changed: `games/index.html`, `styles.css`._

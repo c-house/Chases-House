@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sudoku - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(2rem, 6vh, 5rem) clamp(1.5rem, 5vw, 4rem) clamp(2rem, 5vh, 4rem);
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2rem, 5vw + 0.5rem, 3.5rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-align: center;
+      animation: fadeSlideUp 800ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    /* ── Difficulty Selector ──────────────────────────── */
+    .difficulty-selector {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 250ms;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.4rem 1rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .difficulty-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent-gold);
+    }
+
+    .difficulty-btn.active {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.08);
+    }
+
+    /* ── Sudoku Board ────────────────────────────────── */
+    .board-container {
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 400ms;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      width: clamp(290px, 55vw, 450px);
+      aspect-ratio: 1;
+      background: var(--accent-ember);
+      border: 2px solid var(--accent-ember);
+      border-radius: 6px;
+      overflow: hidden;
+      gap: 1px;
+    }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      font-family: var(--font-body);
+      font-size: clamp(1.1rem, 3vw, 1.6rem);
+      font-weight: 400;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+    }
+
+    /* 3x3 box borders — thicker gaps */
+    .cell[data-col="2"], .cell[data-col="5"] {
+      border-right: 2px solid var(--accent-ember);
+    }
+
+    .cell[data-row="2"], .cell[data-row="5"] {
+      border-bottom: 2px solid var(--accent-ember);
+    }
+
+    .cell:hover:not(.given) {
+      background: var(--bg-elevated);
+    }
+
+    .cell.selected {
+      background: rgba(200, 148, 62, 0.15);
+    }
+
+    .cell.same-number {
+      background: rgba(200, 148, 62, 0.08);
+    }
+
+    .cell.given {
+      font-weight: 700;
+      color: var(--text-heading);
+      cursor: default;
+    }
+
+    .cell.player-value {
+      color: var(--accent-gold);
+    }
+
+    .cell.conflict {
+      color: var(--terracotta);
+      background: rgba(176, 90, 58, 0.12);
+    }
+
+    .cell.conflict.selected {
+      background: rgba(176, 90, 58, 0.2);
+    }
+
+    /* ── Pencil Marks ────────────────────────────────── */
+    .cell .pencil-marks {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      position: absolute;
+      inset: 2px;
+      pointer-events: none;
+    }
+
+    .cell .pencil-marks span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(0.45rem, 1.2vw, 0.6rem);
+      font-weight: 500;
+      color: var(--text-faint);
+      line-height: 1;
+    }
+
+    /* ── Controls (number pad + actions) ─────────────── */
+    .controls {
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 500ms;
+    }
+
+    .numpad {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .numpad-btn {
+      font-family: var(--font-body);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      font-weight: 600;
+      width: clamp(2.2rem, 5vw, 2.8rem);
+      height: clamp(2.2rem, 5vw, 2.8rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .numpad-btn:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .numpad-btn.active-num {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.1);
+    }
+
+    .action-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .action-btn {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.4rem 0.9rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .action-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--accent-gold);
+    }
+
+    .action-btn.active {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.08);
+    }
+
+    /* ── Status Bar ───────────────────────────────────── */
+    .status-bar {
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 600ms;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .status-text {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 1, 'SOFT' 40;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      font-weight: 400;
+      color: var(--text-muted);
+      min-height: 1.5em;
+    }
+
+    .status-text .highlight {
+      color: var(--accent-gold);
+    }
+
+    .new-game-btn {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.45rem 1.2rem;
+      background: transparent;
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    .new-game-btn:hover {
+      background: rgba(200, 148, 62, 0.12);
+      color: var(--accent-glow);
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.25s ease;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 700ms;
+    }
+
+    .back-link:hover {
+      color: var(--accent-gold);
+    }
+
+    /* ── Win Overlay ─────────────────────────────────── */
+    .win-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 11, 0.88);
+      z-index: 10;
+      gap: 0.8rem;
+    }
+
+    .win-overlay[hidden] { display: none; }
+
+    .win-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 350;
+      color: var(--accent-gold);
+    }
+
+    .win-subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+    }
+
+    .win-btn {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.55rem 1.6rem;
+      background: transparent;
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+      margin-top: 0.3rem;
+    }
+
+    .win-btn:hover {
+      background: rgba(200, 148, 62, 0.12);
+      color: var(--accent-glow);
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page-content {
+        padding-top: clamp(1.5rem, 4vh, 3rem);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (hidden) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Sudoku</h1>
+
+    <div class="difficulty-selector" role="group" aria-label="Difficulty">
+      <button class="difficulty-btn" data-difficulty="easy">Easy</button>
+      <button class="difficulty-btn active" data-difficulty="medium">Medium</button>
+      <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+      <button class="difficulty-btn" data-difficulty="extreme">Extreme</button>
+    </div>
+
+    <div class="board-container">
+      <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
+    </div>
+
+    <div class="controls">
+      <div class="numpad" role="group" aria-label="Number pad">
+        <button class="numpad-btn" data-num="1">1</button>
+        <button class="numpad-btn" data-num="2">2</button>
+        <button class="numpad-btn" data-num="3">3</button>
+        <button class="numpad-btn" data-num="4">4</button>
+        <button class="numpad-btn" data-num="5">5</button>
+        <button class="numpad-btn" data-num="6">6</button>
+        <button class="numpad-btn" data-num="7">7</button>
+        <button class="numpad-btn" data-num="8">8</button>
+        <button class="numpad-btn" data-num="9">9</button>
+      </div>
+      <div class="action-row">
+        <button class="action-btn" id="pencil-btn">Pencil</button>
+        <button class="action-btn" id="erase-btn">Erase</button>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-text" id="status-text">Select a cell to begin</span>
+      <button class="new-game-btn" id="new-game-btn">New Puzzle</button>
+    </div>
+
+    <a class="back-link" href="/games/">&larr; Back to Games</a>
+  </main>
+
+  <div class="win-overlay" id="win-overlay" hidden>
+    <span class="win-title">Puzzle Complete!</span>
+    <span class="win-subtitle" id="win-subtitle">You solved it</span>
+    <button class="win-btn" id="win-new-btn">New Puzzle</button>
+  </div>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="game.js"></script>
+</body>
+</html>
