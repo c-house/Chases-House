@@ -3,21 +3,6 @@ _Last updated: 2026-03-09_
 
 ## In Progress
 (none)
-  - Display picking player name on board view
-  - Update scoreboard after every judgment
-  - Depends on: JP-008
-
-- [ ] **[JP-010]** Extend `player.js` — Buzzer + live game state [engine]
-  - Acceptance: Player sees clue text when host selects a clue; buzzer button enables only during `buzzing` state with pulse animation; buzzing writes server timestamp to Firebase; lockout disables buzzer after incorrect answer; score updates live
-  - Files: `games/jeopardy/player.js`
-  - Listen for `currentClue` changes in Firebase → display clue text on player screen
-  - Buzzer button: enabled only during `buzzing` state, terracotta color with pulse animation
-  - On buzz: write player ID + `firebase.database.ServerValue.TIMESTAMP` to `buzzer/buzzedPlayers`
-  - After buzzing: show "Waiting for host..." message
-  - Lockout: if host marks incorrect, add player to `lockedOut`, disable buzzer
-  - Live score: update score display on Firebase changes
-  - Show current game state (who's picking, who buzzed, answer revealed)
-  - Depends on: JP-007, JP-009
 
 - [ ] **[JP-011]** Daily Double handling on host + player [engine]
   - Acceptance: Daily Double cell triggers wager flow instead of buzzing; only picking player sees wager input; wager min/max enforced; host sees wager, judges correct/incorrect, score adjusts by wager amount
@@ -104,6 +89,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-010]** Extend `player.js` — Buzzer + live game state [engine]
+  - Acceptance: Player sees clue text when host selects a clue; buzzer button enables only during `buzzing` state with pulse animation; buzzing writes server timestamp to Firebase; lockout disables buzzer after incorrect answer; score updates live
+  - Files: `games/jeopardy/player.js`
+  _Completed: Extended `games/jeopardy/player.js` with full buzzer + live game state logic. Added 5 new state variables (`allPlayers`, `hasBuzzed`, `isLockedOut`, `currentClueState`, `pickingPlayerId`). `transitionToPlaying()` now sets up 4 Firebase listeners: score, clue, picking player, and lockout. `listenForClue()` subscribes to `game/currentClue` value changes — `handleClueChange()` updates clue display area (value + text or placeholder) and delegates to `updateBuzzerForState()`. Buzzer state machine has 4 visual states: `setBuzzerActive()` (enabled, pulse animation via `.active` class), `setBuzzerDisabled()` (grayed out), `setBuzzerBuzzed()` (gold, "Buzzed!" text, "Waiting for host..." status), and `resetBuzzer()` (full reset on clue clear). State-aware game status messages: "Listen to the clue..." (reading), "Buzz in!" (buzzing), "Waiting for host..." (buzzed), "Answer out loud!" (answering + buzzed), "A player is answering..." (answering + not buzzed), "Locked out" (locked out), "Answer revealed" (revealed). `handleBuzz()` writes `firebase.database.ServerValue.TIMESTAMP` to `game/buzzer/buzzedPlayers/{playerId}` for fair server-side ordering. `listenForLockout()` watches `game/buzzer/lockedOut/{playerId}` — on lockout: resets `hasBuzzed`, sets `isLockedOut`, re-evaluates buzzer state. On buzzer cleanup (null): auto-resets lockout. `listenForPickingPlayer()` tracks who's picking — shows "Your pick! Tell the host your choice." or "{Name}'s pick" when no clue active. `allPlayers` cache from existing player listener enables name lookups. Also fixed `host.js` `reopenBuzzing()` to write `currentClue/state` back to `BUZZING` in Firebase so players detect when buzzing reopens after an incorrect answer (was only updating local UI). Cached 4 new DOM elements (clue value/text/placeholder, buzzer btn/status). Wired buzzer click handler in `init()`. Browser validated: page loads, join form renders, all DOM elements found, zero JS errors (only expected Firebase placeholder API key errors). Files changed: `games/jeopardy/player.js`, `games/jeopardy/host.js`._
 
 - [x] **[JP-009]** Extend `host.js` — Core game flow: buzzing → judging → score [engine]
   - Acceptance: Buzzer opens with countdown timer; first buzz (by server timestamp) is recognized; Correct adds value to score, Incorrect deducts and locks out; no-buzz timeout reveals answer and returns to board; scoreboard updates after every judgment

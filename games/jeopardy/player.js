@@ -12,6 +12,11 @@
   var playerId = null;
   var playerName = '';
   var roomCode = null;
+  var allPlayers = {};         // Cached player data for name lookups
+  var hasBuzzed = false;       // Whether this player buzzed for current clue
+  var isLockedOut = false;     // Whether locked out for current clue
+  var currentClueState = null; // Current clue state from Firebase
+  var pickingPlayerId = null;  // Who is currently picking
 
   // ── DOM Elements ────────────────────────────────────────────
   var els = {};
@@ -32,6 +37,15 @@
     els.playerScoreName = document.getElementById('player-score-name');
     els.playerScoreValue = document.getElementById('player-score-value');
     els.gameStatus = document.getElementById('game-status');
+
+    // Clue area
+    els.playerClueValue = document.getElementById('player-clue-value');
+    els.playerClueText = document.getElementById('player-clue-text');
+    els.playerCluePlaceholder = document.getElementById('player-clue-placeholder');
+
+    // Buzzer
+    els.buzzerBtn = document.getElementById('buzzer-btn');
+    els.buzzerStatusText = document.getElementById('buzzer-status-text');
 
     // Host disconnected overlay
     els.hostDisconnected = document.getElementById('host-disconnected');
@@ -107,7 +121,8 @@
 
   function listenForPlayers() {
     J.ref('rooms/' + roomCode + '/players').on('value', function (snap) {
-      renderPlayerList(snap.val() || {});
+      allPlayers = snap.val() || {};
+      renderPlayerList(allPlayers);
     });
   }
 
@@ -161,9 +176,13 @@
 
   function transitionToPlaying() {
     listenForScore();
+    listenForClue();
+    listenForPickingPlayer();
+    listenForLockout();
     showPhase('phase-playing');
-    els.gameStatus.textContent = 'Waiting for host to select a clue...';
   }
+
+  // ── Score ─────────────────────────────────────────────────
 
   function listenForScore() {
     J.ref('rooms/' + roomCode + '/players/' + playerId + '/score')
@@ -177,6 +196,169 @@
     if (score < 0) formatted = '-' + formatted;
     els.playerScoreValue.textContent = formatted;
     els.playerScoreValue.classList.toggle('negative', score < 0);
+  }
+
+  // ── Clue Listener ────────────────────────────────────────
+
+  function listenForClue() {
+    J.ref('rooms/' + roomCode + '/game/currentClue').on('value', function (snap) {
+      handleClueChange(snap.val());
+    });
+  }
+
+  function handleClueChange(clue) {
+    if (!clue) {
+      currentClueState = null;
+      showCluePlaceholder();
+      resetBuzzer();
+      updatePickingStatus();
+      return;
+    }
+
+    currentClueState = clue.state;
+    showClueContent(clue.value, clue.text);
+    updateBuzzerForState(clue.state);
+  }
+
+  function showCluePlaceholder() {
+    els.playerClueValue.style.display = 'none';
+    els.playerClueText.style.display = 'none';
+    els.playerCluePlaceholder.style.display = '';
+  }
+
+  function showClueContent(value, text) {
+    els.playerClueValue.textContent = '$' + value;
+    els.playerClueValue.style.display = '';
+    els.playerClueText.textContent = text;
+    els.playerClueText.style.display = '';
+    els.playerCluePlaceholder.style.display = 'none';
+  }
+
+  // ── Buzzer State Management ──────────────────────────────
+
+  function updateBuzzerForState(state) {
+    switch (state) {
+      case J.CLUE_STATE.READING:
+        setBuzzerDisabled();
+        els.gameStatus.textContent = 'Listen to the clue...';
+        break;
+      case J.CLUE_STATE.BUZZING:
+        if (hasBuzzed) {
+          setBuzzerBuzzed();
+          els.gameStatus.textContent = 'Waiting for host...';
+        } else if (isLockedOut) {
+          setBuzzerDisabled();
+          els.gameStatus.textContent = 'Locked out';
+          els.buzzerStatusText.textContent = 'Incorrect answer';
+        } else {
+          setBuzzerActive();
+          els.gameStatus.textContent = 'Buzz in!';
+        }
+        break;
+      case J.CLUE_STATE.ANSWERING:
+        if (hasBuzzed) {
+          setBuzzerBuzzed();
+          els.gameStatus.textContent = 'Answer out loud!';
+        } else {
+          setBuzzerDisabled();
+          els.gameStatus.textContent = 'A player is answering...';
+        }
+        break;
+      case J.CLUE_STATE.REVEALED:
+        setBuzzerDisabled();
+        els.gameStatus.textContent = 'Answer revealed';
+        break;
+      default:
+        setBuzzerDisabled();
+        break;
+    }
+  }
+
+  function setBuzzerActive() {
+    els.buzzerBtn.disabled = false;
+    els.buzzerBtn.classList.add('active');
+    els.buzzerBtn.classList.remove('buzzed');
+    els.buzzerBtn.textContent = 'Buzz';
+    els.buzzerStatusText.textContent = '';
+  }
+
+  function setBuzzerDisabled() {
+    els.buzzerBtn.disabled = true;
+    els.buzzerBtn.classList.remove('active', 'buzzed');
+    els.buzzerBtn.textContent = 'Buzz';
+    els.buzzerStatusText.textContent = '';
+  }
+
+  function setBuzzerBuzzed() {
+    els.buzzerBtn.disabled = true;
+    els.buzzerBtn.classList.remove('active');
+    els.buzzerBtn.classList.add('buzzed');
+    els.buzzerBtn.textContent = 'Buzzed!';
+    els.buzzerStatusText.textContent = 'Waiting for host...';
+  }
+
+  function resetBuzzer() {
+    hasBuzzed = false;
+    isLockedOut = false;
+    setBuzzerDisabled();
+  }
+
+  // ── Buzz Action ──────────────────────────────────────────
+
+  function handleBuzz() {
+    if (hasBuzzed || isLockedOut) return;
+    hasBuzzed = true;
+
+    J.ref('rooms/' + roomCode + '/game/buzzer/buzzedPlayers/' + playerId)
+      .set(J.serverTimestamp());
+
+    setBuzzerBuzzed();
+    els.gameStatus.textContent = 'Waiting for host...';
+  }
+
+  // ── Lockout Listener ─────────────────────────────────────
+
+  function listenForLockout() {
+    J.ref('rooms/' + roomCode + '/game/buzzer/lockedOut/' + playerId)
+      .on('value', function (snap) {
+        isLockedOut = !!snap.val();
+        if (isLockedOut) {
+          hasBuzzed = false;
+        }
+        // Re-evaluate buzzer if we're in an active clue state
+        if (currentClueState) {
+          updateBuzzerForState(currentClueState);
+        }
+      });
+  }
+
+  // ── Picking Player ───────────────────────────────────────
+
+  function listenForPickingPlayer() {
+    J.ref('rooms/' + roomCode + '/game/pickingPlayer').on('value', function (snap) {
+      pickingPlayerId = snap.val();
+      if (!currentClueState) {
+        updatePickingStatus();
+      }
+    });
+  }
+
+  function updatePickingStatus() {
+    if (!pickingPlayerId) {
+      els.gameStatus.textContent = 'Waiting for host to select a clue...';
+      return;
+    }
+    if (pickingPlayerId === playerId) {
+      els.gameStatus.textContent = 'Your pick! Tell the host your choice.';
+    } else {
+      var name = getPlayerName(pickingPlayerId);
+      els.gameStatus.textContent = name + '\u2019s pick';
+    }
+  }
+
+  function getPlayerName(pid) {
+    if (allPlayers[pid]) return allPlayers[pid].name;
+    return 'Player';
   }
 
   // ── URL Parameters ────────────────────────────────────────
@@ -208,6 +390,7 @@
     });
 
     els.joinBtn.addEventListener('click', handleJoin);
+    els.buzzerBtn.addEventListener('click', handleBuzz);
 
     // Enter key submits join form
     els.roomCodeInput.addEventListener('keydown', function (e) {

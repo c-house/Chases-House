@@ -569,6 +569,9 @@
   }
 
   function reopenBuzzing() {
+    // Write state back to Firebase so players detect buzzing reopened
+    J.ref('rooms/' + roomCode + '/game/currentClue/state').set(J.CLUE_STATE.BUZZING);
+
     // Show buzzing UI, resume timer
     els.clueBuzzingStatus.style.display = '';
     els.clueAnswering.style.display = 'none';
