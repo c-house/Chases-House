@@ -9,35 +9,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-005**: Connect Four — Full Playthrough (ADR-006)
-  - **Pre-check**: verify `games/connect-four/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/connect-four/`
-  - `take_screenshot` — verify initial empty 7x6 board
-  - **Column hover**: hover over columns → verify preview indicator
-  - **Drop mechanic**: click a column → verify disc drops to bottom, animation plays
-  - **Gravity**: stack multiple discs in one column → verify they stack correctly
-  - **Win detection**: on Easy, win with a horizontal 4 → verify highlighted. New game, win with vertical 4 → verify. Win with diagonal → verify.
-  - **Draw state**: fill the board without 4-in-a-row (if reachable on Easy) → verify draw message
-  - **AI difficulty**: play on Hard → verify AI blocks obvious threats
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - `resize_page` to 480px → `take_screenshot` → verify tap targets
-  - Save screenshots, log results to TEST_RESULTS.md
-
-- [ ] **TEST-006**: Chess — Full Playthrough (ADR-007)
-  - **Pre-check**: verify `games/chess/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/chess/`
-  - `take_screenshot` — verify initial board setup, all 32 pieces correct
-  - **Basic moves**: move a pawn forward, verify legal move highlighting, verify AI responds <3s
-  - **Captures**: capture an AI piece → verify it disappears
-  - **Castling**: set up castling conditions → verify king+rook move together
-  - **Check indicator**: put AI king in check → verify visual indicator
-  - **Pawn promotion**: advance a pawn to rank 8 → verify promotion UI appears, select Queen
-  - **Move history**: verify algebraic notation updates after each move
-  - **Difficulty levels**: play on Easy, verify AI makes more mistakes. Play on Hard, verify stronger play.
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - `resize_page` to 480px → `take_screenshot` → verify mobile layout
-  - Save screenshots, log results to TEST_RESULTS.md
-
 - [ ] **TEST-007**: Snake — Full Playthrough (ADR-008)
   - **Pre-check**: verify `games/snake/index.html` exists; if not, mark SKIPPED
   - Navigate to `http://localhost:3003/games/snake/`
@@ -84,3 +55,9 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-004**: Checkers — Full Playthrough (ADR-005)
   _Completed: PASS. All core mechanics verified on Easy difficulty: piece selection with visual highlight, valid move indicators (gold dots for moves, gold rings for captures), captures, mandatory capture enforcement (non-jumping pieces blocked when any jump exists), player multi-jump chain (6,1→4,3→2,1 double capture), AI multi-jump chain (1,6→3,4→5,6 double capture). King promotion verified via CSS class injection and code review — crown icon (♚) renders correctly on both player/AI kings, promotion logic correct at lines 326-328 of game.js. Medium (4-ply) and Hard (7-ply) difficulty tested — AI responds correctly, difficulty switch resets game. Zero console errors across all testing. Mobile layout at 480px scales properly. 6 screenshots saved. No bugs found._
+
+- [x] **TEST-005**: Connect Four — Full Playthrough (ADR-006)
+  _Completed: PASS. All core mechanics verified. Column hover preview shows gold disc at landing position. Drop mechanic and gravity stacking work correctly. Win detection verified for all 3 directions: horizontal (player 4-in-a-row bottom row), vertical (player 4-stack in col 0), diagonal (AI diagonal win detected and highlighted). Hard AI (7-ply) correctly blocks player's 3-in-a-row horizontal threat. Easy AI (2-ply, 40% random) allows player wins. Draw state verified by code review (isBoardFull check). Zero console errors. Mobile layout at 480px scales properly with 70x70px cell tap targets. 6 screenshots saved. No bugs found._
+
+- [x] **TEST-006**: Chess — Full Playthrough (ADR-007)
+  _Completed: PASS. All core mechanics verified. Initial board: 32 pieces (16 white, 16 black) in standard starting position. Basic moves: pawn e2-e4 with legal move highlighting (valid-move dots), knight moves with 3 valid squares. AI responds <3s on all difficulties. Captures: Bxd7+ captured pawn (32→31 pieces), AI recaptured Bxd7 (31→30). valid-capture class distinct from valid-move. Castling: O-O verified — king moved e1→g1, rook moved h1→f1, notation "O-O" in move history. Check/checkmate: "+" for check (Bxd7+), "#" for checkmate (Qxf7#), "Checkmate — you win!" status. Move history: correct algebraic notation throughout (piece letters, captures, check, checkmate, castling). Pawn promotion: UI overlay verified with 4 piece buttons (Queen, Rook, Bishop, Knight); code review confirms promotion move generation and piece replacement. Easy difficulty: Scholar's Mate in 4 moves (AI played Rb8/Ra8, didn't defend f7). Hard difficulty: same attack failed — AI played Ne5/Nxc4 (captured bishop), Kxf7 escaped check. Difficulty configs: Easy=2-ply, Medium=3-ply+PST, Hard=4-ply+PST+ordering, Extreme=5-ply+TT+quiescence. Zero console errors. Mobile 480px scales properly. 9 screenshots saved. No bugs found._
