@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chase's House</title>
+  <title>Games - Chase's House</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
@@ -33,8 +33,6 @@
     }
 
     /* ── Base ──────────────────────────────────────────── */
-    html { scroll-behavior: smooth; }
-
     body {
       font-family: var(--font-body);
       font-weight: 400;
@@ -81,8 +79,8 @@
       display: flex;
       justify-content: flex-end;
       align-items: center;
-      animation: fadeIn 600ms ease-out backwards;
-      animation-delay: 600ms;
+      animation: fadeIn 500ms ease-out backwards;
+      animation-delay: 100ms;
     }
 
     .site-header::after {
@@ -116,13 +114,11 @@
       position: relative;
       padding: 0.4rem 0;
       transition: color 0.3s ease;
-      animation: fadeSlideUp 600ms ease-out backwards;
-      animation-delay: calc(700ms + var(--i, 0) * 80ms);
+      animation: fadeSlideUp 500ms ease-out backwards;
+      animation-delay: calc(200ms + var(--i, 0) * 60ms);
     }
 
-    .nav-link:hover {
-      color: var(--accent-glow);
-    }
+    .nav-link:hover { color: var(--accent-glow); }
 
     .nav-link::after {
       content: '';
@@ -137,11 +133,8 @@
       transition: transform 0.35s ease;
     }
 
-    .nav-link:hover::after {
-      transform: scaleX(1);
-    }
+    .nav-link:hover::after { transform: scaleX(1); }
 
-    /* Active nav state */
     .nav-link.active {
       color: var(--accent-gold);
       cursor: default;
@@ -161,7 +154,6 @@
 
     .nav-link.active::after { display: none; }
 
-    /* Coming soon nav state */
     .nav-link.coming-soon {
       color: var(--text-muted);
       pointer-events: none;
@@ -181,8 +173,8 @@
       margin-left: 0.3em;
     }
 
-    /* ── Hero ─────────────────────────────────────────── */
-    .hero {
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -191,81 +183,26 @@
       max-width: 72rem;
     }
 
-    .site-title {
+    .page-title {
       font-family: var(--font-display);
       font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
-      font-size: clamp(2.8rem, 7vw + 0.5rem, 6rem);
+      font-size: clamp(2.4rem, 6vw + 0.5rem, 4.5rem);
       font-weight: 350;
       color: var(--text-heading);
-      line-height: 1.05;
+      line-height: 1.1;
       letter-spacing: -0.01em;
-      animation: fadeSlideUp 900ms ease-out backwards;
-      animation-delay: 150ms;
+      animation: fadeSlideUp 800ms ease-out backwards;
+      animation-delay: 100ms;
     }
 
-    .site-title .accent {
-      color: var(--accent-gold);
-      animation: warmGlow 5s ease-in-out infinite;
-      animation-delay: 1200ms;
-      display: inline-block;
-    }
-
-    .site-tagline {
-      font-family: var(--font-body);
-      font-size: clamp(1rem, 1.8vw + 0.3rem, 1.35rem);
+    .page-description {
+      font-size: clamp(1rem, 1.6vw + 0.3rem, 1.25rem);
       font-weight: 350;
       color: var(--text-muted);
       margin-top: clamp(0.8rem, 2vw, 1.5rem);
-      letter-spacing: 0.02em;
-      animation: fadeSlideUp 750ms ease-out backwards;
-      animation-delay: 450ms;
-    }
-
-    /* ── Rooms Section ────────────────────────────────── */
-    .rooms {
-      padding: 0 clamp(1.5rem, 5vw, 4rem) clamp(3rem, 8vh, 6rem);
-    }
-
-    .room-card {
-      display: block;
-      max-width: 22rem;
-      padding: clamp(1.5rem, 3vw, 2rem);
-      background: var(--bg-surface);
-      border: 1px solid var(--accent-ember);
-      border-radius: 6px;
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+      max-width: 36rem;
       animation: fadeSlideUp 700ms ease-out backwards;
-      animation-delay: 1000ms;
-    }
-
-    .room-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--accent-gold);
-      box-shadow: 0 8px 32px rgba(200, 148, 62, 0.12), 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .room-icon {
-      display: block;
-      font-size: 1.8rem;
-      margin-bottom: 0.6rem;
-      opacity: 0.9;
-    }
-
-    .room-card h2 {
-      font-family: var(--font-display);
-      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
-      font-size: 1.3rem;
-      font-weight: 500;
-      color: var(--text-heading);
-      margin-bottom: 0.3rem;
-    }
-
-    .room-card p {
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      line-height: 1.5;
+      animation-delay: 300ms;
     }
 
     /* ── Footer ───────────────────────────────────────── */
@@ -273,8 +210,8 @@
       padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.5rem, 5vw, 4rem);
       font-size: 0.8rem;
       color: var(--text-faint);
-      animation: fadeIn 600ms ease-out backwards;
-      animation-delay: 1300ms;
+      animation: fadeIn 500ms ease-out backwards;
+      animation-delay: 600ms;
     }
 
     /* ── Keyframes ────────────────────────────────────── */
@@ -286,11 +223,6 @@
     @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
-    }
-
-    @keyframes warmGlow {
-      0%, 100% { text-shadow: 0 0 30px rgba(200, 148, 62, 0.25); }
-      50%      { text-shadow: 0 0 50px rgba(200, 148, 62, 0.45), 0 0 90px rgba(200, 148, 62, 0.12); }
     }
 
     /* ── Reduced Motion ───────────────────────────────── */
@@ -305,34 +237,13 @@
 
     /* ── Responsive ───────────────────────────────────── */
     @media (max-width: 768px) {
-      .site-header {
-        justify-content: center;
-      }
-
-      .hero {
-        align-items: center;
-        text-align: center;
-      }
-
-      .rooms {
-        display: flex;
-        justify-content: center;
-      }
-
-      .room-card {
-        max-width: 100%;
-        width: 100%;
-      }
+      .site-header { justify-content: center; }
+      .page-content { align-items: center; text-align: center; }
     }
 
     @media (max-width: 480px) {
-      .nav {
-        gap: clamp(0.8rem, 4vw, 1.5rem);
-      }
-
-      .hero {
-        padding-top: clamp(3rem, 8vh, 5rem);
-      }
+      .nav { gap: clamp(0.8rem, 4vw, 1.5rem); }
+      .page-content { padding-top: clamp(3rem, 8vh, 5rem); }
     }
   </style>
 </head>
@@ -346,26 +257,18 @@
 
   <header class="site-header">
     <nav class="nav" aria-label="Main navigation">
-      <span class="nav-link active" style="--i:0" aria-current="page">Home</span>
-      <a class="nav-link" style="--i:1" href="/games/">Games</a>
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <span class="nav-link active" style="--i:1" aria-current="page">Games</span>
       <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
       <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
       <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
     </nav>
   </header>
 
-  <main class="hero">
-    <h1 class="site-title">Chase's <span class="accent">House</span></h1>
-    <p class="site-tagline">Welcome in. Make yourself at home.</p>
+  <main class="page-content">
+    <h1 class="page-title">Games</h1>
+    <p class="page-description">Games are on their way. Check back soon.</p>
   </main>
-
-  <section class="rooms" aria-label="Explore">
-    <a class="room-card" href="/games/">
-      <span class="room-icon" aria-hidden="true">&#9823;</span>
-      <h2>Games</h2>
-      <p>Browser-based games to play with friends.</p>
-    </a>
-  </section>
 
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>
