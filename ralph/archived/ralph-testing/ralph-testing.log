@@ -1,0 +1,94 @@
+
+--- Test 1 — 2026-03-09 10:12:55 (exit: 0) ---
+
+**TEST-003: Tic Tac Toe — Edge Cases & Responsiveness — PASS**
+
+All checks passed:
+- Occupied cell rejection (X and O cells)
+- Click during AI turn rejected (`currentTurn` guard)
+- New Game mid-game resets board fully
+- Draw state displays "It's a draw."
+- Win highlighting (`win-cell` class on correct indices)
+- Back to Games link navigates to `/games/`
+- Mobile layout at 480px scales properly
+- Zero console errors throughout
+
+No bugs found. Committed as `69af479`. STOP.
+
+--- Test 2 — 2026-03-09 10:21:13 (exit: 0) ---
+
+Committed. **TEST-004: Checkers — Full Playthrough — PASS**
+
+Summary of what was tested:
+- **Initial board**: 12 gold player pieces, 12 terracotta AI pieces, correct 8x8 layout
+- **Piece selection & valid moves**: selection highlight + gold dot/ring indicators
+- **Captures**: both player and AI captures work correctly
+- **Mandatory captures**: non-jumping pieces blocked when any jump exists
+- **Multi-jump chains**: player double-jump (6,1→4,3→2,1) and AI double-jump (1,6→3,4→5,6) both work with "Continue jumping" status
+- **King promotion**: crown icon (♚) rendering verified via CSS, code logic confirmed correct
+- **Difficulty levels**: Easy (2-ply), Medium (4-ply), Hard (7-ply) all respond correctly
+- **Console errors**: zero throughout all testing
+- **Mobile (480px)**: board scales, buttons wrap, all elements accessible
+- **Bugs found**: none
+
+--- Test 1 — 2026-03-09 10:47:24 (exit: 0) ---
+
+I need approval to run git commands. Could you approve the git add command so I can stage and commit the test results?
+
+--- Test 1 — 2026-03-09 11:12:27 (exit: 0) ---
+
+**TEST-006: Chess — Full Playthrough — PASS**
+
+All checks passed:
+- **Initial board**: 32 pieces in correct standard positions
+- **Basic moves**: pawn, knight, bishop all move correctly with legal move highlighting
+- **Captures**: Bxd7+ captured pawn, AI recaptured — piece counts decrease correctly
+- **Castling**: O-O verified — king to g1, rook to f1
+- **Check/Checkmate**: "+" for check, "#" for checkmate, "Checkmate — you win!" status
+- **Move history**: correct algebraic notation (piece letters, captures, check, castling)
+- **Pawn promotion**: UI overlay renders with 4 piece choices, code logic verified
+- **Difficulty**: Easy AI fell to Scholar's Mate in 4 moves; Hard AI defended and captured material
+- **Console errors**: zero
+- **Mobile 480px**: scales properly
+
+9 screenshots saved, commit `77bba06` created. STOP.
+
+--- Test 2 — 2026-03-09 11:28:00 (exit: 0) ---
+
+**TEST-007: Snake — Full Playthrough — PASS**
+
+All checks passed:
+- **Movement**: All 4 directions work, 24-turn zigzag survived, 180° reversal blocked
+- **Food collection**: Score incremented 0→1→2 via canvas pixel scanning + guided navigation
+- **Wall collision**: Game Over correctly triggered on wall hit (confirmed multiple times)
+- **Self collision**: Verified correct by code review (standard algorithm, proper tail-skip)
+- **Difficulty**: All 4 levels switch correctly (Easy 200ms → Extreme 50ms)
+- **Pause/Resume**: Space toggles correctly
+- **High score**: localStorage persists per-difficulty (`{"medium":0,"easy":2}`)
+- **Play Again**: Restarts game, resets score
+- **Console errors**: Zero
+- **Mobile 480px**: Scales properly
+
+5 screenshots saved, results logged, commit `3225359` created.
+
+--- Test 3 — 2026-03-09 11:44:40 (exit: 0) ---
+
+**TEST-008: Sudoku — Full Playthrough — PASS**
+
+All checks passed:
+- 9x9 grid with correct given counts per difficulty (Easy 39, Medium 32-35, Hard 25, Extreme 23)
+- Given cells non-editable
+- Player input via number pad works
+- Conflict highlighting on duplicate row/col/box values
+- Pencil marks with 3x3 mini-grid display
+- Correct cell solving with zero false conflicts
+- New Puzzle generates fresh board
+- Difficulty switching works with proper given ranges
+- localStorage persistence across page reload
+- Zero console errors
+- Mobile responsive at 480px
+- 6 screenshots saved, commit `f673bf3`
+
+The Todo section is now empty — all 8 test suites complete.
+
+<promise>COMPLETE</promise>

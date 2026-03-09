@@ -79,6 +79,7 @@
     .board {
       display: grid;
       grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(9, 1fr);
       width: clamp(290px, 55vw, 450px);
       aspect-ratio: 1;
       background: var(--accent-ember);
@@ -92,6 +93,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      min-width: 0;
+      min-height: 0;
       background: var(--bg-surface);
       font-family: var(--font-body);
       font-size: clamp(1.1rem, 3vw, 1.6rem);

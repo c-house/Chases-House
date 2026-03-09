@@ -1,0 +1,86 @@
+
+--- Iteration 1 — 2026-03-09 01:44:26 (exit: 0) ---
+
+I'm getting blocked on `git add` commands — they require your approval. Please approve one of the pending git add requests so I can stage and commit the GAME-001 changes. The files to commit are:
+
+- `games/index.html` — rewritten from placeholder to gallery layout
+- `styles.css` — added shared game-card grid styles
+- `ralph/IMPLEMENTATION_PLAN.md` — marked GAME-001 as done
+
+--- Iteration 1 — 2026-03-09 01:51:17 (exit: 0) ---
+
+**GAME-002: Tic Tac Toe** — committed as `4a144f9`.
+
+**What was built:**
+- `games/tic-tac-toe/index.html` — Game page with site header/nav, difficulty selector, 3x3 board, status bar, New Game button, back link, footer
+- `games/tic-tac-toe/game.js` — Full game logic with depth-aware minimax AI (Easy=random, Medium=30% random fallback, Hard/Extreme=optimal), win detection with cell highlighting, keyboard accessibility
+- Updated `games/index.html` — Replaced empty state with Tic Tac Toe game card
+- Updated `ralph/IMPLEMENTATION_PLAN.md` — Marked done with completion notes
+
+--- Iteration 2 — 2026-03-09 01:55:15 (exit: 0) ---
+
+**GAME-003: Checkers** — committed as `058abfa`.
+
+Built:
+- `games/checkers/index.html` — Game page with Warm Hearth styling, difficulty selector, 8x8 board, status bar, score display
+- `games/checkers/game.js` — Full American checkers: diagonal moves, mandatory captures, multi-jump chains, king promotion (crown symbol). Alpha-beta AI with positional evaluation (Easy 2-ply, Medium 4-ply, Hard 7-ply, Extreme 9-ply)
+- Added Checkers card to `games/index.html` gallery
+- Updated `ralph/IMPLEMENTATION_PLAN.md`
+
+--- Iteration 3 — 2026-03-09 02:07:41 (exit: 0) ---
+
+**GAME-004: Connect Four** is complete. Here's what was built:
+
+- **`games/connect-four/index.html`** — Game page matching the Warm Hearth aesthetic with header, nav, difficulty selector, board, status bar, and footer
+- **`games/connect-four/game.js`** — Full game logic including:
+  - 7-column, 6-row board with CSS Grid
+  - Disc drop animation with bounce easing
+  - Column hover preview showing landing position
+  - Player discs (accent-gold) and AI discs (terracotta) with radial gradients
+  - Win detection in all 4 directions with pulsing highlight animation
+  - Draw detection on full board
+  - Alpha-beta pruning AI with center-column move ordering and window-based evaluation:
+    - **Easy**: 2 plies + 40% random moves
+    - **Medium**: 4 plies
+    - **Hard**: 7 plies
+    - **Extreme**: 11 plies
+- **`games/index.html`** — Added Connect Four card to the gallery
+
+Committed as `b909683 GAME-004: Add Connect Four game with alpha-beta AI`.
+
+--- Iteration 4 — 2026-03-09 02:11:10 (exit: 0) ---
+
+GAME-005 (Chess) is complete. Committed as `934b093`.
+
+**What was built:**
+- `games/chess/index.html` — Chess page with board, move history panel, difficulty selector, promotion modal, rank/file labels
+- `games/chess/game.js` — Full chess engine: all piece movements, castling (both sides), en passant, pawn promotion with piece selection UI, fifty-move rule, threefold repetition, stalemate, insufficient material, check/checkmate detection, algebraic notation
+- `games/chess/ai.js` — AI engine with 4 difficulty tiers:
+  - **Easy**: 2 plies, material-only evaluation
+  - **Medium**: 3 plies + piece-square tables
+  - **Hard**: 4 plies + alpha-beta + MVV-LVA move ordering
+  - **Extreme**: 5 plies + iterative deepening + transposition table + quiescence search
+- Chess card added to `games/index.html` gallery
+
+--- Iteration 5 — 2026-03-09 02:25:34 (exit: 0) ---
+
+Committed successfully. **GAME-006: Snake** is done.
+
+**Summary of what was built:**
+- `games/snake/index.html` — Game page with canvas element, start/pause/game-over overlays, difficulty selector, score display
+- `games/snake/game.js` — Full Snake game engine: 20x20 canvas grid, accent-gold gradient snake with directional eyes, glowing ember food dot, wall/self collision, 4 speed levels (Easy 200ms, Medium 130ms, Hard 80ms, Extreme 50ms), arrow keys + WASD + mobile swipe/tap input, per-difficulty high scores in localStorage, responsive canvas sizing
+- `games/index.html` — Added Snake card with "solo" tag to the gallery
+
+--- Iteration 6 — 2026-03-09 02:29:13 (exit: 0) ---
+
+Committed successfully. Implementation complete.
+
+**GAME-007: Sudoku** - Done. Created:
+
+- `games/sudoku/index.html` — Game page with 9x9 CSS Grid board, difficulty selector, number pad, pencil/erase controls, win overlay
+- `games/sudoku/game.js` — Backtracking puzzle generator with unique-solution verification, conflict highlighting, pencil marks, localStorage persistence, keyboard navigation
+- Updated `games/index.html` — Added Sudoku card to gallery
+
+The Todo section in `IMPLEMENTATION_PLAN.md` is now empty.
+
+<promise>COMPLETE</promise>
