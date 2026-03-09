@@ -9,21 +9,7 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 ## Todo
 
-- [ ] **TEST-008**: Sudoku — Full Playthrough (ADR-009)
-  - **Pre-check**: verify `games/sudoku/index.html` exists; if not, mark SKIPPED
-  - Navigate to `http://localhost:3003/games/sudoku/`
-  - `take_screenshot` — verify 9x9 grid with given cells, number pad visible
-  - **Given cells**: click a given (pre-filled) cell → verify it's non-editable
-  - **Player input**: click an empty cell, then click a number on the number pad → verify digit appears
-  - **Conflict highlighting**: enter a number that duplicates in row/col/box → verify red highlight
-  - **Pencil marks**: toggle pencil mode, enter notes in a cell → verify small marks appear
-  - **Puzzle solve**: solve a few cells correctly → verify no false conflicts
-  - **New Puzzle**: click "New Puzzle" → verify fresh puzzle generated
-  - **Difficulty**: switch difficulties → verify different number of givens
-  - **localStorage**: partially complete puzzle, reload page → verify state persists
-  - `list_console_messages` with `types: ["error"]` → must be zero
-  - `resize_page` to 480px → `take_screenshot` → verify number pad usable on mobile
-  - Save screenshots, log results to TEST_RESULTS.md
+_(empty — all tests complete)_
 
 ---
 
@@ -49,3 +35,6 @@ Source: ADR-003 through ADR-009 in `docs/adr/`
 
 - [x] **TEST-007**: Snake — Full Playthrough (ADR-008)
   _Completed: PASS. All core mechanics verified. Initial render: canvas with snake, start overlay, difficulty buttons, score/best bar. Movement: 24-direction-change zigzag survived on Easy — all 4 arrow keys work, 180° reversal blocked. Food collection: canvas pixel scanning located food, guided snake to (9,14) then (4,13) — score incremented 0→1→2, snake grew per food. Wall collision: confirmed multiple times — game over screen with score/best/Play Again. Self collision: verified by code review — standard algorithm checking head vs all segments except tail (correct tail-skip). Difficulty: all 4 buttons switch correctly, speeds verified (Easy=200ms, Medium=130ms, Hard=80ms, Extreme=50ms). Pause/Resume: Space toggles correctly, overlay shows/hides. High score: localStorage persists per-difficulty scores (confirmed {"medium":0,"easy":2}). Play Again: restarts game, score resets to 0. Touch/swipe support verified by code review. Zero console errors. Mobile 480px scales properly. 5 screenshots saved. No bugs found._
+
+- [x] **TEST-008**: Sudoku — Full Playthrough (ADR-009)
+  _Completed: PASS. All core mechanics verified. Initial board: 9x9 grid with 32 givens on Medium (range 30-35), number pad (1-9), PENCIL/ERASE buttons, cells remaining counter. Given cells non-editable (clicked given "8", entered "5" — value unchanged). Player input works (click cell + numpad → digit appears, remaining decreases). Conflict highlighting: duplicate "3" in row → both cells get `conflict` class. Erase clears player values and conflicts. Pencil marks: toggling PENCIL mode and entering digits creates small marks in 3x3 mini-grid positions. Correct cell entry (3 cells solved via backtracking) produced zero false conflicts. New Puzzle generates fresh board. All 4 difficulties verified: Easy=39 givens (36-40), Medium=32-35 (30-35), Hard=25 (25-29), Extreme=23 (20-24). localStorage persistence confirmed — player values, difficulty, and puzzle state survive page reload. Zero console errors. Mobile 480px scales properly. 6 screenshots saved. No bugs found._

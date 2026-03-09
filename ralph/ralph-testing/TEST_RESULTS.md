@@ -248,3 +248,45 @@ None.
 - `screenshots/snake-food-eaten.png` — Score 1 after eating first food, snake paused with 4 segments visible
 - `screenshots/snake-gameover.png` — Game Over screen with Score, Best, and Play Again button
 - `screenshots/snake-mobile-480.png` — Mobile layout at 480px width, all UI elements properly scaled
+
+---
+
+## TEST-008: Sudoku — Full Playthrough — PASS
+Date: 2026-03-09
+
+### Checks
+- [x] **Initial board**: 9x9 grid with given cells, number pad (1-9), PENCIL/ERASE buttons, cells remaining counter, NEW PUZZLE button, difficulty selector (Easy/Medium/Hard/Extreme), Medium selected by default — PASS
+- [x] **Given cells count**: 32 givens on default Medium (range 30-35 per ADR) — PASS
+- [x] **Given cells non-editable**: clicked given cell (Row 1 Col 4, value "8"), clicked number pad "5" → cell retained "8", `given` class present, value unchanged — PASS
+- [x] **Player input**: clicked empty cell (Row 1 Col 1), clicked number pad "5" → digit "5" appeared, `player-value` class applied, cells remaining decreased 49→48 — PASS
+- [x] **Conflict highlighting**: entered "3" in Row 2 Col 1 (Row 2 already has "3" at Col 2) → both cells received `conflict` class, duplicate "3" in same row highlighted red — PASS
+- [x] **Erase function**: selected conflicting cell, clicked ERASE → cell cleared, conflict class removed from all cells, cells remaining updated — PASS
+- [x] **Pencil mode**: toggled PENCIL button (gained `active` class), clicked empty cell, entered "7" and "8" → pencil marks container created with small "7" and "8" marks in positions 7 and 8 of 3x3 mini-grid. Cell not counted as filled (cells remaining unchanged) — PASS
+- [x] **Pencil marks overwrite**: entering a normal value (non-pencil mode) on a cell with pencil marks replaced them with the full digit — PASS
+- [x] **Correct cell solving**: solved solution via backtracking, entered 3 correct values (Row 1 Col 1=4, Row 1 Col 2=2, Row 2 Col 1=7) → zero conflicts, cells remaining decreased correctly — PASS
+- [x] **New Puzzle**: clicked NEW PUZZLE → fresh puzzle generated with different givens pattern, player entries cleared, cells remaining reset — PASS
+- [x] **Difficulty — Easy**: switched to Easy → 39 givens (range 36-40 per ADR) — PASS
+- [x] **Difficulty — Medium**: 32-35 givens across tests (range 30-35 per ADR) — PASS
+- [x] **Difficulty — Hard**: switched to Hard → 25 givens (range 25-29 per ADR) — PASS
+- [x] **Difficulty — Extreme**: switched to Extreme → 23 givens (range 20-24 per ADR) — PASS
+- [x] **Difficulty switch generates new puzzle**: each difficulty button click generates a fresh puzzle with appropriate given count — PASS
+- [x] **localStorage persistence**: entered value "5" in Row 1 Col 1 on Medium, reloaded page → value "5" persisted, difficulty "Medium" preserved, cells remaining unchanged (50) — PASS
+- [x] **Console errors**: zero errors across all testing (all difficulties, input, conflicts, pencil, reload) — PASS
+- [x] **Responsive at 480px**: grid scales to fit viewport, number pad buttons visible and tappable, difficulty buttons fit in one row, all UI elements accessible — PASS
+
+### Bugs Found
+None.
+
+### Notes
+- Puzzle generation uses backtracking with random seed for full solution, then removes cells verifying unique solution remains. All generated puzzles had valid, solvable configurations.
+- The game uses an IIFE pattern — state variables (solution, board, givens, pencilMarks) are closure-scoped and not directly accessible via evaluate_script. Solution was verified by running a backtracking solver in the browser context.
+- Pencil marks use a 3x3 mini-grid within each cell (9 span elements), where marks appear in their respective number positions (e.g., "7" in position 7, "8" in position 8).
+- localStorage key is `sudoku-state`, storing full game state (board, solution, givens, pencil marks, difficulty) as JSON.
+
+### Screenshots
+- `screenshots/sudoku-initial.png` — Initial board on Medium difficulty with 32 givens
+- `screenshots/sudoku-player-input.png` — After entering "5" in Row 1 Col 1
+- `screenshots/sudoku-conflict.png` — Conflict highlighting: duplicate "3" in Row 2
+- `screenshots/sudoku-pencil-marks.png` — Pencil marks "7" and "8" in Row 2 Col 1
+- `screenshots/sudoku-correct-entries.png` — Three correct values entered with zero conflicts
+- `screenshots/sudoku-mobile-480.png` — Mobile layout at 480px width
