@@ -4,18 +4,6 @@ _Last updated: 2026-03-09_
 ## In Progress
 (none)
 
-- [ ] **[JP-014]** Game over + connection management [engine]
-  - Acceptance: Game Over shows final standings sorted by score with winner highlighted; "Play Again" returns to lobby with same room; host disconnect shows "Host disconnected" on players; player disconnect allows rejoin with state restoration
-  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
-  - Game Over screen: final standings sorted by score, winner highlighted
-  - "Play Again" button → return to lobby with same room code, reset game state
-  - Host disconnect: set room `meta/status` to `paused` via `onDisconnect()` handler
-  - Player sees "Host disconnected" overlay when status = `paused`
-  - Host reconnect: restore from Firebase state, resume game
-  - Player disconnect: set `connected: false` via `onDisconnect()` handler
-  - Game continues without disconnected player; they can rejoin and restore state
-  - Depends on: JP-013
-
 - [ ] **[JP-015]** Build `builder.html` — Board builder UI [ui]
   - Acceptance: `builder.html` loads with no console errors; tabbed interface shows Round 1 / Round 2 / Final Jeopardy; each round has 6 category inputs with 5 clue/answer pairs; dollar values are auto-filled and non-editable; action buttons (Save/Load/Export/Import/Clear) are present
   - Files: `games/jeopardy/builder.html`
@@ -53,6 +41,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-014]** Game over + connection management [engine]
+  - Acceptance: Game Over shows final standings sorted by score with winner highlighted; "Play Again" returns to lobby with same room; host disconnect shows "Host disconnected" on players; player disconnect allows rejoin with state restoration
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
+  _Completed: Implemented Play Again flow and player rejoin with state restoration. **shared.js**: Modified `joinRoom()` to support rejoining — if the player's UID already exists in the room, updates `connected: true` and name instead of overwriting the entire node (preserving score). New players can only join during lobby; existing players can rejoin at any game status. Exposed `buildBoardData()` on `window.Jeopardy` API for board rebuilding during Play Again. **host.js**: Added `playAgain()` function — cleans up all active game listeners (buzzer, daily double, final jeopardy, picking player), resets all local state variables (round, board, clue data, buzzer state, FJ state), rebuilds fresh board data from selected board via `J.buildBoardData()`, resets all player scores to 0 in Firebase, clears game node, re-places Daily Doubles on fresh board, sets status back to `lobby`, re-setups host disconnect handler, resets lobby UI (start button, board selector). Wired `playAgainBtn` click handler in `init()`. **player.js**: Added `LOBBY` status handling in `handleStatusChange()` → calls `returnToLobby()`. `returnToLobby()` calls `cleanupGameListeners()` to detach all playing-phase Firebase listeners (score, clue, picking player, lockout, round, final state), clears final timer, resets all local game state variables (buzz state, scores, DD/FJ flags), resets UI (score display, buzzer, clue placeholder), renders player list, shows lobby phase. Browser validated: both host and player pages load with zero JS errors (only expected Firebase placeholder API key errors). Files changed: `games/jeopardy/shared.js`, `games/jeopardy/host.js`, `games/jeopardy/player.js`._
 
 - [x] **[JP-013]** Final Jeopardy flow [engine]
   - Acceptance: Final Jeopardy category reveals first; all players submit wagers (clamped 0–score); clue shown with 30s timer; players type answers; host judges each player; scores adjust; game transitions to Game Over

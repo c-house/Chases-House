@@ -243,22 +243,33 @@
   async function joinRoom(roomCode, playerId, playerName) {
     initFirebase();
 
-    // Verify room exists and is in lobby
+    // Verify room exists
     const metaSnap = await db.ref('rooms/' + roomCode + '/meta').once('value');
     if (!metaSnap.exists()) {
       throw new Error('Room not found.');
     }
     const meta = metaSnap.val();
-    if (meta.status !== STATUS.LOBBY) {
-      throw new Error('Game has already started.');
-    }
 
-    await db.ref('rooms/' + roomCode + '/players/' + playerId).set({
-      name: playerName,
-      score: 0,
-      connected: true,
-      joinedAt: serverTimestamp()
-    });
+    // Check if this player already exists in the room (rejoin case)
+    const playerSnap = await db.ref('rooms/' + roomCode + '/players/' + playerId).once('value');
+    if (playerSnap.exists()) {
+      // Rejoin: restore connection, update name if changed
+      await db.ref('rooms/' + roomCode + '/players/' + playerId).update({
+        name: playerName,
+        connected: true
+      });
+    } else {
+      // New join: room must be in lobby
+      if (meta.status !== STATUS.LOBBY) {
+        throw new Error('Game has already started.');
+      }
+      await db.ref('rooms/' + roomCode + '/players/' + playerId).set({
+        name: playerName,
+        score: 0,
+        connected: true,
+        joinedAt: serverTimestamp()
+      });
+    }
 
     // Set onDisconnect to mark player as disconnected
     db.ref('rooms/' + roomCode + '/players/' + playerId + '/connected')
@@ -384,8 +395,9 @@
     joinRoom: joinRoom,
     leaveRoom: leaveRoom,
 
-    // Board validation
+    // Board utilities
     validateBoard: validateBoard,
+    buildBoardData: buildBoardData,
 
     // Constants
     STATUS: STATUS,

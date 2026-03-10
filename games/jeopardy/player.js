@@ -200,12 +200,56 @@
     }
     els.hostDisconnected.classList.remove('active');
 
-    if (status === J.STATUS.PLAYING) {
+    if (status === J.STATUS.LOBBY) {
+      returnToLobby();
+    } else if (status === J.STATUS.PLAYING) {
       transitionToPlaying();
     } else if (status === J.STATUS.FINAL) {
       transitionToFinal();
     } else if (status === J.STATUS.ENDED) {
       transitionToGameOver();
+    }
+  }
+
+  // ── Return to Lobby (Play Again) ──────────────────────────
+
+  function returnToLobby() {
+    cleanupGameListeners();
+
+    // Reset local game state
+    hasBuzzed = false;
+    isLockedOut = false;
+    currentClueState = null;
+    pickingPlayerId = null;
+    currentScore = 0;
+    currentRound = 1;
+    ddWagerSubmitted = false;
+    finalWagerSubmitted = false;
+    finalAnswerSubmitted = false;
+
+    // Reset UI elements
+    updateScoreDisplay(0);
+    resetBuzzer();
+    showCluePlaceholder();
+    renderPlayerList(allPlayers);
+
+    showPhase('phase-lobby');
+  }
+
+  function cleanupGameListeners() {
+    J.ref('rooms/' + roomCode + '/players/' + playerId + '/score').off();
+    J.ref('rooms/' + roomCode + '/game/currentClue').off();
+    J.ref('rooms/' + roomCode + '/game/pickingPlayer').off();
+    J.ref('rooms/' + roomCode + '/game/buzzer/lockedOut/' + playerId).off();
+    J.ref('rooms/' + roomCode + '/game/currentRound').off();
+
+    if (finalStateListenerRef) {
+      finalStateListenerRef.off();
+      finalStateListenerRef = null;
+    }
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
     }
   }
 

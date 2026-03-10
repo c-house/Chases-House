@@ -1147,6 +1147,80 @@
     showPhase('phase-game-over');
   }
 
+  // ── Play Again ──────────────────────────────────────────────
+
+  async function playAgain() {
+    // Clean up any active game listeners
+    cleanupBuzzer();
+    cleanupDailyDouble();
+    cleanupFinalJeopardy();
+    J.ref('rooms/' + roomCode + '/game/pickingPlayer').off();
+
+    // Reset local state
+    currentRound = 1;
+    boardState = null;
+    currentClueData = null;
+    pickingPlayerId = null;
+    currentBuzzer = null;
+    lockedOutPlayers = {};
+    ddWager = 0;
+    ddPlayerId = null;
+    finalData = null;
+    finalWagers = {};
+    finalAnswers = {};
+    finalJudgeQueue = [];
+    finalJudgeIndex = 0;
+
+    // Read config from current toggle states
+    config = readConfig();
+
+    // Reset player scores to 0 in Firebase
+    var scoreUpdates = {};
+    Object.keys(players).forEach(function (id) {
+      scoreUpdates['players/' + id + '/score'] = 0;
+    });
+
+    // Rebuild board from selected board data
+    var freshBoard = J.buildBoardData(boardData, config);
+
+    // Reset game state in Firebase
+    scoreUpdates['board'] = freshBoard;
+    scoreUpdates['game'] = {
+      currentRound: 1,
+      pickingPlayer: null,
+      currentClue: null
+    };
+    scoreUpdates['meta/status'] = J.STATUS.LOBBY;
+
+    try {
+      await J.ref('rooms/' + roomCode).update(scoreUpdates);
+
+      // Place Daily Doubles on fresh board
+      if (config.enableDailyDoubles) {
+        await placeDailyDoubles('round1', 1);
+        if (config.enableDoubleJeopardy) {
+          await placeDailyDoubles('round2', 2);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to reset game:', err);
+      return;
+    }
+
+    // Re-setup host disconnect handler
+    setupHostDisconnect();
+
+    // Reset lobby UI
+    els.startGameBtn.disabled = false;
+    els.startGameBtn.textContent = 'Start Game';
+    els.nextRoundBtn.onclick = onNextRound;
+    els.nextRoundBtn.textContent = 'Continue';
+    updateStartButton();
+    renderPlayerList();
+
+    showPhase('phase-lobby');
+  }
+
   // ── Scoreboard ────────────────────────────────────────────
 
   function formatScore(score) {
@@ -1211,6 +1285,7 @@
     els.finalRevealClueBtn.addEventListener('click', onRevealFinalClue);
     els.finalBeginJudgingBtn.addEventListener('click', onBeginFinalJudging);
     els.finalEndGameBtn.addEventListener('click', showGameOver);
+    els.playAgainBtn.addEventListener('click', playAgain);
 
     // Firebase auth + room creation
     try {
