@@ -6,17 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-
-  - Acceptance: Check Letter/Word marks incorrect cells with terracotta style; Reveal Letter/Word fills correct answer with revealed style; revealed cells are locked from further input; re-render updates immediately
-  - Files: `games/crossword/game.js`
-  - Four toolbar buttons: Check Letter, Check Word, Reveal Letter, Reveal Word
-  - Check marks incorrect cells with `.checked-incorrect` (terracotta)
-  - Reveal fills correct letter with `.revealed` style (faint/italic)
-  - Revealed cells are locked (no further input)
-  - No keyboard shortcuts for check/reveal (prevent accidental use)
-  - Re-render affected cells after each action
-  - Depends on: CW-004
-
 - [ ] **[CW-007]** Persistence — save/load state, best times [engine]
   - Acceptance: Full game state persists to localStorage after every action; page reload restores grid, timer, selection; completion clears saved state; best times per difficulty saved and displayed
   - Files: `games/crossword/game.js`
