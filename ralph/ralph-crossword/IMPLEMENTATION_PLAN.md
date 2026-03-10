@@ -6,7 +6,7 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-006]** Check/Reveal — toolbar buttons and cell flag rendering [engine]
+
   - Acceptance: Check Letter/Word marks incorrect cells with terracotta style; Reveal Letter/Word fills correct answer with revealed style; revealed cells are locked from further input; re-render updates immediately
   - Files: `games/crossword/game.js`
   - Four toolbar buttons: Check Letter, Check Word, Reveal Letter, Reveal Word
@@ -55,6 +55,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-006]** Check/Reveal — toolbar buttons and cell flag rendering [engine]
+  - _Completed: Added 4 DOM refs for toolbar buttons (`checkLetterBtn`, `checkWordBtn`, `revealLetterBtn`, `revealWordBtn`). Implemented `checkCell(row, col)` and `revealCell(row, col)` as reusable helpers, then `checkLetter()`, `checkWord()`, `revealLetter()`, `revealWord()` as public actions. Check marks incorrect cells with `.checked-incorrect` (terracotta); correct cells have incorrect flag cleared. Reveal fills correct letter, sets `.revealed` (faint/italic), clears incorrect flag. Revealed cells locked from input (already handled by existing keyboard guard). Wired click handlers for all 4 buttons. Reveal actions also call `checkWin()` in case revealing completes the puzzle. Browser-verified: Check Letter/Word mark wrong letters, Reveal Letter/Word fill correct answers, revealed cells resist typing, zero console errors. Files changed: `games/crossword/game.js`._
 
 - [x] **[CW-005]** Timer — count-up with pause/resume [engine]
   - _Completed: Added timer state (`timerElapsed`, `timerRunning`, `timerStarted`, `timerInterval`) and DOM refs (`timerValueEl`, `timerBtn`). Timer functions: `formatTime()` for MM:SS display, `startTimer()`/`pauseTimer()`/`stopTimer()`/`resetTimer()`. Timer starts on first A-Z keypress (not page load). Pause/Resume button toggles timer. `visibilitychange` listener auto-pauses on tab hidden, auto-resumes on tab visible. Timer resets on `loadPuzzle()` (new game/difficulty change). Timer stops on win and solve time shown in win overlay subtitle. All verified in browser: initial 00:00, starts on typing, pause/resume toggle works, resets on new game. Zero console errors. Files changed: `games/crossword/game.js`._

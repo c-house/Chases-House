@@ -35,6 +35,10 @@
   const difficultyBtns = document.querySelectorAll('.difficulty-btn');
   const timerValueEl = document.getElementById('timer-value');
   const timerBtn = document.getElementById('timer-btn');
+  const checkLetterBtn = document.getElementById('check-letter-btn');
+  const checkWordBtn = document.getElementById('check-word-btn');
+  const revealLetterBtn = document.getElementById('reveal-letter-btn');
+  const revealWordBtn = document.getElementById('reveal-word-btn');
 
   // ── Timer ──────────────────────────────────────────
 
@@ -435,6 +439,11 @@
     }
   });
 
+  checkLetterBtn.addEventListener('click', checkLetter);
+  checkWordBtn.addEventListener('click', checkWord);
+  revealLetterBtn.addEventListener('click', revealLetter);
+  revealWordBtn.addEventListener('click', revealWord);
+
   document.addEventListener('visibilitychange', () => {
     if (!timerStarted || solved) return;
     if (document.hidden) {
@@ -624,6 +633,70 @@
     }
 
     handleClueClick(clueList[idx], activeDir);
+  }
+
+  // ── Check / Reveal ────────────────────────────────
+
+  function checkCell(row, col) {
+    const flags = cellFlags[row][col];
+    if (!flags || flags.revealed) return;
+    const value = playerGrid[row][col];
+    if (!value) return;
+    if (value !== puzzle.grid[row][col]) {
+      flags.incorrect = true;
+    } else {
+      flags.incorrect = false;
+    }
+  }
+
+  function revealCell(row, col) {
+    const flags = cellFlags[row][col];
+    if (!flags || flags.revealed) return;
+    playerGrid[row][col] = puzzle.grid[row][col];
+    flags.revealed = true;
+    flags.incorrect = false;
+  }
+
+  function checkLetter() {
+    if (solved || !selectedCell) return;
+    const { row, col } = selectedCell;
+    checkCell(row, col);
+    renderBoard();
+    updateStatus();
+  }
+
+  function checkWord() {
+    if (solved || !selectedCell) return;
+    const cells = getActiveWordCells();
+    for (const { row, col } of cells) {
+      checkCell(row, col);
+    }
+    renderBoard();
+    updateStatus();
+  }
+
+  function revealLetter() {
+    if (solved || !selectedCell) return;
+    if (!timerStarted) startTimer();
+    const { row, col } = selectedCell;
+    revealCell(row, col);
+    renderBoard();
+    renderClues();
+    updateStatus();
+    checkWin();
+  }
+
+  function revealWord() {
+    if (solved || !selectedCell) return;
+    if (!timerStarted) startTimer();
+    const cells = getActiveWordCells();
+    for (const { row, col } of cells) {
+      revealCell(row, col);
+    }
+    renderBoard();
+    renderClues();
+    updateStatus();
+    checkWin();
   }
 
   // ── Win Detection ──────────────────────────────────
