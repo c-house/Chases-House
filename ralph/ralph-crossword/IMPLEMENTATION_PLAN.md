@@ -6,19 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-003]** Core `game.js` — state model, puzzle loading, rendering [engine]
-  - Acceptance: Puzzle loads and renders correct grid with numbered cells and black cells; clue panels show Across/Down lists with active highlighting; difficulty selector loads different puzzles
-  - Files: `games/crossword/game.js`
-  - Create `games/crossword/game.js` with game state: `puzzle`, `playerGrid`, `selectedCell`, `direction`, `cellFlags`
-  - `loadPuzzle(puzzle)` — initialize state from puzzle data
-  - `computeWordSpans()` — map each clue to its list of cells for O(1) lookup
-  - `computeClueMap()` — map each cell to its {across, down} clue numbers
-  - `renderBoard()` — render grid cells with numbers, player values, black cells
-  - `renderClues()` — render Across/Down clue lists with active highlighting and completed strikethrough
-  - Difficulty selector wires up to load puzzles of selected difficulty
-  - Study `games/sudoku/game.js` for rendering and state patterns
-  - Depends on: CW-001, CW-002
-
 - [ ] **[CW-004]** Input handling — selection, typing, navigation [engine]
   - Acceptance: Click selects cell; click same cell toggles direction; A–Z places letter and auto-advances; Backspace clears/retreats; arrow keys navigate; Spacebar toggles direction; Tab/Shift+Tab jumps between words; clicking a clue selects its first empty cell; word highlighting updates on every selection change
   - Files: `games/crossword/game.js`
@@ -92,6 +79,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-003]** Core `game.js` — state model, puzzle loading, rendering [engine]
+  - _Completed: Created `games/crossword/game.js` (~330 lines) with IIFE pattern matching sudoku. State model: `puzzle`, `playerGrid`, `selectedCell`, `direction`, `cellFlags`, `wordSpans`, `clueMap`. Core functions: `loadPuzzle()` initializes state from puzzle data, `computeWordSpans()` maps each clue number to its cell list for O(1) lookup, `computeClueMap()` maps each cell to its across/down clue numbers, `getCellNumbers()` builds cell-number overlay map. Rendering: `renderBoard()` builds CSS Grid with `--grid-size` variable, cell numbers, player values, black cells, selected/word-highlight/checked-incorrect/revealed classes. `renderClues()` populates Across/Down panels with active highlighting and completed strikethrough. `updateActiveClueBar()` for mobile clue display. Input handling included early since rendering requires click handlers: cell click selects/toggles direction, clue click selects first empty cell, keyboard A-Z/Backspace/Space/Arrow/Tab navigation, auto-advance and retreat within words. Win detection checks all non-black cells match solution grid. Difficulty selector and New Puzzle button wire up to load random puzzle from pool. Files changed: `games/crossword/game.js` (new)._
 
 - [x] **[CW-002]** Build `index.html` with full HTML structure + inline CSS [ui]
   - _Completed: Created `games/crossword/index.html` with full HTML structure and inline CSS. Includes: page title, difficulty selector (Easy/Medium/Hard/Extreme), Daily/Random mode toggle, timer display with pause button, CSS Grid board (`--grid-size` variable, `aspect-ratio: 1`), active clue bar (mobile), Across/Down clue panels with scrollable container, toolbar (Check Letter/Word, Reveal Letter/Word), status bar with New Puzzle button, win overlay (hidden by default), back link, footer. All cell state classes defined: `.selected`, `.word-highlight`, `.checked-incorrect`, `.revealed`, `.player-value`, `.black`. Responsive layout: flexbox `.game-layout` stacks on mobile (≤768px), active clue bar shows on mobile only. Uses site design tokens throughout. Scripts: `puzzles.js` + `game.js`. Files changed: `games/crossword/index.html`._
