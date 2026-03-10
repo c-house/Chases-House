@@ -20,6 +20,10 @@
   var currentScore = 0;        // Player's current score (for DD wager limits)
   var currentRound = 1;        // Current round number (for DD wager limits)
   var ddWagerSubmitted = false; // Whether DD wager was submitted this clue
+  var finalWagerSubmitted = false;  // Whether FJ wager was submitted
+  var finalAnswerSubmitted = false; // Whether FJ answer was submitted
+  var finalTimerId = null;          // Interval for FJ timer
+  var finalStateListenerRef = null; // Firebase ref for FJ state listener
 
   // ── DOM Elements ────────────────────────────────────────────
   var els = {};
@@ -57,6 +61,24 @@
     els.ddWagerRange = document.getElementById('dd-wager-range');
     els.ddWagerBtn = document.getElementById('dd-wager-btn');
     els.ddWaiting = document.getElementById('dd-waiting');
+
+    // Final Jeopardy
+    els.finalCategory = document.getElementById('final-category');
+    els.finalWagerForm = document.getElementById('final-wager-form');
+    els.finalWagerInput = document.getElementById('final-wager-input');
+    els.finalWagerBtn = document.getElementById('final-wager-btn');
+    els.finalClueArea = document.getElementById('final-clue-area');
+    els.finalClueText = document.getElementById('final-clue-text');
+    els.finalTimer = document.getElementById('final-timer');
+    els.finalTimerFill = document.getElementById('final-timer-fill');
+    els.finalAnswerForm = document.getElementById('final-answer-form');
+    els.finalAnswerInput = document.getElementById('final-answer-input');
+    els.finalAnswerBtn = document.getElementById('final-answer-btn');
+    els.finalWaiting = document.getElementById('final-waiting');
+
+    // Game Over
+    els.finalScoreDisplay = document.getElementById('final-score-display');
+    els.standingsList = document.getElementById('standings-list');
 
     // Host disconnected overlay
     els.hostDisconnected = document.getElementById('host-disconnected');
@@ -180,6 +202,10 @@
 
     if (status === J.STATUS.PLAYING) {
       transitionToPlaying();
+    } else if (status === J.STATUS.FINAL) {
+      transitionToFinal();
+    } else if (status === J.STATUS.ENDED) {
+      transitionToGameOver();
     }
   }
 
@@ -495,6 +521,281 @@
     els.ddInstruction.textContent = 'Wager: $' + val.toLocaleString();
   }
 
+  // ── Final Jeopardy ────────────────────────────────────────
+
+  function transitionToFinal() {
+    finalWagerSubmitted = false;
+    finalAnswerSubmitted = false;
+
+    // Reset UI
+    els.finalWagerForm.style.display = 'none';
+    els.finalClueArea.style.display = 'none';
+    els.finalTimer.style.display = 'none';
+    els.finalAnswerForm.style.display = 'none';
+    els.finalWaiting.style.display = 'none';
+
+    // Listen for FJ state changes
+    finalStateListenerRef = J.ref('rooms/' + roomCode + '/game/finalJeopardy');
+    finalStateListenerRef.on('value', function (snap) {
+      handleFinalStateChange(snap.val());
+    });
+
+    showPhase('phase-final');
+  }
+
+  function handleFinalStateChange(fj) {
+    if (!fj) return;
+
+    switch (fj.state) {
+      case J.FINAL_STATE.CATEGORY:
+        showFinalCategory(fj);
+        break;
+      case J.FINAL_STATE.WAGER:
+        showFinalWager(fj);
+        break;
+      case J.FINAL_STATE.CLUE:
+        showFinalClue(fj);
+        break;
+      case J.FINAL_STATE.ANSWER:
+        showFinalAnswerWaiting();
+        break;
+      case J.FINAL_STATE.JUDGING:
+        showFinalJudging();
+        break;
+    }
+  }
+
+  function showFinalCategory(fj) {
+    // Category is shown via the HTML element already set by host
+    els.finalWagerForm.style.display = 'none';
+    els.finalWaiting.style.display = '';
+    els.finalWaiting.textContent = 'The category has been revealed...';
+  }
+
+  function showFinalWager(fj) {
+    // Load category name from Firebase
+    J.ref('rooms/' + roomCode + '/board/final/category').once('value', function (snap) {
+      els.finalCategory.textContent = snap.val() || '';
+    });
+
+    if (currentScore <= 0) {
+      // Can't wager with $0 or negative score
+      els.finalWagerForm.style.display = 'none';
+      els.finalWaiting.style.display = '';
+      els.finalWaiting.textContent = 'You cannot wager with a score of ' + formatPlayerScore(currentScore);
+      // Auto-submit $0 wager
+      if (!finalWagerSubmitted) {
+        finalWagerSubmitted = true;
+        J.ref('rooms/' + roomCode + '/game/finalJeopardy/wagers/' + playerId).set(0);
+      }
+      return;
+    }
+
+    if (finalWagerSubmitted) {
+      els.finalWagerForm.style.display = 'none';
+      els.finalWaiting.style.display = '';
+      els.finalWaiting.textContent = 'Wager locked in. Waiting for other players...';
+      return;
+    }
+
+    // Show wager form
+    els.finalWagerForm.style.display = '';
+    els.finalWaiting.style.display = 'none';
+    els.finalWagerInput.max = currentScore;
+    els.finalWagerInput.value = '';
+    els.finalWagerBtn.disabled = true;
+  }
+
+  function validateFinalWager() {
+    var val = parseInt(els.finalWagerInput.value, 10);
+    els.finalWagerBtn.disabled = isNaN(val) || val < 0 || val > currentScore;
+  }
+
+  function submitFinalWager() {
+    var val = parseInt(els.finalWagerInput.value, 10);
+    if (isNaN(val) || val < 0 || val > currentScore) return;
+
+    finalWagerSubmitted = true;
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/wagers/' + playerId).set(val);
+
+    els.finalWagerForm.style.display = 'none';
+    els.finalWaiting.style.display = '';
+    els.finalWaiting.textContent = 'Wager locked in. Waiting for other players...';
+  }
+
+  function showFinalClue(fj) {
+    // Load clue text from Firebase
+    J.ref('rooms/' + roomCode + '/board/final/clue').once('value', function (snap) {
+      els.finalClueText.textContent = snap.val() || '';
+    });
+
+    els.finalWagerForm.style.display = 'none';
+    els.finalClueArea.style.display = '';
+    els.finalWaiting.style.display = 'none';
+
+    if (finalAnswerSubmitted) {
+      els.finalAnswerForm.style.display = 'none';
+      els.finalWaiting.style.display = '';
+      els.finalWaiting.textContent = 'Answer submitted. Waiting for time to expire...';
+    } else {
+      // Show answer form and start timer
+      els.finalAnswerForm.style.display = '';
+      els.finalAnswerInput.value = '';
+      els.finalAnswerBtn.disabled = true;
+      startFinalPlayerTimer();
+    }
+  }
+
+  function startFinalPlayerTimer() {
+    if (finalTimerId) return; // Don't start twice
+
+    var durationMs = 30000;
+    var startTime = Date.now();
+
+    els.finalTimer.style.display = '';
+    els.finalTimerFill.style.transition = 'none';
+    els.finalTimerFill.style.width = '100%';
+    els.finalTimerFill.offsetWidth; // force reflow
+    els.finalTimerFill.style.transition = 'width 0.1s linear';
+
+    finalTimerId = setInterval(function () {
+      var elapsed = Date.now() - startTime;
+      var remaining = Math.max(0, durationMs - elapsed);
+      els.finalTimerFill.style.width = (remaining / durationMs * 100) + '%';
+      if (remaining <= 0) {
+        clearInterval(finalTimerId);
+        finalTimerId = null;
+        onFinalPlayerTimerExpired();
+      }
+    }, 50);
+  }
+
+  function onFinalPlayerTimerExpired() {
+    els.finalTimer.style.display = 'none';
+    if (!finalAnswerSubmitted) {
+      // Auto-submit whatever is in the input (or empty)
+      autoSubmitFinalAnswer();
+    }
+  }
+
+  function autoSubmitFinalAnswer() {
+    var answer = els.finalAnswerInput ? els.finalAnswerInput.value.trim() : '';
+    finalAnswerSubmitted = true;
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/answers/' + playerId).set(answer);
+
+    els.finalAnswerForm.style.display = 'none';
+    els.finalWaiting.style.display = '';
+    els.finalWaiting.textContent = 'Time\'s up! Waiting for host...';
+  }
+
+  function validateFinalAnswer() {
+    var val = els.finalAnswerInput.value.trim();
+    els.finalAnswerBtn.disabled = val.length === 0;
+  }
+
+  function submitFinalAnswer() {
+    var answer = els.finalAnswerInput.value.trim();
+    if (!answer) return;
+
+    finalAnswerSubmitted = true;
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/answers/' + playerId).set(answer);
+
+    els.finalAnswerForm.style.display = 'none';
+    els.finalWaiting.style.display = '';
+    els.finalWaiting.textContent = 'Answer submitted. Waiting for host...';
+  }
+
+  function showFinalAnswerWaiting() {
+    // Time is up — if answer not yet submitted, auto-submit
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
+    }
+    els.finalTimer.style.display = 'none';
+
+    if (!finalAnswerSubmitted) {
+      autoSubmitFinalAnswer();
+    } else {
+      els.finalAnswerForm.style.display = 'none';
+      els.finalWaiting.style.display = '';
+      els.finalWaiting.textContent = 'Waiting for host to judge...';
+    }
+  }
+
+  function showFinalJudging() {
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
+    }
+    els.finalTimer.style.display = 'none';
+    els.finalAnswerForm.style.display = 'none';
+    els.finalWaiting.style.display = '';
+    els.finalWaiting.textContent = 'Host is judging answers...';
+  }
+
+  function formatPlayerScore(score) {
+    score = score || 0;
+    if (score < 0) return '-$' + Math.abs(score).toLocaleString();
+    return '$' + score.toLocaleString();
+  }
+
+  // ── Game Over ────────────────────────────────────────────
+
+  function transitionToGameOver() {
+    // Clean up Final Jeopardy state
+    if (finalStateListenerRef) {
+      finalStateListenerRef.off();
+      finalStateListenerRef = null;
+    }
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
+    }
+
+    // Show player's final score
+    els.finalScoreDisplay.textContent = formatPlayerScore(currentScore);
+    if (currentScore < 0) {
+      els.finalScoreDisplay.classList.add('negative');
+    } else {
+      els.finalScoreDisplay.classList.remove('negative');
+    }
+
+    // Build standings from all players
+    var ids = Object.keys(allPlayers);
+    ids.sort(function (a, b) {
+      return ((allPlayers[b] && allPlayers[b].score) || 0) -
+             ((allPlayers[a] && allPlayers[a].score) || 0);
+    });
+
+    els.standingsList.innerHTML = '';
+    ids.forEach(function (id, i) {
+      var p = allPlayers[id];
+      var row = document.createElement('div');
+      row.className = 'standing-row';
+      if (i === 0) row.classList.add('winner');
+      if (id === playerId) row.classList.add('you');
+
+      var rank = document.createElement('span');
+      rank.className = 'standing-rank';
+      rank.textContent = '#' + (i + 1);
+
+      var name = document.createElement('span');
+      name.className = 'standing-name';
+      name.textContent = p.name;
+
+      var score = document.createElement('span');
+      score.className = 'standing-score';
+      score.textContent = formatPlayerScore(p.score);
+
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(score);
+      els.standingsList.appendChild(row);
+    });
+
+    showPhase('phase-game-over');
+  }
+
   // ── URL Parameters ────────────────────────────────────────
 
   function checkUrlParams() {
@@ -527,6 +828,10 @@
     els.buzzerBtn.addEventListener('click', handleBuzz);
     els.ddWagerInput.addEventListener('input', validateDDWager);
     els.ddWagerBtn.addEventListener('click', submitDDWager);
+    els.finalWagerInput.addEventListener('input', validateFinalWager);
+    els.finalWagerBtn.addEventListener('click', submitFinalWager);
+    els.finalAnswerInput.addEventListener('input', validateFinalAnswer);
+    els.finalAnswerBtn.addEventListener('click', submitFinalAnswer);
 
     // Enter key submits join form
     els.roomCodeInput.addEventListener('keydown', function (e) {

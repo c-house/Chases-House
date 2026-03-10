@@ -30,6 +30,16 @@
   var ddWager = 0;               // Current DD wager amount
   var ddPlayerId = null;         // Player making the DD wager
 
+  // Final Jeopardy state
+  var finalData = null;              // { category, clue, answer } from Firebase
+  var finalWagers = {};              // { playerId: amount }
+  var finalAnswers = {};             // { playerId: text }
+  var finalWagerListenerRef = null;  // Firebase ref for wager listener
+  var finalAnswerListenerRef = null; // Firebase ref for answer listener
+  var finalTimerId = null;           // Interval for 30s timer
+  var finalJudgeQueue = [];          // Ordered list of player IDs to judge
+  var finalJudgeIndex = 0;           // Current index in judge queue
+
   // ── DOM Elements ────────────────────────────────────────────
   var els = {};
 
@@ -80,6 +90,25 @@
     els.roundTransitionTitle = document.getElementById('round-transition-title');
     els.roundTransitionSubtitle = document.getElementById('round-transition-subtitle');
     els.nextRoundBtn = document.getElementById('next-round-btn');
+    // Final Jeopardy
+    els.finalCategory = document.getElementById('final-category');
+    els.finalWagerStatus = document.getElementById('final-wager-status');
+    els.finalClueText = document.getElementById('final-clue-text');
+    els.finalTimer = document.getElementById('final-timer');
+    els.finalTimerFill = document.getElementById('final-timer-fill');
+    els.finalPlayerReveal = document.getElementById('final-player-reveal');
+    els.finalRevealName = document.getElementById('final-reveal-name');
+    els.finalRevealAnswer = document.getElementById('final-reveal-answer');
+    els.finalRevealWager = document.getElementById('final-reveal-wager');
+    els.finalCorrectBtn = document.getElementById('final-correct-btn');
+    els.finalIncorrectBtn = document.getElementById('final-incorrect-btn');
+    els.finalControls = document.getElementById('final-controls');
+    els.finalRevealClueBtn = document.getElementById('final-reveal-clue-btn');
+    els.finalBeginJudgingBtn = document.getElementById('final-begin-judging-btn');
+    els.finalEndGameBtn = document.getElementById('final-end-game-btn');
+    // Game Over
+    els.finalStandings = document.getElementById('final-standings');
+    els.playAgainBtn = document.getElementById('play-again-btn');
   }
 
   // ── Phase Management ────────────────────────────────────────
@@ -809,18 +838,313 @@
   }
 
   function onAllRoundsComplete() {
-    // Placeholder — Final Jeopardy (JP-013) or Game Over (JP-014) will handle this
-    // For now, show round transition with a "game complete" message
     if (config.enableFinalJeopardy) {
       els.roundTransitionTitle.textContent = currentRound === 1 ? 'Round Complete' : 'Double Jeopardy Complete';
       els.roundTransitionSubtitle.textContent = 'Final Jeopardy is next...';
-      // JP-013 will replace this with actual Final Jeopardy flow
+      els.nextRoundBtn.textContent = 'Continue';
+      els.nextRoundBtn.onclick = enterFinalJeopardy;
+      showPhase('phase-round-transition');
     } else {
-      els.roundTransitionTitle.textContent = 'All Rounds Complete';
-      els.roundTransitionSubtitle.textContent = 'Final scores are in!';
-      // JP-014 will replace this with Game Over flow
+      showGameOver();
     }
-    showPhase('phase-round-transition');
+  }
+
+  // ── Final Jeopardy Flow ──────────────────────────────────
+
+  function enterFinalJeopardy() {
+    // Reset onclick to default
+    els.nextRoundBtn.onclick = onNextRound;
+    els.nextRoundBtn.textContent = 'Continue';
+
+    // Load final data from Firebase
+    J.ref('rooms/' + roomCode + '/board/final').once('value', function (snap) {
+      finalData = snap.val();
+      if (!finalData) {
+        showGameOver();
+        return;
+      }
+      startFinalCategory();
+    });
+  }
+
+  function startFinalCategory() {
+    // Reset Final Jeopardy state
+    finalWagers = {};
+    finalAnswers = {};
+    finalJudgeQueue = [];
+    finalJudgeIndex = 0;
+
+    // Update Firebase status to 'final' and set FJ state
+    J.ref('rooms/' + roomCode).update({
+      'meta/status': J.STATUS.FINAL,
+      'game/finalJeopardy': {
+        state: J.FINAL_STATE.CATEGORY
+      }
+    });
+
+    // Show category, hide other elements
+    els.finalCategory.textContent = finalData.category;
+    els.finalClueText.style.display = 'none';
+    els.finalTimer.style.display = 'none';
+    els.finalPlayerReveal.style.display = 'none';
+    els.finalControls.style.display = '';
+    els.finalRevealClueBtn.style.display = 'none';
+    els.finalBeginJudgingBtn.style.display = 'none';
+    els.finalEndGameBtn.style.display = 'none';
+
+    // Build wager status chips for all players
+    renderFinalWagerStatus();
+
+    // Update state to wager and listen for wagers
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/state')
+      .set(J.FINAL_STATE.WAGER);
+    listenForFinalWagers();
+
+    showPhase('phase-final');
+  }
+
+  function renderFinalWagerStatus() {
+    els.finalWagerStatus.innerHTML = '';
+    var ids = Object.keys(players);
+    ids.forEach(function (id) {
+      var chip = document.createElement('span');
+      chip.className = 'final-wager-chip';
+      chip.id = 'final-wager-chip-' + id;
+
+      var score = (players[id] && players[id].score) || 0;
+      if (score <= 0) {
+        // Players with $0 or less can't wager
+        chip.textContent = players[id].name + ' (no wager)';
+        chip.classList.add('submitted');
+        finalWagers[id] = 0;
+      } else {
+        chip.textContent = players[id].name;
+      }
+      els.finalWagerStatus.appendChild(chip);
+    });
+  }
+
+  function listenForFinalWagers() {
+    finalWagerListenerRef = J.ref('rooms/' + roomCode + '/game/finalJeopardy/wagers');
+    finalWagerListenerRef.on('value', function (snap) {
+      var wagers = snap.val() || {};
+      // Merge received wagers
+      Object.keys(wagers).forEach(function (pid) {
+        finalWagers[pid] = wagers[pid];
+        // Update chip UI
+        var chip = document.getElementById('final-wager-chip-' + pid);
+        if (chip) {
+          chip.classList.add('submitted');
+          chip.innerHTML = '<span class="check">\u2713</span> ' + players[pid].name;
+        }
+      });
+
+      // Check if all connected players have wagered
+      if (allWagersIn()) {
+        els.finalRevealClueBtn.style.display = '';
+        els.finalControls.style.display = '';
+      }
+    });
+  }
+
+  function allWagersIn() {
+    var ids = Object.keys(players);
+    for (var i = 0; i < ids.length; i++) {
+      if (!players[ids[i]].connected) continue;
+      if (finalWagers[ids[i]] === undefined) return false;
+    }
+    return true;
+  }
+
+  function onRevealFinalClue() {
+    // Stop listening for wagers
+    if (finalWagerListenerRef) {
+      finalWagerListenerRef.off();
+      finalWagerListenerRef = null;
+    }
+
+    // Show clue text
+    els.finalClueText.textContent = finalData.clue;
+    els.finalClueText.style.display = '';
+    els.finalRevealClueBtn.style.display = 'none';
+
+    // Update Firebase state so players see the clue + can answer
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/state')
+      .set(J.FINAL_STATE.CLUE);
+
+    // Start 30-second timer
+    startFinalTimer();
+
+    // Listen for answers
+    listenForFinalAnswers();
+  }
+
+  function startFinalTimer() {
+    var durationMs = 30000;
+    var startTime = Date.now();
+
+    els.finalTimer.style.display = '';
+    els.finalTimerFill.style.transition = 'none';
+    els.finalTimerFill.style.width = '100%';
+    els.finalTimerFill.offsetWidth; // force reflow
+    els.finalTimerFill.style.transition = 'width 0.1s linear';
+
+    finalTimerId = setInterval(function () {
+      var elapsed = Date.now() - startTime;
+      var remaining = Math.max(0, durationMs - elapsed);
+      els.finalTimerFill.style.width = (remaining / durationMs * 100) + '%';
+      if (remaining <= 0) {
+        clearInterval(finalTimerId);
+        finalTimerId = null;
+        onFinalTimerExpired();
+      }
+    }, 50);
+  }
+
+  function onFinalTimerExpired() {
+    // Hide timer, show "Begin Judging" button
+    els.finalTimer.style.display = 'none';
+    els.finalBeginJudgingBtn.style.display = '';
+    els.finalControls.style.display = '';
+
+    // Update state so players know time is up
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/state')
+      .set(J.FINAL_STATE.ANSWER);
+  }
+
+  function listenForFinalAnswers() {
+    finalAnswerListenerRef = J.ref('rooms/' + roomCode + '/game/finalJeopardy/answers');
+    finalAnswerListenerRef.on('value', function (snap) {
+      finalAnswers = snap.val() || {};
+    });
+  }
+
+  function onBeginFinalJudging() {
+    // Stop listening for answers, stop timer if still running
+    if (finalAnswerListenerRef) {
+      finalAnswerListenerRef.off();
+      finalAnswerListenerRef = null;
+    }
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
+    }
+
+    // Update Firebase state
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/state')
+      .set(J.FINAL_STATE.JUDGING);
+
+    // Build ordered queue of players to judge
+    finalJudgeQueue = Object.keys(players).filter(function (id) {
+      return players[id].connected;
+    });
+    finalJudgeIndex = 0;
+
+    // Hide controls, timer, wager status
+    els.finalControls.style.display = 'none';
+    els.finalTimer.style.display = 'none';
+    els.finalWagerStatus.style.display = 'none';
+
+    showNextFinalPlayer();
+  }
+
+  function showNextFinalPlayer() {
+    if (finalJudgeIndex >= finalJudgeQueue.length) {
+      onFinalJudgingComplete();
+      return;
+    }
+
+    var pid = finalJudgeQueue[finalJudgeIndex];
+    var answer = finalAnswers[pid] || '(no answer)';
+    var wager = finalWagers[pid] || 0;
+
+    els.finalRevealName.textContent = players[pid].name;
+    els.finalRevealAnswer.textContent = '"' + answer + '"';
+    els.finalRevealWager.textContent = 'Wager: $' + wager.toLocaleString();
+    els.finalPlayerReveal.style.display = '';
+
+    // Store current judging pid for button handlers
+    els.finalCorrectBtn.onclick = function () { judgeFinalPlayer(pid, true); };
+    els.finalIncorrectBtn.onclick = function () { judgeFinalPlayer(pid, false); };
+  }
+
+  function judgeFinalPlayer(pid, correct) {
+    var wager = finalWagers[pid] || 0;
+    var delta = correct ? wager : -wager;
+    updatePlayerScore(pid, delta);
+
+    // Mark as judged in Firebase
+    J.ref('rooms/' + roomCode + '/game/finalJeopardy/judged/' + pid).set(true);
+
+    // Move to next player
+    finalJudgeIndex++;
+    showNextFinalPlayer();
+  }
+
+  function onFinalJudgingComplete() {
+    // Hide judging UI, show answer + "Final Scores" button
+    els.finalPlayerReveal.style.display = 'none';
+    els.finalClueText.textContent = finalData.answer;
+    els.finalClueText.style.display = '';
+    els.finalCategory.textContent = 'Answer';
+    els.finalControls.style.display = '';
+    els.finalEndGameBtn.style.display = '';
+    els.finalBeginJudgingBtn.style.display = 'none';
+  }
+
+  function cleanupFinalJeopardy() {
+    if (finalWagerListenerRef) {
+      finalWagerListenerRef.off();
+      finalWagerListenerRef = null;
+    }
+    if (finalAnswerListenerRef) {
+      finalAnswerListenerRef.off();
+      finalAnswerListenerRef = null;
+    }
+    if (finalTimerId) {
+      clearInterval(finalTimerId);
+      finalTimerId = null;
+    }
+  }
+
+  function showGameOver() {
+    cleanupFinalJeopardy();
+
+    // Set status to ended
+    J.ref('rooms/' + roomCode + '/meta/status').set(J.STATUS.ENDED);
+
+    // Build standings sorted by score descending
+    var ids = Object.keys(players);
+    ids.sort(function (a, b) {
+      return ((players[b] && players[b].score) || 0) - ((players[a] && players[a].score) || 0);
+    });
+
+    els.finalStandings.innerHTML = '';
+    ids.forEach(function (id, i) {
+      var p = players[id];
+      var row = document.createElement('div');
+      row.className = 'standing-row';
+      if (i === 0) row.classList.add('winner');
+
+      var rank = document.createElement('span');
+      rank.className = 'standing-rank';
+      rank.textContent = '#' + (i + 1);
+
+      var name = document.createElement('span');
+      name.className = 'standing-name';
+      name.textContent = p.name;
+
+      var score = document.createElement('span');
+      score.className = 'standing-score';
+      score.textContent = formatScore(p.score);
+
+      row.appendChild(rank);
+      row.appendChild(name);
+      row.appendChild(score);
+      els.finalStandings.appendChild(row);
+    });
+
+    showPhase('phase-game-over');
   }
 
   // ── Scoreboard ────────────────────────────────────────────
@@ -884,6 +1208,9 @@
     els.ddIncorrectBtn.addEventListener('click', onDDJudgeIncorrect);
     els.ddReturnBtn.addEventListener('click', ddReturnToBoard);
     els.nextRoundBtn.addEventListener('click', onNextRound);
+    els.finalRevealClueBtn.addEventListener('click', onRevealFinalClue);
+    els.finalBeginJudgingBtn.addEventListener('click', onBeginFinalJudging);
+    els.finalEndGameBtn.addEventListener('click', showGameOver);
 
     // Firebase auth + room creation
     try {

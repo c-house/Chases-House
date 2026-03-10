@@ -4,19 +4,6 @@ _Last updated: 2026-03-09_
 ## In Progress
 (none)
 
-- [ ] **[JP-013]** Final Jeopardy flow [engine]
-  - Acceptance: Final Jeopardy category reveals first; all players submit wagers (clamped 0–score); clue shown with 30s timer; players type answers; host judges each player; scores adjust; game transitions to Game Over
-  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
-  - After last round complete → check if Final Jeopardy enabled in config
-  - Host: display Final Jeopardy category (text only, no clue yet)
-  - All players: wager input (min $0, max = current score; players with $0 or less can't wager)
-  - Host: wait for all wagers submitted → display clue text
-  - Players: 30-second timer to type answer and submit
-  - Host: reveal each player's answer one at a time, judge Correct/Incorrect
-  - Correct → add wager to score; Incorrect → deduct wager
-  - After all judged → transition to Game Over with final standings
-  - Depends on: JP-012
-
 - [ ] **[JP-014]** Game over + connection management [engine]
   - Acceptance: Game Over shows final standings sorted by score with winner highlighted; "Play Again" returns to lobby with same room; host disconnect shows "Host disconnected" on players; player disconnect allows rejoin with state restoration
   - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
@@ -66,6 +53,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-013]** Final Jeopardy flow [engine]
+  - Acceptance: Final Jeopardy category reveals first; all players submit wagers (clamped 0–score); clue shown with 30s timer; players type answers; host judges each player; scores adjust; game transitions to Game Over
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
+  _Completed: Implemented full Final Jeopardy flow across host and player. **host.js**: Added 8 new state vars for FJ tracking (`finalData`, `finalWagers`, `finalAnswers`, `finalWagerListenerRef`, `finalAnswerListenerRef`, `finalTimerId`, `finalJudgeQueue`, `finalJudgeIndex`). Cached 14 new DOM elements for the Final Jeopardy and Game Over phases. Replaced `onAllRoundsComplete()` placeholder — now routes to Final Jeopardy (if enabled) via round transition screen, or directly to Game Over. `enterFinalJeopardy()` loads final board data from Firebase, calls `startFinalCategory()`. `startFinalCategory()` sets `meta/status: final` and `finalJeopardy/state: wager`, shows category text, renders wager status chips for all players (players with $0 or less auto-marked as "no wager"), and listens for wager submissions. `allWagersIn()` checks all connected players have wagered — when true, shows "Reveal Clue" button. `onRevealFinalClue()` displays clue text, starts 30-second countdown timer, listens for typed answers, sets FJ state to `clue`. `onFinalTimerExpired()` sets state to `answer` and shows "Begin Judging" button. `onBeginFinalJudging()` builds ordered queue of connected players, shows first player's answer/wager for host to judge. `showNextFinalPlayer()` cycles through the queue with Correct/Incorrect buttons — `judgeFinalPlayer()` adds or deducts wager amount from score. `onFinalJudgingComplete()` shows the correct answer and "Final Scores" button. `showGameOver()` sets status to `ended`, builds sorted standings with winner highlight, shows Game Over phase. `cleanupFinalJeopardy()` tears down all listeners and timers. **player.js**: Added 4 new state vars (`finalWagerSubmitted`, `finalAnswerSubmitted`, `finalTimerId`, `finalStateListenerRef`). Cached 13 new DOM elements for Final Jeopardy and Game Over phases. Updated `handleStatusChange()` to handle `FINAL` (→ `transitionToFinal()`) and `ENDED` (→ `transitionToGameOver()`) statuses. `transitionToFinal()` resets FJ state and subscribes to `game/finalJeopardy` value changes. `handleFinalStateChange()` routes to appropriate UI based on FJ sub-state: `showFinalWager()` shows wager input (max = current score, players with ≤$0 auto-submit $0 wager), `showFinalClue()` displays clue text with answer input and 30s timer, `showFinalAnswerWaiting()` auto-submits answer if timer expires, `showFinalJudging()` shows "Host is judging..." message. Wager and answer validation with submit handlers. `transitionToGameOver()` displays player's final score prominently and builds sorted standings list with winner/you highlighting. Added `formatPlayerScore()` utility. Wired 4 new event listeners for FJ inputs/buttons. Browser validated: both host and player pages load with zero JS errors (only expected Firebase placeholder API key errors). Files changed: `games/jeopardy/host.js`, `games/jeopardy/player.js`._
 
 - [x] **[JP-012]** Round transitions — Single → Double Jeopardy [engine]
   - Acceptance: After all Round 1 clues asked, "Round 1 Complete" overlay appears; Round 2 board loads with doubled values and 2 Daily Doubles; lowest-scoring player picks first in Round 2; Double Jeopardy skipped if disabled in config
