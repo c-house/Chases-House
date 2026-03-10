@@ -5,9 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
-PROMPT_FILE="${PROMPT_FILE:-$SCRIPT_DIR/PROMPT_BUILD.md}"
+PROMPT_FILE="$SCRIPT_DIR/PROMPT_BUILD.md"
+LOG_FILE="$SCRIPT_DIR/ralph-crossword.log"
 PERMISSION_MODE="${PERMISSION_MODE:-acceptEdits}"
-LOG_FILE="${LOG_FILE:-$SCRIPT_DIR/ralph-crossword.log}"
 
 # Preflight
 [ -f "$PROMPT_FILE" ] || { echo "ERROR: $PROMPT_FILE not found."; exit 1; }

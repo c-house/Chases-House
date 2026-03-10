@@ -5,30 +5,40 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
+# ─── Paths ────────────────────────────────────────────────────────
+PROMPT_FILE="$SCRIPT_DIR/PROMPT_BUILD.md"
+LOG_FILE="$SCRIPT_DIR/ralph-crossword.log"
+
 # ─── Configuration ────────────────────────────────────────────────
-MAX_ITERATIONS="${1:-${MAX_ITERATIONS:-20}}"
-PROMPT_FILE="${PROMPT_FILE:-$SCRIPT_DIR/PROMPT_BUILD.md}"
+MAX_ITERATIONS="${1:-20}"
 PERMISSION_MODE="${PERMISSION_MODE:-acceptEdits}"
 DANGEROUSLY_SKIP_PERMISSIONS="${DANGEROUSLY_SKIP_PERMISSIONS:-false}"
-LOG_FILE="${LOG_FILE:-$SCRIPT_DIR/ralph-crossword.log}"
-COMPLETION_SENTINEL="${COMPLETION_SENTINEL:-<promise>COMPLETE</promise>}"
-BLOCKER_SENTINEL="${BLOCKER_SENTINEL:-<promise>BLOCKED</promise>}"
-CLAUDE_CODE_MAX_OUTPUT_TOKENS="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-64000}"
-export CLAUDE_CODE_MAX_OUTPUT_TOKENS
+COMPLETION_SENTINEL="<promise>COMPLETE</promise>"
+BLOCKER_SENTINEL="<promise>BLOCKED</promise>"
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS="${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-64000}"
 ITERATION=0
 
 # ─── Preflight checks ─────────────────────────────────────────────
 [ -f "$PROMPT_FILE" ] || { echo "ERROR: $PROMPT_FILE not found."; exit 1; }
 command -v claude &>/dev/null || { echo "ERROR: claude CLI not found. Install it first."; exit 1; }
 
+# ─── Build the claude command ────────────────────────────────────
+if [[ "$DANGEROUSLY_SKIP_PERMISSIONS" == "true" ]]; then
+    CLAUDE_ARGS=(--dangerously-skip-permissions -p)
+else
+    CLAUDE_ARGS=(--permission-mode "$PERMISSION_MODE" -p)
+fi
+
+CLAUDE_CMD="cat \"$PROMPT_FILE\" | claude ${CLAUDE_ARGS[*]}"
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  RALPH LOOP STARTING"
-echo "  Prompt: $PROMPT_FILE"
 echo "  Max iterations: $MAX_ITERATIONS"
-echo "  Permission mode: $PERMISSION_MODE"
-echo "  Skip permissions: $DANGEROUSLY_SKIP_PERMISSIONS"
-echo "  Completion: $COMPLETION_SENTINEL"
 echo "  Log: $LOG_FILE"
+echo ""
+echo "  Run manually:"
+echo "    cd $REPO_ROOT"
+echo "    $CLAUDE_CMD"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ─── Main loop ────────────────────────────────────────────────────
@@ -41,12 +51,6 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 
     echo ""
     echo "┌─ Iteration $ITERATION / $MAX_ITERATIONS [$TIMESTAMP] ─────────────────"
-
-    if [[ "$DANGEROUSLY_SKIP_PERMISSIONS" == "true" ]]; then
-        CLAUDE_ARGS=(--dangerously-skip-permissions -p)
-    else
-        CLAUDE_ARGS=(--permission-mode "$PERMISSION_MODE" -p)
-    fi
 
     cat "$PROMPT_FILE" | claude "${CLAUDE_ARGS[@]}" | tee "$TMPFILE"
 
