@@ -4,33 +4,6 @@ _Last updated: 2026-03-09_
 ## In Progress
 (none)
 
-- [ ] **[JP-015]** Build `builder.html` — Board builder UI [ui]
-  - Acceptance: `builder.html` loads with no console errors; tabbed interface shows Round 1 / Round 2 / Final Jeopardy; each round has 6 category inputs with 5 clue/answer pairs; dollar values are auto-filled and non-editable; action buttons (Save/Load/Export/Import/Clear) are present
-  - Files: `games/jeopardy/builder.html`
-  - Create `games/jeopardy/builder.html` with form-based board authoring UI
-  - Tabbed interface: Round 1 / Round 2 / Final Jeopardy tabs
-  - Each round tab: 6 category name inputs, each with 5 clue/answer text field pairs
-  - Dollar values auto-filled and not editable ($200–$1000 for R1, $400–$2000 for R2)
-  - Final tab: single category, clue, and answer field
-  - Board title and author fields at top
-  - Action buttons: Save, Load, Export JSON, Import JSON, Clear
-  - Inline CSS matching Warm Hearth theme
-  - Include `<script>` tags for `shared.js` (for validation) and `builder.js`
-  - Depends on: (none)
-
-- [ ] **[JP-016]** Build `builder.js` — Builder logic + persistence [engine]
-  - Acceptance: Form data serializes to valid board JSON matching ADR-011 schema; validation highlights missing fields; Save persists to localStorage; Load populates form; Export downloads .json file; Import accepts file upload and populates form; Clear resets with confirmation
-  - Files: `games/jeopardy/builder.js`
-  - Form handling: read all inputs into board JSON matching ADR-011 schema
-  - Live validation: highlight missing clues, empty answers, wrong category count; show error summary
-  - Save to localStorage: key = `jeopardy-board-{title}`, store board JSON
-  - Load from localStorage: populate form from saved board
-  - Export: download board as `.json` file
-  - Import: file upload input OR paste JSON into textarea, validate, populate form
-  - Clear: reset all fields with confirmation prompt
-  - No Firebase required — purely local authoring tool
-  - Depends on: JP-015
-
 - [ ] **[JP-017]** Add Jeopardy card to `games/index.html` gallery [ui]
   - Acceptance: Jeopardy card appears in games gallery with "Multiplayer" badge; card links to `games/jeopardy/`; styling matches existing cards
   - Files: `games/index.html`
@@ -41,6 +14,16 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-016]** Build `builder.js` — Builder logic + persistence [engine]
+  - Acceptance: Form data serializes to valid board JSON matching ADR-011 schema; validation highlights missing fields; Save persists to localStorage; Load populates form; Export downloads .json file; Import accepts file upload and populates form; Clear resets with confirmation
+  - Files: `games/jeopardy/builder.js`
+  _Completed: Replaced stub IIFE with full builder logic. **collectFormData()** reads all form inputs (board title, author, 2 rounds × 6 categories × 5 clue/answer pairs, Final Jeopardy) into ADR-011-schema JSON with correct `ROUND_VALUES` from `window.Jeopardy`. **populateForm(board)** does the reverse — clears all fields then fills from board JSON, handling missing/partial data gracefully. **validate()** calls `J.validateBoard()` from shared.js (DRY) and runs `highlightInvalidFields()` which adds `.invalid` CSS class to every empty required field (title, category names, clue texts, answers, final fields). Validation bar shows error count with first error message, or success message. **saveBoard()** validates first, then stores to `localStorage` with key `jeopardy-board-{title}`. **loadBoard()** enumerates all `jeopardy-board-*` keys, presents numbered list via `window.prompt`, parses and populates form. **exportBoard()** validates, creates Blob with pretty-printed JSON, triggers download via temporary anchor element with kebab-case filename. **importBoard(file)** reads uploaded `.json` via FileReader, validates with `J.validateBoard()`, populates form on success. **clearForm()** uses `window.confirm` guard, then resets all inputs, clears `.invalid` markers and validation bar. Input event listeners on all form fields auto-clear `.invalid` on typing. All action buttons wired in event listeners section. Browser validated: page loads with zero console errors; empty form save shows 136 validation errors with field highlighting; sample board save/load round-trip works correctly; clear resets all state. Files changed: `games/jeopardy/builder.js`._
+
+- [x] **[JP-015]** Build `builder.html` — Board builder UI [ui]
+  - Acceptance: `builder.html` loads with no console errors; tabbed interface shows Round 1 / Round 2 / Final Jeopardy; each round has 6 category inputs with 5 clue/answer pairs; dollar values are auto-filled and non-editable; action buttons (Save/Load/Export/Import/Clear) are present
+  - Files: `games/jeopardy/builder.html`
+  _Completed: Created `games/jeopardy/builder.html` with full form-based board authoring UI. Inline CSS matching Warm Hearth theme with deep blue category headers, gold dollar values, ember borders. **Layout**: Board title + author fields at top in 2-col grid; tab bar with Round 1 / Round 2 / Final Jeopardy; categories grid below with 6 collapsible blocks per round; action bar at bottom. **Tab system**: Three tabs with `.active` class toggling via `data-tab` attributes, ARIA `role="tab"` / `role="tabpanel"` / `aria-selected` for accessibility. **Round panels**: Each round has 6 category blocks — numbered header with category name input, 5 clue rows with 3-column grid (dollar value label + clue input + answer input). Round 1 values: $200/$400/$600/$800/$1000. Round 2 values: $400/$800/$1200/$1600/$2000. Dollar values are plain `<span>` elements (not editable). **Final Jeopardy panel**: Single card with category input, clue textarea (resizable, 5rem min-height), and answer input. **Action bar**: Save (primary/gold), Load (secondary), Export JSON (secondary), Import JSON (secondary) with hidden file input, Clear (danger/terracotta). Spacer pushes Clear to the right. **Validation bar**: Hidden by default, `.visible` class shows it with error (terracotta) or success (sage) styling — prepared for JP-016 logic. **Responsive**: 640px breakpoint stacks board meta to single column, adjusts clue grid, and stacks action buttons. `.invalid` class on inputs for future validation highlighting. Created `builder.js` stub with tab switching IIFE — `querySelectorAll` on `.tab-btn` elements, click handlers toggle `.active` on tabs and panels. Script tags: Firebase v10 compat SDK (required for shared.js) + shared.js + builder.js. Browser validated: all three tabs switch correctly, Round 2 shows doubled values, Final Jeopardy shows single-card form, zero console errors. Files changed: `games/jeopardy/builder.html`, `games/jeopardy/builder.js`._
 
 - [x] **[JP-014]** Game over + connection management [engine]
   - Acceptance: Game Over shows final standings sorted by score with winner highlighted; "Play Again" returns to lobby with same room; host disconnect shows "Host disconnected" on players; player disconnect allows rejoin with state restoration
