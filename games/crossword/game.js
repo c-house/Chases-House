@@ -4,6 +4,8 @@
 
   // ── Constants ──────────────────────────────────────
   const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard', 'extreme'];
+  const STORAGE_KEY = 'crossword-state';
+  const BEST_TIMES_KEY = 'crossword-best-times';
 
   // ── State ──────────────────────────────────────────
   let difficulty = 'easy';
@@ -111,6 +113,7 @@
     renderClues();
     updateStatus();
     updateActiveClueBar();
+    saveState();
   }
 
   function computeWordSpans() {
@@ -409,10 +412,12 @@
     difficultyBtns.forEach(b => {
       b.classList.toggle('active', b.dataset.difficulty === diff);
     });
+    clearSavedState();
     startNewGame();
   }
 
   function startNewGame() {
+    clearSavedState();
     const pool = window.CrosswordPuzzles[difficulty];
     if (!pool || pool.length === 0) return;
     const idx = Math.floor(Math.random() * pool.length);
@@ -482,6 +487,7 @@
       renderClues();
       updateActiveClueBar();
       updateStatus();
+      saveState();
       checkWin();
       return;
     }
@@ -504,6 +510,7 @@
       renderClues();
       updateActiveClueBar();
       updateStatus();
+      saveState();
       return;
     }
 
@@ -663,6 +670,7 @@
     checkCell(row, col);
     renderBoard();
     updateStatus();
+    saveState();
   }
 
   function checkWord() {
@@ -673,6 +681,7 @@
     }
     renderBoard();
     updateStatus();
+    saveState();
   }
 
   function revealLetter() {
@@ -683,6 +692,7 @@
     renderBoard();
     renderClues();
     updateStatus();
+    saveState();
     checkWin();
   }
 
@@ -696,6 +706,7 @@
     renderBoard();
     renderClues();
     updateStatus();
+    saveState();
     checkWin();
   }
 
@@ -711,16 +722,122 @@
     solved = true;
     selectedCell = null;
     stopTimer();
+    clearSavedState();
+
     const diffLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-    winSubtitle.textContent = `${diffLabel} — ${formatTime(timerElapsed)}`;
+    const isNewBest = saveBestTime(difficulty, timerElapsed);
+    const bestTimes = getBestTimes();
+    let subtitle = `${diffLabel} — ${formatTime(timerElapsed)}`;
+    if (isNewBest) {
+      subtitle += ' (New best!)';
+    } else if (bestTimes[difficulty]) {
+      subtitle += ` — Best: ${formatTime(bestTimes[difficulty])}`;
+    }
+    winSubtitle.textContent = subtitle;
     winOverlay.hidden = false;
     updateStatus();
     renderBoard();
     renderClues();
   }
 
+  // ── Persistence ──────────────────────────────────────
+
+  function saveState() {
+    const state = {
+      puzzleId: puzzle.id,
+      difficulty,
+      playerGrid,
+      cellFlags,
+      timerElapsed,
+      timerStarted,
+      selectedCell,
+      direction
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* ignore quota errors */ }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+
+      // Find the saved puzzle by ID and difficulty
+      const pool = window.CrosswordPuzzles[state.difficulty];
+      if (!pool) return false;
+      const savedPuzzle = pool.find(p => p.id === state.puzzleId);
+      if (!savedPuzzle) return false;
+
+      // Restore puzzle and computed data
+      puzzle = savedPuzzle;
+      difficulty = state.difficulty;
+      playerGrid = state.playerGrid;
+      cellFlags = state.cellFlags;
+      selectedCell = state.selectedCell;
+      direction = state.direction;
+      timerElapsed = state.timerElapsed;
+      timerStarted = state.timerStarted;
+      solved = false;
+
+      computeWordSpans();
+      computeClueMap();
+
+      // Update difficulty buttons
+      difficultyBtns.forEach(b => {
+        b.classList.toggle('active', b.dataset.difficulty === difficulty);
+      });
+
+      // Update timer display
+      updateTimerDisplay();
+      if (timerStarted) {
+        timerBtn.textContent = 'Resume';
+      }
+
+      // Render everything
+      boardEl.style.setProperty('--grid-size', puzzle.size);
+      winOverlay.hidden = true;
+      renderBoard();
+      renderClues();
+      updateStatus();
+      updateActiveClueBar();
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearSavedState() {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function getBestTimes() {
+    try {
+      const raw = localStorage.getItem(BEST_TIMES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveBestTime(diff, seconds) {
+    const times = getBestTimes();
+    if (!times[diff] || seconds < times[diff]) {
+      times[diff] = seconds;
+      try {
+        localStorage.setItem(BEST_TIMES_KEY, JSON.stringify(times));
+      } catch (e) { /* ignore */ }
+      return true; // new best
+    }
+    return false;
+  }
+
   // ── Init ───────────────────────────────────────────
 
-  startNewGame();
+  if (!loadState()) {
+    startNewGame();
+  }
 
 })();

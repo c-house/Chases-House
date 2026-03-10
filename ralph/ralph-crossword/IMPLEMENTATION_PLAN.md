@@ -6,16 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-007]** Persistence — save/load state, best times [engine]
-  - Acceptance: Full game state persists to localStorage after every action; page reload restores grid, timer, selection; completion clears saved state; best times per difficulty saved and displayed
-  - Files: `games/crossword/game.js`
-  - Save full state to localStorage after every action: `playerGrid`, `cellFlags`, timer elapsed, `selectedCell`, `direction`, current puzzle ID, difficulty
-  - Restore state on page load if saved state matches current puzzle
-  - Clear saved state on puzzle completion
-  - Best times per difficulty saved to localStorage
-  - Display best time in win overlay or status area
-  - Depends on: CW-005, CW-006
-
 - [ ] **[CW-008]** Daily puzzle — djb2 date hash, daily/random mode [engine]
   - Acceptance: Daily mode selects deterministic puzzle per date via djb2 hash; Random mode picks a different puzzle; toggle between modes works; default is Daily on page load
   - Files: `games/crossword/game.js`
@@ -44,6 +34,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-007]** Persistence — save/load state, best times [engine]
+  - _Completed: Added localStorage persistence with two keys: `crossword-state` (game state) and `crossword-best-times` (best times per difficulty). `saveState()` serializes `puzzleId`, `difficulty`, `playerGrid`, `cellFlags`, `timerElapsed`, `timerStarted`, `selectedCell`, `direction` after every action (letter input, backspace, check, reveal, new puzzle load). `loadState()` restores full state on page load by matching puzzle ID in the difficulty pool, rebuilds computed data (wordSpans, clueMap), updates UI (difficulty buttons, timer display with Resume). `clearSavedState()` called on win, new game, and difficulty change. Best times tracked via `saveBestTime(diff, seconds)` and `getBestTimes()` — win overlay shows "New best!" or current best time. Browser-verified: typed letter persists across reload, New Puzzle clears state, win clears state and saves best time, zero console errors. Files changed: `games/crossword/game.js`._
 
 - [x] **[CW-006]** Check/Reveal — toolbar buttons and cell flag rendering [engine]
   - _Completed: Added 4 DOM refs for toolbar buttons (`checkLetterBtn`, `checkWordBtn`, `revealLetterBtn`, `revealWordBtn`). Implemented `checkCell(row, col)` and `revealCell(row, col)` as reusable helpers, then `checkLetter()`, `checkWord()`, `revealLetter()`, `revealWord()` as public actions. Check marks incorrect cells with `.checked-incorrect` (terracotta); correct cells have incorrect flag cleared. Reveal fills correct letter, sets `.revealed` (faint/italic), clears incorrect flag. Revealed cells locked from input (already handled by existing keyboard guard). Wired click handlers for all 4 buttons. Reveal actions also call `checkWin()` in case revealing completes the puzzle. Browser-verified: Check Letter/Word mark wrong letters, Reveal Letter/Word fill correct answers, revealed cells resist typing, zero console errors. Files changed: `games/crossword/game.js`._
