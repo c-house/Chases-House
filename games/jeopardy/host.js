@@ -76,6 +76,10 @@
     els.ddRevealed = document.getElementById('dd-revealed');
     els.ddAnswerText = document.getElementById('dd-answer-text');
     els.ddReturnBtn = document.getElementById('dd-return-btn');
+    // Round transition
+    els.roundTransitionTitle = document.getElementById('round-transition-title');
+    els.roundTransitionSubtitle = document.getElementById('round-transition-subtitle');
+    els.nextRoundBtn = document.getElementById('next-round-btn');
   }
 
   // ── Phase Management ────────────────────────────────────────
@@ -477,7 +481,11 @@
     J.ref('rooms/' + roomCode + '/game/currentClue').set(null);
     currentClueData = null;
     renderScoreboard();
-    showPhase('phase-board');
+    if (isRoundComplete()) {
+      checkRoundComplete();
+    } else {
+      showPhase('phase-board');
+    }
   }
 
   // ── Buzzing + Judging ─────────────────────────────────────
@@ -723,7 +731,11 @@
     J.ref('rooms/' + roomCode + '/game/dailyDouble').set(null);
     currentClueData = null;
     renderScoreboard();
-    showPhase('phase-board');
+    if (isRoundComplete()) {
+      checkRoundComplete();
+    } else {
+      showPhase('phase-board');
+    }
   }
 
   function cleanupDailyDouble() {
@@ -731,6 +743,84 @@
       ddWagerListenerRef.off();
       ddWagerListenerRef = null;
     }
+  }
+
+  // ── Round Transitions ───────────────────────────────────────
+
+  function isRoundComplete() {
+    if (!boardState || !boardState.categories) return false;
+    var cats = boardState.categories;
+    for (var c = 0; c < cats.length; c++) {
+      for (var r = 0; r < cats[c].clues.length; r++) {
+        if (!cats[c].clues[r].asked) return false;
+      }
+    }
+    return true;
+  }
+
+  function checkRoundComplete() {
+    if (!isRoundComplete()) return;
+
+    if (currentRound === 1 && config.enableDoubleJeopardy) {
+      showRoundTransition();
+    } else {
+      // Last round done — go to Final Jeopardy or Game Over
+      onAllRoundsComplete();
+    }
+  }
+
+  function showRoundTransition() {
+    els.roundTransitionTitle.textContent = 'Round 1 Complete';
+    els.roundTransitionSubtitle.textContent = 'Double Jeopardy is next...';
+    showPhase('phase-round-transition');
+  }
+
+  function onNextRound() {
+    currentRound = 2;
+
+    // Lowest-scoring player picks first in Round 2
+    var lowestPicker = getLowestScoringPlayer();
+
+    // Update Firebase
+    J.ref('rooms/' + roomCode).update({
+      'game/currentRound': 2,
+      'game/pickingPlayer': lowestPicker,
+      'game/currentClue': null
+    });
+
+    loadRoundBoard(2);
+  }
+
+  function getLowestScoringPlayer() {
+    var ids = Object.keys(players);
+    if (ids.length === 0) return null;
+
+    var lowestId = ids[0];
+    var lowestScore = (players[ids[0]] && players[ids[0]].score) || 0;
+
+    for (var i = 1; i < ids.length; i++) {
+      var score = (players[ids[i]] && players[ids[i]].score) || 0;
+      if (score < lowestScore) {
+        lowestScore = score;
+        lowestId = ids[i];
+      }
+    }
+    return lowestId;
+  }
+
+  function onAllRoundsComplete() {
+    // Placeholder — Final Jeopardy (JP-013) or Game Over (JP-014) will handle this
+    // For now, show round transition with a "game complete" message
+    if (config.enableFinalJeopardy) {
+      els.roundTransitionTitle.textContent = currentRound === 1 ? 'Round Complete' : 'Double Jeopardy Complete';
+      els.roundTransitionSubtitle.textContent = 'Final Jeopardy is next...';
+      // JP-013 will replace this with actual Final Jeopardy flow
+    } else {
+      els.roundTransitionTitle.textContent = 'All Rounds Complete';
+      els.roundTransitionSubtitle.textContent = 'Final scores are in!';
+      // JP-014 will replace this with Game Over flow
+    }
+    showPhase('phase-round-transition');
   }
 
   // ── Scoreboard ────────────────────────────────────────────
@@ -793,6 +883,7 @@
     els.ddCorrectBtn.addEventListener('click', onDDJudgeCorrect);
     els.ddIncorrectBtn.addEventListener('click', onDDJudgeIncorrect);
     els.ddReturnBtn.addEventListener('click', ddReturnToBoard);
+    els.nextRoundBtn.addEventListener('click', onNextRound);
 
     // Firebase auth + room creation
     try {

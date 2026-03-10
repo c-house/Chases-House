@@ -4,17 +4,6 @@ _Last updated: 2026-03-09_
 ## In Progress
 (none)
 
-- [ ] **[JP-012]** Round transitions — Single → Double Jeopardy [engine]
-  - Acceptance: After all Round 1 clues asked, "Round 1 Complete" overlay appears; Round 2 board loads with doubled values and 2 Daily Doubles; lowest-scoring player picks first in Round 2; Double Jeopardy skipped if disabled in config
-  - Files: `games/jeopardy/host.js`
-  - Track current round (1 or 2) in Firebase `game/currentRound`
-  - After all clues in Round 1 asked → "Round 1 Complete" overlay → transition to Round 2
-  - Load Round 2 board data (doubled values: $400–$2000, 2 Daily Doubles)
-  - Re-render board with Round 2 categories and values
-  - Picking player for Round 2 start = player with lowest score (Jeopardy rule)
-  - Skip Round 2 if Double Jeopardy is disabled in config
-  - Depends on: JP-011
-
 - [ ] **[JP-013]** Final Jeopardy flow [engine]
   - Acceptance: Final Jeopardy category reveals first; all players submit wagers (clamped 0–score); clue shown with 30s timer; players type answers; host judges each player; scores adjust; game transitions to Game Over
   - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
@@ -77,6 +66,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-012]** Round transitions — Single → Double Jeopardy [engine]
+  - Acceptance: After all Round 1 clues asked, "Round 1 Complete" overlay appears; Round 2 board loads with doubled values and 2 Daily Doubles; lowest-scoring player picks first in Round 2; Double Jeopardy skipped if disabled in config
+  - Files: `games/jeopardy/host.js`
+  _Completed: Implemented full round transition logic in `host.js`. Added `isRoundComplete()` which iterates all categories/clues in the current `boardState` to check if every clue has `asked: true`. Modified `returnToBoard()` and `ddReturnToBoard()` to call `checkRoundComplete()` after clearing the current clue — if the round is complete, the transition overlay shows instead of returning to the board. `checkRoundComplete()` routes to `showRoundTransition()` (Round 1 → Double Jeopardy) or `onAllRoundsComplete()` (last round → placeholder for Final Jeopardy/Game Over). `showRoundTransition()` sets the existing `phase-round-transition` overlay title/subtitle text. `onNextRound()` handles the Continue button: sets `currentRound = 2`, writes `game/currentRound: 2` to Firebase, computes lowest-scoring player via `getLowestScoringPlayer()` and sets them as `game/pickingPlayer`, then calls `loadRoundBoard(2)` to fetch and render the Round 2 board. `getLowestScoringPlayer()` iterates all players and returns the one with the lowest score (tie goes to first found). `onAllRoundsComplete()` is a temporary placeholder that shows a transition overlay with appropriate messaging for Final Jeopardy (JP-013) or Game Over (JP-014) — these will replace it. Cached 3 new DOM elements (`roundTransitionTitle`, `roundTransitionSubtitle`, `nextRoundBtn`). Wired `nextRoundBtn` click handler in `init()`. When Double Jeopardy is disabled in config, Round 1 completion routes directly to `onAllRoundsComplete()` instead of showing the Double Jeopardy transition. Browser validated: host and player pages load with zero JS errors (only expected Firebase placeholder API key errors). Files changed: `games/jeopardy/host.js`._
 
 - [x] **[JP-011]** Daily Double handling on host + player [engine]
   - Acceptance: Daily Double cell triggers wager flow instead of buzzing; only picking player sees wager input; wager min/max enforced; host sees wager, judges correct/incorrect, score adjusts by wager amount
