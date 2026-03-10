@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Board Builder — Jeopardy — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page Content ────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(2rem, 4vh, 4rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 2vh, 2rem);
+      width: 100%;
+    }
+
+    .builder-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 960px;
+      flex: 1;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    .builder-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .builder-desc {
+      font-size: clamp(0.88rem, 1.4vw, 1rem);
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: clamp(1.5rem, 3vw, 2rem);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       BOARD META (Title + Author)
+       ═══════════════════════════════════════════════════ */
+    .board-meta {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      transition: border-color 0.25s ease;
+      box-sizing: border-box;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .form-input.invalid {
+      border-color: var(--terracotta);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       TAB BAR
+       ═══════════════════════════════════════════════════ */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      width: 100%;
+      border-bottom: 1px solid var(--accent-ember);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.7rem 1rem;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.25s ease, border-color 0.25s ease;
+      text-align: center;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      color: var(--accent-gold);
+      border-bottom-color: var(--accent-gold);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       TAB PANELS
+       ═══════════════════════════════════════════════════ */
+    .tab-panel {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .tab-panel.active {
+      display: flex;
+    }
+
+    /* ── Round Panel (R1 / R2) ────────────────────────── */
+    .categories-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      width: 100%;
+    }
+
+    .category-block {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(13, 26, 58, 0.4);
+      border-bottom: 1px solid var(--accent-ember);
+    }
+
+    .category-number {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 20, 'WONK' 0, 'SOFT' 0;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      min-width: 1.5rem;
+    }
+
+    .category-name-input {
+      flex: 1;
+      padding: 0.5rem 0.7rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-heading);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      transition: border-color 0.25s ease;
+      box-sizing: border-box;
+    }
+
+    .category-name-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .category-name-input.invalid {
+      border-color: var(--terracotta);
+    }
+
+    .category-name-input::placeholder {
+      color: var(--text-faint);
+      font-weight: 400;
+    }
+
+    .clues-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .clue-row {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr 1fr;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      align-items: center;
+      border-bottom: 1px solid rgba(160, 104, 40, 0.15);
+    }
+
+    .clue-row:last-child {
+      border-bottom: none;
+    }
+
+    .clue-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 20, 'WONK' 0, 'SOFT' 0;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      text-align: center;
+    }
+
+    .clue-input {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid rgba(160, 104, 40, 0.3);
+      border-radius: 3px;
+      transition: border-color 0.25s ease;
+      box-sizing: border-box;
+    }
+
+    .clue-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .clue-input.invalid {
+      border-color: var(--terracotta);
+    }
+
+    .clue-input::placeholder {
+      color: var(--text-faint);
+      font-size: 0.8rem;
+    }
+
+    /* ── Final Jeopardy Panel ────────────────────────── */
+    .final-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 6px;
+      padding: 1.5rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .final-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--accent-gold);
+      text-align: center;
+    }
+
+    .final-clue-input {
+      width: 100%;
+      padding: 0.65rem 0.8rem;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      transition: border-color 0.25s ease;
+      box-sizing: border-box;
+      min-height: 5rem;
+      resize: vertical;
+    }
+
+    .final-clue-input:focus {
+      outline: none;
+      border-color: var(--accent-gold);
+    }
+
+    .final-clue-input.invalid {
+      border-color: var(--terracotta);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       ACTION BAR
+       ═══════════════════════════════════════════════════ */
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      width: 100%;
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--accent-ember);
+    }
+
+    .action-btn {
+      padding: 0.6rem 1.2rem;
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.25s ease, border-color 0.25s ease, transform 0.15s ease;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .action-btn-primary {
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .action-btn-primary:hover {
+      background: var(--accent-glow);
+      border-color: var(--accent-glow);
+    }
+
+    .action-btn-secondary {
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+    }
+
+    .action-btn-secondary:hover {
+      border-color: var(--accent-gold);
+    }
+
+    .action-btn-danger {
+      color: var(--terracotta);
+      background: none;
+      border-color: rgba(176, 90, 58, 0.4);
+    }
+
+    .action-btn-danger:hover {
+      background: rgba(176, 90, 58, 0.1);
+      border-color: var(--terracotta);
+    }
+
+    .action-spacer {
+      flex: 1;
+    }
+
+    /* Hidden file input for import */
+    .import-file-input {
+      display: none;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       VALIDATION STATUS
+       ═══════════════════════════════════════════════════ */
+    .validation-bar {
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 3px;
+      font-size: 0.85rem;
+    }
+
+    .validation-bar.visible {
+      display: flex;
+    }
+
+    .validation-bar.error {
+      background: rgba(176, 90, 58, 0.12);
+      border: 1px solid rgba(176, 90, 58, 0.3);
+      color: var(--terracotta);
+    }
+
+    .validation-bar.success {
+      background: rgba(126, 164, 120, 0.12);
+      border: 1px solid rgba(126, 164, 120, 0.3);
+      color: var(--sage);
+    }
+
+    .validation-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .validation-text {
+      flex: 1;
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: clamp(1.5rem, 3vw, 2rem);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.25s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent-gold);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+      .board-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .clue-row {
+        grid-template-columns: 3.5rem 1fr;
+        gap: 0.4rem;
+      }
+
+      .clue-row .clue-input:last-child {
+        grid-column: 2;
+      }
+
+      .action-bar {
+        flex-direction: column;
+      }
+
+      .action-spacer {
+        display: none;
+      }
+
+      .action-btn {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (hidden) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <div class="builder-content">
+      <h1 class="builder-title">Board Builder</h1>
+      <p class="builder-desc">Create custom Jeopardy boards with your own categories and clues.</p>
+
+      <!-- Board Meta -->
+      <div class="board-meta">
+        <div class="form-group">
+          <label class="form-label" for="board-title">Board Title</label>
+          <input type="text" id="board-title" class="form-input" placeholder="e.g. General Knowledge" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="board-author">Author</label>
+          <input type="text" id="board-author" class="form-input" placeholder="Your name" maxlength="50">
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="tab-bar" role="tablist" aria-label="Round selection">
+        <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-round1" data-tab="round1">Round 1</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-round2" data-tab="round2">Round 2</button>
+        <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-final" data-tab="final">Final Jeopardy</button>
+      </div>
+
+      <!-- Round 1 Panel -->
+      <div id="panel-round1" class="tab-panel active" role="tabpanel" data-round="1">
+        <div class="categories-grid" id="round1-categories">
+          <!-- Category 1 -->
+          <div class="category-block" data-category="0">
+            <div class="category-header">
+              <span class="category-number">1</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 2 -->
+          <div class="category-block" data-category="1">
+            <div class="category-header">
+              <span class="category-number">2</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 3 -->
+          <div class="category-block" data-category="2">
+            <div class="category-header">
+              <span class="category-number">3</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 4 -->
+          <div class="category-block" data-category="3">
+            <div class="category-header">
+              <span class="category-number">4</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 5 -->
+          <div class="category-block" data-category="4">
+            <div class="category-header">
+              <span class="category-number">5</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 6 -->
+          <div class="category-block" data-category="5">
+            <div class="category-header">
+              <span class="category-number">6</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$1000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Round 2 Panel -->
+      <div id="panel-round2" class="tab-panel" role="tabpanel" data-round="2">
+        <div class="categories-grid" id="round2-categories">
+          <!-- Category 1 -->
+          <div class="category-block" data-category="0">
+            <div class="category-header">
+              <span class="category-number">1</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 2 -->
+          <div class="category-block" data-category="1">
+            <div class="category-header">
+              <span class="category-number">2</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 3 -->
+          <div class="category-block" data-category="2">
+            <div class="category-header">
+              <span class="category-number">3</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 4 -->
+          <div class="category-block" data-category="3">
+            <div class="category-header">
+              <span class="category-number">4</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 5 -->
+          <div class="category-block" data-category="4">
+            <div class="category-header">
+              <span class="category-number">5</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+          <!-- Category 6 -->
+          <div class="category-block" data-category="5">
+            <div class="category-header">
+              <span class="category-number">6</span>
+              <input type="text" class="category-name-input" placeholder="Category name" data-field="category" maxlength="60">
+            </div>
+            <div class="clues-list">
+              <div class="clue-row"><span class="clue-value">$400</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="0"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="0"></div>
+              <div class="clue-row"><span class="clue-value">$800</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="1"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="1"></div>
+              <div class="clue-row"><span class="clue-value">$1200</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="2"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="2"></div>
+              <div class="clue-row"><span class="clue-value">$1600</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="3"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="3"></div>
+              <div class="clue-row"><span class="clue-value">$2000</span><input type="text" class="clue-input" placeholder="Clue" data-field="clue" data-clue="4"><input type="text" class="clue-input" placeholder="Answer" data-field="answer" data-clue="4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Final Jeopardy Panel -->
+      <div id="panel-final" class="tab-panel" role="tabpanel">
+        <div class="final-panel">
+          <div class="final-title">Final Jeopardy</div>
+          <div class="form-group">
+            <label class="form-label" for="final-category">Category</label>
+            <input type="text" id="final-category" class="form-input" placeholder="e.g. World History" maxlength="60">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="final-clue">Clue</label>
+            <textarea id="final-clue" class="final-clue-input" placeholder="The clue text that players will see..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="final-answer">Answer</label>
+            <input type="text" id="final-answer" class="form-input" placeholder="The correct response" maxlength="200">
+          </div>
+        </div>
+      </div>
+
+      <!-- Validation Status -->
+      <div id="validation-bar" class="validation-bar" aria-live="polite">
+        <span class="validation-icon" id="validation-icon"></span>
+        <span class="validation-text" id="validation-text"></span>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="action-bar">
+        <button class="action-btn action-btn-primary" id="save-btn">Save</button>
+        <button class="action-btn action-btn-secondary" id="load-btn">Load</button>
+        <button class="action-btn action-btn-secondary" id="export-btn">Export JSON</button>
+        <button class="action-btn action-btn-secondary" id="import-btn">Import JSON</button>
+        <input type="file" id="import-file" class="import-file-input" accept=".json,application/json">
+        <span class="action-spacer"></span>
+        <button class="action-btn action-btn-danger" id="clear-btn">Clear</button>
+      </div>
+
+      <a class="back-link" href="/games/jeopardy/">&larr; Back to Jeopardy</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <!-- Firebase v10 Compat SDK (required for shared.js) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <!-- Game Scripts -->
+  <script src="shared.js"></script>
+  <script src="builder.js"></script>
+</body>
+</html>

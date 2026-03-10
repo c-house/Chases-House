@@ -1,0 +1,15 @@
+services:
+  sandbox:
+    build:
+      context: .
+    volumes:
+      - ..:/workspace
+      - ${USERPROFILE}/.claude/.credentials.json:/tmp/host-credentials:ro
+      - ${USERPROFILE}/.gitconfig:/home/node/.gitconfig:ro
+    working_dir: /workspace
+    environment:
+      - CLAUDE_CODE_MAX_OUTPUT_TOKENS=${CLAUDE_CODE_MAX_OUTPUT_TOKENS:-64000}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-}
+    stdin_open: true
+    tty: true

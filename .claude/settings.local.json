@@ -57,7 +57,8 @@
       "mcp__chrome-devtools__upload_file",
       "mcp__chrome-devtools__wait_for",
       "WebSearch",
-      "Bash(claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest)"
+      "Bash(claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest)",
+      "Bash(claude --version)"
     ],
     "deny": [],
     "ask": []

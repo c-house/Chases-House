@@ -1,4 +1,4 @@
-# ADR-010: Jeopardy
+# ADR-011: Jeopardy
 
 **Status**: Accepted
 **Date**: 2026-03-09
