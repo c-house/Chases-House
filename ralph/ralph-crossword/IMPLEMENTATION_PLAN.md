@@ -6,16 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-001]** Seed `puzzles.js` with 2–3 puzzles per difficulty [data]
-  - Acceptance: `window.CrosswordPuzzles` exports puzzle arrays for Easy (5×5), Medium (9×9), Hard (13×13), Extreme (15×15) with 2–3 valid puzzles each; all grids have proper interlocking (no orphan letters); clues match answers
-  - Files: `games/crossword/puzzles.js`
-  - Create `games/crossword/puzzles.js` exporting via `window.CrosswordPuzzles`
-  - Include 2–3 puzzles each for Easy (5×5), Medium (9×9), Hard (13×13), Extreme (15×15)
-  - Follow JSON schema from ADR-010: `id`, `size`, `title`, `grid` (2D array, `#` = black), `clues` with `across`/`down` arrays
-  - Each clue has `num`, `row`, `col`, `text`, `answer`
-  - Puzzles must have valid interlocking words (no orphan letters)
-  - Depends on: (none)
-
 - [ ] **[CW-002]** Build `index.html` with full HTML structure + inline CSS [ui]
   - Acceptance: Page loads with no console errors; grid container, clue panels (Across/Down), toolbar, timer display, difficulty selector, and status bar all present; responsive layout stacks on mobile (≤768px); design matches site tokens
   - Files: `games/crossword/index.html`
@@ -115,4 +105,6 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
-(none yet)
+
+- [x] **[CW-001]** Seed `puzzles.js` with 2–3 puzzles per difficulty [data]
+  - _Completed: Rewrote `games/crossword/puzzles.js` with 8 valid puzzles (2 per difficulty). Each puzzle uses a cross/plus grid pattern with interlocking across and down words. All grids validated: correct dimensions, clue answers match grid letters, no orphan letters. Easy (5×5) uses 3+3 word checkerboard pattern; Medium (9×9), Hard (13×13), Extreme (15×15) use a symmetric cross pattern with words along the arms. Files changed: `games/crossword/puzzles.js`. Replaced prior invalid puzzle data (had non-words like NOMEE, PELTR, CLEISTAR)._
