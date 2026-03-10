@@ -1,19 +1,14 @@
 # Jeopardy Game — Implementation Plan
-_Last updated: 2026-03-09_
+_Last updated: 2026-03-10_
 
 ## In Progress
-(none)
-
-- [ ] **[JP-017]** Add Jeopardy card to `games/index.html` gallery [ui]
-  - Acceptance: Jeopardy card appears in games gallery with "Multiplayer" badge; card links to `games/jeopardy/`; styling matches existing cards
-  - Files: `games/index.html`
-  - Add a Jeopardy game card to the games gallery page
-  - Include "Multiplayer" tag/badge to distinguish from single-player games
-  - Card links to `games/jeopardy/`
-  - Match existing card style (title, description, thumbnail area)
-  - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-017]** Add Jeopardy card to `games/index.html` gallery [ui]
+  - Acceptance: Jeopardy card appears in games gallery with "Multiplayer" badge; card links to `games/jeopardy/`; styling matches existing cards
+  - Files: `games/index.html`
+  _Completed: Added Jeopardy game card to the games gallery grid in `games/index.html`. Card uses ❓ icon (`&#10067;`), links to `/games/jeopardy/`, includes description about Jackbox-style multiplayer trivia with Daily Doubles/Final Jeopardy/board builder, and has "multiplayer" tag badge to distinguish from the vs AI and solo games. Also updated the page description to mention multiplayer alongside AI and solo modes. Matches existing `.game-card` structure and styling exactly. Files changed: `games/index.html`._
 
 - [x] **[JP-016]** Build `builder.js` — Builder logic + persistence [engine]
   - Acceptance: Form data serializes to valid board JSON matching ADR-011 schema; validation highlights missing fields; Save persists to localStorage; Load populates form; Export downloads .json file; Import accepts file upload and populates form; Clear resets with confirmation
