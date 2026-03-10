@@ -25,6 +25,10 @@
   var lockedOutPlayers = {};    // Players locked out for current clue
   var buzzListenerRef = null;   // Firebase ref for buzz listener cleanup
   var currentBuzzer = null;     // Player ID currently being judged
+  var pickingPlayerId = null;   // Current picking player ID
+  var ddWagerListenerRef = null; // Firebase ref for DD wager listener
+  var ddWager = 0;               // Current DD wager amount
+  var ddPlayerId = null;         // Player making the DD wager
 
   // ── DOM Elements ────────────────────────────────────────────
   var els = {};
@@ -61,6 +65,17 @@
     els.buzzedPlayer = document.getElementById('buzzed-player');
     els.judgeCorrectBtn = document.getElementById('judge-correct-btn');
     els.judgeIncorrectBtn = document.getElementById('judge-incorrect-btn');
+    // Daily Double overlay
+    els.ddPlayerName = document.getElementById('dd-player-name');
+    els.ddWagerStatus = document.getElementById('dd-wager-status');
+    els.ddWagerAmount = document.getElementById('dd-wager-amount');
+    els.ddClueText = document.getElementById('dd-clue-text');
+    els.ddJudging = document.getElementById('dd-judging');
+    els.ddCorrectBtn = document.getElementById('dd-correct-btn');
+    els.ddIncorrectBtn = document.getElementById('dd-incorrect-btn');
+    els.ddRevealed = document.getElementById('dd-revealed');
+    els.ddAnswerText = document.getElementById('dd-answer-text');
+    els.ddReturnBtn = document.getElementById('dd-return-btn');
   }
 
   // ── Phase Management ────────────────────────────────────────
@@ -380,6 +395,8 @@
     var clueIndex = parseInt(cell.dataset.clue, 10);
     var clue = boardState.categories[catIndex].clues[clueIndex];
 
+    var isDailyDouble = !!clue.dailyDouble;
+
     // Build clue data for Firebase
     currentClueData = {
       categoryIndex: catIndex,
@@ -387,7 +404,8 @@
       state: J.CLUE_STATE.READING,
       text: clue.clue,
       answer: clue.answer,
-      value: clue.value
+      value: clue.value,
+      dailyDouble: isDailyDouble
     };
 
     // Write to Firebase: set currentClue + mark asked
@@ -403,8 +421,12 @@
     cell.textContent = '';
     cell.style.pointerEvents = 'none';
 
-    // Show clue overlay
-    showClueOverlay();
+    // Show appropriate overlay
+    if (isDailyDouble) {
+      showDailyDoubleOverlay();
+    } else {
+      showClueOverlay();
+    }
   }
 
   // ── Clue Overlay ──────────────────────────────────────────
@@ -625,6 +647,92 @@
     J.ref('rooms/' + roomCode + '/players/' + playerId + '/score').set(current + delta);
   }
 
+  // ── Daily Double Flow ──────────────────────────────────────
+
+  function showDailyDoubleOverlay() {
+    ddPlayerId = pickingPlayerId;
+    ddWager = 0;
+
+    els.ddPlayerName.textContent = (players[ddPlayerId] && players[ddPlayerId].name) || '...';
+
+    // Reset DD overlay state
+    els.ddWagerStatus.textContent = 'Waiting for wager...';
+    els.ddWagerStatus.style.display = '';
+    els.ddWagerAmount.style.display = 'none';
+    els.ddClueText.style.display = 'none';
+    els.ddJudging.style.display = 'none';
+    els.ddRevealed.style.display = 'none';
+
+    showPhase('phase-daily-double');
+    listenForDDWager();
+  }
+
+  function listenForDDWager() {
+    ddWagerListenerRef = J.ref('rooms/' + roomCode + '/game/dailyDouble');
+    ddWagerListenerRef.on('value', function (snap) {
+      var data = snap.val();
+      if (data && data.wager !== undefined) {
+        onDDWagerReceived(data);
+      }
+    });
+  }
+
+  function onDDWagerReceived(data) {
+    ddWager = data.wager;
+    ddPlayerId = data.playerId;
+
+    // Show wager amount, clue text, and judging controls
+    els.ddWagerStatus.textContent = 'Wagered:';
+    els.ddWagerAmount.textContent = '$' + ddWager;
+    els.ddWagerAmount.style.display = '';
+    els.ddClueText.textContent = currentClueData.text;
+    els.ddClueText.style.display = '';
+    els.ddJudging.style.display = '';
+
+    // Update Firebase state so player knows to answer
+    J.ref('rooms/' + roomCode + '/game/currentClue/state').set(J.CLUE_STATE.ANSWERING);
+  }
+
+  function onDDJudgeCorrect() {
+    if (!ddPlayerId) return;
+    updatePlayerScore(ddPlayerId, ddWager);
+    cleanupDailyDouble();
+    ddRevealAnswer(true);
+  }
+
+  function onDDJudgeIncorrect() {
+    if (!ddPlayerId) return;
+    updatePlayerScore(ddPlayerId, -ddWager);
+    cleanupDailyDouble();
+    ddRevealAnswer(false);
+  }
+
+  function ddRevealAnswer(wasCorrect) {
+    J.ref('rooms/' + roomCode + '/game/currentClue/state').set(J.CLUE_STATE.REVEALED);
+
+    els.ddClueText.style.display = 'none';
+    els.ddJudging.style.display = 'none';
+    els.ddWagerStatus.textContent = wasCorrect ? 'Correct!' : 'Incorrect';
+    els.ddAnswerText.textContent = currentClueData.answer;
+    els.ddRevealed.style.display = '';
+  }
+
+  function ddReturnToBoard() {
+    cleanupDailyDouble();
+    J.ref('rooms/' + roomCode + '/game/currentClue').set(null);
+    J.ref('rooms/' + roomCode + '/game/dailyDouble').set(null);
+    currentClueData = null;
+    renderScoreboard();
+    showPhase('phase-board');
+  }
+
+  function cleanupDailyDouble() {
+    if (ddWagerListenerRef) {
+      ddWagerListenerRef.off();
+      ddWagerListenerRef = null;
+    }
+  }
+
   // ── Scoreboard ────────────────────────────────────────────
 
   function formatScore(score) {
@@ -662,9 +770,9 @@
 
   function listenForPickingPlayer() {
     J.ref('rooms/' + roomCode + '/game/pickingPlayer').on('value', function (snap) {
-      var playerId = snap.val();
-      if (playerId && players[playerId]) {
-        els.pickingPlayer.textContent = players[playerId].name;
+      pickingPlayerId = snap.val();
+      if (pickingPlayerId && players[pickingPlayerId]) {
+        els.pickingPlayer.textContent = players[pickingPlayerId].name;
       }
     });
   }
@@ -682,6 +790,9 @@
     els.returnBoardBtn.addEventListener('click', returnToBoard);
     els.judgeCorrectBtn.addEventListener('click', onJudgeCorrect);
     els.judgeIncorrectBtn.addEventListener('click', onJudgeIncorrect);
+    els.ddCorrectBtn.addEventListener('click', onDDJudgeCorrect);
+    els.ddIncorrectBtn.addEventListener('click', onDDJudgeIncorrect);
+    els.ddReturnBtn.addEventListener('click', ddReturnToBoard);
 
     // Firebase auth + room creation
     try {

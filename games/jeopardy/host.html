@@ -1218,6 +1218,15 @@
           <button id="dd-correct-btn" class="judge-btn correct">Correct</button>
           <button id="dd-incorrect-btn" class="judge-btn incorrect">Incorrect</button>
         </div>
+
+        <!-- After judging: show answer + return to board -->
+        <div id="dd-revealed" class="answer-reveal" style="display:none">
+          <span class="answer-label">Answer</span>
+          <p id="dd-answer-text" class="answer-text"></p>
+          <div class="clue-controls">
+            <button id="dd-return-btn" class="clue-btn return-board">Return to Board</button>
+          </div>
+        </div>
       </section>
 
       <!-- ═══ ROUND TRANSITION OVERLAY ══════════════════ -->

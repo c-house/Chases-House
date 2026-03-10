@@ -4,18 +4,6 @@ _Last updated: 2026-03-09_
 ## In Progress
 (none)
 
-- [ ] **[JP-011]** Daily Double handling on host + player [engine]
-  - Acceptance: Daily Double cell triggers wager flow instead of buzzing; only picking player sees wager input; wager min/max enforced; host sees wager, judges correct/incorrect, score adjusts by wager amount
-  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
-  - At game start (JP-006 already places randomly): mark Daily Double cells in Firebase board data
-  - When host clicks a Daily Double cell: transition to `dailyDouble` state instead of normal buzzing
-  - Host UI: show "Daily Double!" overlay, display picking player name, wait for wager
-  - Player UI: only the picking player sees wager input (min $5, max = score or highest clue value if score < that)
-  - Player submits wager → written to Firebase → host sees wager amount
-  - Host reads clue aloud, player answers verbally
-  - Host judges Correct (add wager) / Incorrect (deduct wager) → return to board
-  - Depends on: JP-009, JP-010
-
 - [ ] **[JP-012]** Round transitions — Single → Double Jeopardy [engine]
   - Acceptance: After all Round 1 clues asked, "Round 1 Complete" overlay appears; Round 2 board loads with doubled values and 2 Daily Doubles; lowest-scoring player picks first in Round 2; Double Jeopardy skipped if disabled in config
   - Files: `games/jeopardy/host.js`
@@ -89,6 +77,11 @@ _Last updated: 2026-03-09_
   - Depends on: JP-003
 
 ## Done
+
+- [x] **[JP-011]** Daily Double handling on host + player [engine]
+  - Acceptance: Daily Double cell triggers wager flow instead of buzzing; only picking player sees wager input; wager min/max enforced; host sees wager, judges correct/incorrect, score adjusts by wager amount
+  - Files: `games/jeopardy/host.js`, `games/jeopardy/player.js`
+  _Completed: Implemented full Daily Double flow across host and player. **host.js**: Added 3 new state vars (`ddWagerListenerRef`, `ddWager`, `ddPlayerId`) and stored `pickingPlayerId` in the picking player listener. Modified `onCellClick()` to check `clue.dailyDouble` flag and include it in `currentClueData` — DD cells route to `showDailyDoubleOverlay()` instead of `showClueOverlay()`. `showDailyDoubleOverlay()` shows the DD phase with picking player's name and "Waiting for wager..." status, then `listenForDDWager()` watches `game/dailyDouble` for the player's wager submission. `onDDWagerReceived()` displays wager amount, reveals clue text for host to read aloud, shows Correct/Incorrect judging buttons, and updates Firebase state to ANSWERING. `onDDJudgeCorrect()` adds wager to score; `onDDJudgeIncorrect()` deducts wager. `ddRevealAnswer()` shows the answer with "Correct!"/"Incorrect" status and a Return to Board button. `ddReturnToBoard()` clears both `currentClue` and `dailyDouble` from Firebase. Cached 10 new DD DOM elements. Wired 3 DD event listeners. **host.html**: Added `dd-revealed` section with answer text and Return to Board button to the Daily Double overlay. **player.js**: Added 3 new state vars (`currentScore`, `currentRound`, `ddWagerSubmitted`). `listenForScore()` now stores `currentScore` for wager limit computation. Added `listenForRound()` to track `game/currentRound`. Modified `handleClueChange()` to detect `clue.dailyDouble` and route to `handleDailyDouble()`, which branches to `handleDDAsPickingPlayer()` (shows wager form with min=$5, max=max(score, round max value)) or `handleDDAsSpectator()` (shows "[Name] found the Daily Double!" with status messages). `showDDWagerForm()` configures input limits and range display. `validateDDWager()` enables/disables submit based on bounds. `submitDDWager()` writes `{playerId, wager}` to `game/dailyDouble` in Firebase. State transitions (READING→ANSWERING→REVEALED) update the DD phase UI appropriately — picking player sees clue text during ANSWERING, spectators see status updates. `ddWagerSubmitted` flag prevents re-showing form on Firebase re-fires. Added `showPhase('phase-playing')` to null clue handler for clean DD→board transitions. Cached 6 DD DOM elements, wired 2 event listeners. Browser validated: both host and player pages load with zero JS errors (only expected Firebase placeholder API key errors). Files changed: `games/jeopardy/host.js`, `games/jeopardy/player.js`, `games/jeopardy/host.html`._
 
 - [x] **[JP-010]** Extend `player.js` — Buzzer + live game state [engine]
   - Acceptance: Player sees clue text when host selects a clue; buzzer button enables only during `buzzing` state with pulse animation; buzzing writes server timestamp to Firebase; lockout disables buzzer after incorrect answer; score updates live

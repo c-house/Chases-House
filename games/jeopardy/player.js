@@ -17,6 +17,9 @@
   var isLockedOut = false;     // Whether locked out for current clue
   var currentClueState = null; // Current clue state from Firebase
   var pickingPlayerId = null;  // Who is currently picking
+  var currentScore = 0;        // Player's current score (for DD wager limits)
+  var currentRound = 1;        // Current round number (for DD wager limits)
+  var ddWagerSubmitted = false; // Whether DD wager was submitted this clue
 
   // ── DOM Elements ────────────────────────────────────────────
   var els = {};
@@ -46,6 +49,14 @@
     // Buzzer
     els.buzzerBtn = document.getElementById('buzzer-btn');
     els.buzzerStatusText = document.getElementById('buzzer-status-text');
+
+    // Daily Double
+    els.ddInstruction = document.getElementById('dd-instruction');
+    els.ddWagerForm = document.getElementById('dd-wager-form');
+    els.ddWagerInput = document.getElementById('dd-wager-input');
+    els.ddWagerRange = document.getElementById('dd-wager-range');
+    els.ddWagerBtn = document.getElementById('dd-wager-btn');
+    els.ddWaiting = document.getElementById('dd-waiting');
 
     // Host disconnected overlay
     els.hostDisconnected = document.getElementById('host-disconnected');
@@ -179,6 +190,7 @@
     listenForClue();
     listenForPickingPlayer();
     listenForLockout();
+    listenForRound();
     showPhase('phase-playing');
   }
 
@@ -187,7 +199,8 @@
   function listenForScore() {
     J.ref('rooms/' + roomCode + '/players/' + playerId + '/score')
       .on('value', function (snap) {
-        updateScoreDisplay(snap.val() || 0);
+        currentScore = snap.val() || 0;
+        updateScoreDisplay(currentScore);
       });
   }
 
@@ -209,6 +222,8 @@
   function handleClueChange(clue) {
     if (!clue) {
       currentClueState = null;
+      ddWagerSubmitted = false;
+      showPhase('phase-playing');
       showCluePlaceholder();
       resetBuzzer();
       updatePickingStatus();
@@ -216,6 +231,13 @@
     }
 
     currentClueState = clue.state;
+
+    if (clue.dailyDouble) {
+      handleDailyDouble(clue);
+      return;
+    }
+
+    showPhase('phase-playing');
     showClueContent(clue.value, clue.text);
     updateBuzzerForState(clue.state);
   }
@@ -361,6 +383,118 @@
     return 'Player';
   }
 
+  // ── Round Listener ────────────────────────────────────────
+
+  function listenForRound() {
+    J.ref('rooms/' + roomCode + '/game/currentRound').on('value', function (snap) {
+      currentRound = snap.val() || 1;
+    });
+  }
+
+  // ── Daily Double ─────────────────────────────────────────
+
+  function handleDailyDouble(clue) {
+    if (pickingPlayerId === playerId) {
+      handleDDAsPickingPlayer(clue);
+    } else {
+      handleDDAsSpectator(clue);
+    }
+  }
+
+  function handleDDAsPickingPlayer(clue) {
+    showPhase('phase-daily-double');
+
+    switch (clue.state) {
+      case J.CLUE_STATE.READING:
+        if (!ddWagerSubmitted) {
+          showDDWagerForm();
+        } else {
+          els.ddWagerForm.style.display = 'none';
+          els.ddWaiting.style.display = '';
+          els.ddWaiting.textContent = 'Waiting for host...';
+          els.ddInstruction.textContent = 'Wager submitted!';
+        }
+        break;
+      case J.CLUE_STATE.ANSWERING:
+        els.ddWagerForm.style.display = 'none';
+        els.ddWaiting.style.display = '';
+        els.ddWaiting.textContent = 'Answer the clue out loud!';
+        els.ddInstruction.textContent = clue.text;
+        break;
+      case J.CLUE_STATE.REVEALED:
+        els.ddWagerForm.style.display = 'none';
+        els.ddWaiting.style.display = '';
+        els.ddWaiting.textContent = 'Answer revealed';
+        els.ddInstruction.textContent = '';
+        break;
+    }
+  }
+
+  function handleDDAsSpectator(clue) {
+    var name = getPlayerName(pickingPlayerId);
+    showPhase('phase-daily-double');
+    els.ddWagerForm.style.display = 'none';
+    els.ddWaiting.style.display = '';
+    els.ddInstruction.textContent = name + ' found the Daily Double!';
+
+    switch (clue.state) {
+      case J.CLUE_STATE.READING:
+        els.ddWaiting.textContent = name + ' is wagering...';
+        break;
+      case J.CLUE_STATE.ANSWERING:
+        els.ddWaiting.textContent = name + ' is answering...';
+        break;
+      case J.CLUE_STATE.REVEALED:
+        els.ddWaiting.textContent = 'Answer revealed';
+        break;
+    }
+  }
+
+  function showDDWagerForm() {
+    var limits = getDDWagerLimits();
+    els.ddInstruction.textContent = 'Enter your wager';
+    els.ddWagerForm.style.display = '';
+    els.ddWaiting.style.display = 'none';
+    els.ddWagerInput.min = limits.min;
+    els.ddWagerInput.max = limits.max;
+    els.ddWagerInput.value = '';
+    els.ddWagerRange.textContent = '$' + limits.min + ' \u2013 $' + limits.max.toLocaleString();
+    els.ddWagerBtn.disabled = true;
+  }
+
+  function getDDWagerLimits() {
+    var roundValues = J.ROUND_VALUES[currentRound];
+    var maxClueValue = roundValues ? roundValues[roundValues.length - 1] : 1000;
+    return {
+      min: 5,
+      max: Math.max(currentScore, maxClueValue)
+    };
+  }
+
+  function validateDDWager() {
+    var val = parseInt(els.ddWagerInput.value, 10);
+    var limits = getDDWagerLimits();
+    els.ddWagerBtn.disabled = isNaN(val) || val < limits.min || val > limits.max;
+  }
+
+  function submitDDWager() {
+    var val = parseInt(els.ddWagerInput.value, 10);
+    var limits = getDDWagerLimits();
+    if (isNaN(val) || val < limits.min || val > limits.max) return;
+
+    ddWagerSubmitted = true;
+
+    J.ref('rooms/' + roomCode + '/game/dailyDouble').set({
+      playerId: playerId,
+      wager: val
+    });
+
+    els.ddWagerForm.style.display = 'none';
+    els.ddWaiting.style.display = '';
+    els.ddWaiting.textContent = 'Waiting for host...';
+    els.ddInstruction.textContent = 'Wager: $' + val.toLocaleString();
+  }
+
   // ── URL Parameters ────────────────────────────────────────
 
   function checkUrlParams() {
@@ -391,6 +525,8 @@
 
     els.joinBtn.addEventListener('click', handleJoin);
     els.buzzerBtn.addEventListener('click', handleBuzz);
+    els.ddWagerInput.addEventListener('input', validateDDWager);
+    els.ddWagerBtn.addEventListener('click', submitDDWager);
 
     // Enter key submits join form
     els.roomCodeInput.addEventListener('keydown', function (e) {
