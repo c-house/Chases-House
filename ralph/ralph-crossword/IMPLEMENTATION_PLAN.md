@@ -6,19 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-002]** Build `index.html` with full HTML structure + inline CSS [ui]
-  - Acceptance: Page loads with no console errors; grid container, clue panels (Across/Down), toolbar, timer display, difficulty selector, and status bar all present; responsive layout stacks on mobile (≤768px); design matches site tokens
-  - Files: `games/crossword/index.html`
-  - Create `games/crossword/index.html` with grid container, clue panels (Across/Down), toolbar (Check/Reveal buttons), timer display, difficulty selector, status bar
-  - CSS Grid for board: `grid-template-columns: repeat(var(--grid-size), 1fr)` with `--grid-size` set dynamically
-  - Responsive layout: flexbox `.game-layout` with board left, clues right (desktop); stacked on mobile (≤768px) with active-clue-bar
-  - Cell states: `.selected`, `.word-highlight`, `.checked-incorrect`, `.revealed`, `.player-value`
-  - Clue numbering: absolute-positioned `<span class="cell-number">` in top-left
-  - Board width scales per difficulty via `clamp()` values
-  - Match existing site design tokens from `styles.css` (colors, fonts, animations)
-  - Include `<script>` tags for `puzzles.js` and `game.js`
-  - Depends on: (none)
-
 - [ ] **[CW-003]** Core `game.js` — state model, puzzle loading, rendering [engine]
   - Acceptance: Puzzle loads and renders correct grid with numbered cells and black cells; clue panels show Across/Down lists with active highlighting; difficulty selector loads different puzzles
   - Files: `games/crossword/game.js`
@@ -105,6 +92,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-002]** Build `index.html` with full HTML structure + inline CSS [ui]
+  - _Completed: Created `games/crossword/index.html` with full HTML structure and inline CSS. Includes: page title, difficulty selector (Easy/Medium/Hard/Extreme), Daily/Random mode toggle, timer display with pause button, CSS Grid board (`--grid-size` variable, `aspect-ratio: 1`), active clue bar (mobile), Across/Down clue panels with scrollable container, toolbar (Check Letter/Word, Reveal Letter/Word), status bar with New Puzzle button, win overlay (hidden by default), back link, footer. All cell state classes defined: `.selected`, `.word-highlight`, `.checked-incorrect`, `.revealed`, `.player-value`, `.black`. Responsive layout: flexbox `.game-layout` stacks on mobile (≤768px), active clue bar shows on mobile only. Uses site design tokens throughout. Scripts: `puzzles.js` + `game.js`. Files changed: `games/crossword/index.html`._
 
 - [x] **[CW-001]** Seed `puzzles.js` with 2–3 puzzles per difficulty [data]
   - _Completed: Rewrote `games/crossword/puzzles.js` with 8 valid puzzles (2 per difficulty). Each puzzle uses a cross/plus grid pattern with interlocking across and down words. All grids validated: correct dimensions, clue answers match grid letters, no orphan letters. Easy (5×5) uses 3+3 word checkerboard pattern; Medium (9×9), Hard (13×13), Extreme (15×15) use a symmetric cross pattern with words along the arms. Files changed: `games/crossword/puzzles.js`. Replaced prior invalid puzzle data (had non-words like NOMEE, PELTR, CLEISTAR)._

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crossword - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(2rem, 6vh, 5rem) clamp(1.5rem, 5vw, 4rem) clamp(2rem, 5vh, 4rem);
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2rem, 5vw + 0.5rem, 3.5rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-align: center;
+      animation: fadeSlideUp 800ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    /* ── Top Bar (difficulty + timer) ────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(1rem, 3vw, 2rem);
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      flex-wrap: wrap;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 250ms;
+    }
+
+    .difficulty-selector {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .difficulty-btn {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--bg-elevated);
+      border-radius: 4px;
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .difficulty-btn:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .difficulty-btn.active {
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .timer-display {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 0;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .timer-value {
+      min-width: 3.5rem;
+      text-align: center;
+    }
+
+    .timer-btn {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--bg-elevated);
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .timer-btn:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    /* ── Game Layout (board + clues) ─────────────────── */
+    .game-layout {
+      display: flex;
+      gap: clamp(1.5rem, 3vw, 2.5rem);
+      margin-top: clamp(1.5rem, 3vw, 2rem);
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      max-width: 960px;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 400ms;
+    }
+
+    /* ── Board ────────────────────────────────────────── */
+    .board-container {
+      flex-shrink: 0;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(var(--grid-size, 15), 1fr);
+      grid-template-rows: repeat(var(--grid-size, 15), 1fr);
+      gap: 1px;
+      background: var(--accent-ember);
+      border: 2px solid var(--accent-ember);
+      border-radius: 4px;
+      width: clamp(280px, 45vw, 500px);
+      aspect-ratio: 1;
+    }
+
+    .cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: clamp(0.7rem, 2.2vw, 1.3rem);
+      font-weight: 500;
+      color: var(--text-primary);
+      transition: background 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .cell.black {
+      background: var(--bg-deep);
+      cursor: default;
+    }
+
+    .cell.selected {
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+    }
+
+    .cell.word-highlight {
+      background: rgba(200, 148, 62, 0.15);
+    }
+
+    .cell.selected.word-highlight {
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+    }
+
+    .cell.player-value {
+      color: var(--accent-gold);
+    }
+
+    .cell.selected.player-value {
+      color: var(--bg-deep);
+    }
+
+    .cell.checked-incorrect {
+      color: var(--terracotta);
+    }
+
+    .cell.checked-incorrect.selected {
+      color: var(--bg-deep);
+      background: var(--terracotta);
+    }
+
+    .cell.revealed {
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    .cell-number {
+      position: absolute;
+      top: 1px;
+      left: 2px;
+      font-size: clamp(0.4rem, 1vw, 0.65rem);
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .cell.selected .cell-number,
+    .cell.checked-incorrect.selected .cell-number {
+      color: var(--bg-deep);
+    }
+
+    .cell-value {
+      pointer-events: none;
+    }
+
+    /* ── Active Clue Bar (mobile) ────────────────────── */
+    .active-clue-bar {
+      display: none;
+      width: 100%;
+      max-width: clamp(280px, 45vw, 500px);
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .active-clue-bar .clue-direction {
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-right: 0.3rem;
+    }
+
+    /* ── Clue Panels ─────────────────────────────────── */
+    .clues-container {
+      flex: 1;
+      min-width: 0;
+      max-height: clamp(350px, 50vh, 550px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .clue-section-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 1, 'SOFT' 40;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .clue-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .clue-item {
+      padding: 0.35rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.88rem;
+      color: var(--text-primary);
+      line-height: 1.4;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .clue-item:hover {
+      background: var(--bg-elevated);
+    }
+
+    .clue-item.active {
+      background: rgba(200, 148, 62, 0.15);
+      color: var(--accent-glow);
+    }
+
+    .clue-item.completed {
+      text-decoration: line-through;
+      color: var(--text-faint);
+    }
+
+    .clue-num {
+      font-weight: 700;
+      color: var(--accent-gold);
+      margin-right: 0.4rem;
+      min-width: 1.5rem;
+      display: inline-block;
+    }
+
+    .clue-item.completed .clue-num {
+      color: var(--text-faint);
+    }
+
+    /* ── Toolbar ──────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: clamp(1rem, 2vw, 1.5rem);
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 550ms;
+    }
+
+    .toolbar-btn {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--bg-elevated);
+      border-radius: 4px;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .toolbar-btn:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    /* ── Status Bar ───────────────────────────────────── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: clamp(0.8rem, 1.5vw, 1.2rem);
+      flex-wrap: wrap;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 650ms;
+    }
+
+    .status-text {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 18, 'WONK' 1;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .status-text .highlight {
+      color: var(--accent-gold);
+    }
+
+    .new-game-btn {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      background: transparent;
+      border: 1px solid var(--accent-gold);
+      border-radius: 4px;
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .new-game-btn:hover {
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+    }
+
+    /* ── Mode Toggle (Daily/Random) ──────────────────── */
+    .mode-toggle {
+      display: flex;
+      gap: 0.4rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 300ms;
+    }
+
+    .mode-btn {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--bg-elevated);
+      border-radius: 4px;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .mode-btn:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    .mode-btn.active {
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 18, 'WONK' 1, 'SOFT' 40;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      transition: color 0.3s;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 750ms;
+    }
+
+    .back-link:hover {
+      color: var(--accent-gold);
+    }
+
+    /* ── Win Overlay ──────────────────────────────────── */
+    .win-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      background: rgba(10, 10, 11, 0.88);
+      animation: fadeIn 400ms ease-out;
+    }
+
+    .win-overlay[hidden] {
+      display: none;
+    }
+
+    .win-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 60;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 350;
+      color: var(--accent-glow);
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 200ms;
+    }
+
+    .win-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 400ms;
+    }
+
+    .win-btn {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border: none;
+      border-radius: 4px;
+      padding: 0.6rem 1.6rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 600ms;
+    }
+
+    .win-btn:hover {
+      background: var(--accent-glow);
+    }
+
+    /* ── Scrollbar (clue panels) ──────────────────────── */
+    .clues-container::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .clues-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .clues-container::-webkit-scrollbar-thumb {
+      background: var(--bg-elevated);
+      border-radius: 2px;
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 768px) {
+      .game-layout {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .board {
+        width: clamp(280px, 85vw, 450px);
+      }
+
+      .active-clue-bar {
+        display: block;
+        max-width: clamp(280px, 85vw, 450px);
+      }
+
+      .clues-container {
+        max-height: 300px;
+        width: 100%;
+        max-width: clamp(280px, 85vw, 450px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-content {
+        padding-top: clamp(1rem, 3vh, 2rem);
+      }
+
+      .board {
+        width: clamp(280px, 92vw, 400px);
+      }
+
+      .active-clue-bar {
+        max-width: clamp(280px, 92vw, 400px);
+      }
+
+      .clues-container {
+        max-width: clamp(280px, 92vw, 400px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg style="position:absolute;width:0;height:0">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Crossword</h1>
+
+    <div class="top-bar">
+      <div class="difficulty-selector" role="group" aria-label="Difficulty">
+        <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
+        <button class="difficulty-btn" data-difficulty="medium">Medium</button>
+        <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+        <button class="difficulty-btn" data-difficulty="extreme">Extreme</button>
+      </div>
+
+      <div class="mode-toggle" role="group" aria-label="Puzzle mode">
+        <button class="mode-btn active" data-mode="daily">Daily</button>
+        <button class="mode-btn" data-mode="random">Random</button>
+      </div>
+
+      <div class="timer-display">
+        <span class="timer-value" id="timer-value">00:00</span>
+        <button class="timer-btn" id="timer-btn">Pause</button>
+      </div>
+    </div>
+
+    <div class="game-layout">
+      <div class="board-container">
+        <div class="board" id="board" role="grid" aria-label="Crossword board"></div>
+        <div class="active-clue-bar" id="active-clue-bar">
+          <span class="clue-direction"></span>
+          <span class="clue-text">Select a cell to begin</span>
+        </div>
+      </div>
+
+      <div class="clues-container" id="clues-container">
+        <div class="clue-section">
+          <h2 class="clue-section-title">Across</h2>
+          <ul class="clue-list" id="clues-across"></ul>
+        </div>
+        <div class="clue-section">
+          <h2 class="clue-section-title">Down</h2>
+          <ul class="clue-list" id="clues-down"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="toolbar-btn" id="check-letter-btn">Check Letter</button>
+      <button class="toolbar-btn" id="check-word-btn">Check Word</button>
+      <button class="toolbar-btn" id="reveal-letter-btn">Reveal Letter</button>
+      <button class="toolbar-btn" id="reveal-word-btn">Reveal Word</button>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-text" id="status-text">Select a cell to begin</span>
+      <button class="new-game-btn" id="new-game-btn">New Puzzle</button>
+    </div>
+
+    <a class="back-link" href="/games/">&larr; Back to Games</a>
+  </main>
+
+  <div class="win-overlay" id="win-overlay" hidden>
+    <span class="win-title">Puzzle Complete!</span>
+    <span class="win-subtitle" id="win-subtitle">You solved it</span>
+    <button class="win-btn" id="win-new-btn">New Puzzle</button>
+  </div>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="puzzles.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
