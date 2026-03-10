@@ -6,17 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-005]** Timer — count-up with pause/resume [engine]
-  - Acceptance: Timer displays MM:SS; starts on first letter entry; pause/resume button works; auto-pauses on tab hidden; auto-resumes on tab visible
-  - Files: `games/crossword/game.js`
-  - Count-up timer displayed in toolbar area
-  - Pause/resume toggle button
-  - Auto-pause on `document.visibilitychange` (tab hidden)
-  - Auto-resume on tab visible
-  - Display as MM:SS format
-  - Timer starts on first letter entry (not on page load)
-  - Depends on: CW-003
-
 - [ ] **[CW-006]** Check/Reveal — toolbar buttons and cell flag rendering [engine]
   - Acceptance: Check Letter/Word marks incorrect cells with terracotta style; Reveal Letter/Word fills correct answer with revealed style; revealed cells are locked from further input; re-render updates immediately
   - Files: `games/crossword/game.js`
@@ -66,6 +55,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-005]** Timer — count-up with pause/resume [engine]
+  - _Completed: Added timer state (`timerElapsed`, `timerRunning`, `timerStarted`, `timerInterval`) and DOM refs (`timerValueEl`, `timerBtn`). Timer functions: `formatTime()` for MM:SS display, `startTimer()`/`pauseTimer()`/`stopTimer()`/`resetTimer()`. Timer starts on first A-Z keypress (not page load). Pause/Resume button toggles timer. `visibilitychange` listener auto-pauses on tab hidden, auto-resumes on tab visible. Timer resets on `loadPuzzle()` (new game/difficulty change). Timer stops on win and solve time shown in win overlay subtitle. All verified in browser: initial 00:00, starts on typing, pause/resume toggle works, resets on new game. Zero console errors. Files changed: `games/crossword/game.js`._
 
 - [x] **[CW-004]** Input handling — selection, typing, navigation [engine]
   - _Completed: All input handling was implemented as part of CW-003. Browser-verified all acceptance criteria: cell click selects with word highlighting, click same cell toggles across/down direction, A-Z places letter and auto-advances to next empty cell in word, Backspace clears current cell (if empty retreats and clears previous), arrow keys navigate between non-black cells (updating direction), Spacebar toggles direction, Tab/Shift+Tab jumps between words (wrapping between across/down), clicking a clue selects its first empty cell, word highlighting and active clue update on every selection change. Zero console errors. No additional code changes needed._

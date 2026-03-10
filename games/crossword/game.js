@@ -16,6 +16,12 @@
   let clueMap = [];         // 2D array: { across: num|null, down: num|null }
   let solved = false;
 
+  // ── Timer State ────────────────────────────────────
+  let timerElapsed = 0;       // seconds elapsed
+  let timerRunning = false;   // is the timer actively counting
+  let timerStarted = false;   // has the user typed at least one letter
+  let timerInterval = null;   // setInterval handle
+
   // ── DOM refs ───────────────────────────────────────
   const boardEl = document.getElementById('board');
   const cluesAcrossEl = document.getElementById('clues-across');
@@ -27,6 +33,51 @@
   const winNewBtn = document.getElementById('win-new-btn');
   const activeClueBar = document.getElementById('active-clue-bar');
   const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+  const timerValueEl = document.getElementById('timer-value');
+  const timerBtn = document.getElementById('timer-btn');
+
+  // ── Timer ──────────────────────────────────────────
+
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function updateTimerDisplay() {
+    timerValueEl.textContent = formatTime(timerElapsed);
+  }
+
+  function startTimer() {
+    if (timerRunning || solved) return;
+    timerRunning = true;
+    timerStarted = true;
+    timerBtn.textContent = 'Pause';
+    timerInterval = setInterval(() => {
+      timerElapsed++;
+      updateTimerDisplay();
+    }, 1000);
+  }
+
+  function pauseTimer() {
+    if (!timerRunning) return;
+    timerRunning = false;
+    timerBtn.textContent = 'Resume';
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  function stopTimer() {
+    pauseTimer();
+    timerStarted = false;
+  }
+
+  function resetTimer() {
+    stopTimer();
+    timerElapsed = 0;
+    timerBtn.textContent = 'Pause';
+    updateTimerDisplay();
+  }
 
   // ── Puzzle Loading ─────────────────────────────────
 
@@ -36,6 +87,7 @@
     winOverlay.hidden = true;
     selectedCell = null;
     direction = 'across';
+    resetTimer();
 
     const size = puzzle.size;
     playerGrid = Array.from({ length: size }, (_, r) =>
@@ -374,6 +426,24 @@
   newGameBtn.addEventListener('click', () => startNewGame());
   winNewBtn.addEventListener('click', () => startNewGame());
 
+  timerBtn.addEventListener('click', () => {
+    if (!timerStarted) return;
+    if (timerRunning) {
+      pauseTimer();
+    } else {
+      startTimer();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!timerStarted || solved) return;
+    if (document.hidden) {
+      pauseTimer();
+    } else {
+      startTimer();
+    }
+  });
+
   // ── Keyboard Input ─────────────────────────────────
 
   document.addEventListener('keydown', (e) => {
@@ -388,6 +458,9 @@
       const letter = e.key.toUpperCase();
       const flags = cellFlags[row][col];
       if (flags && flags.revealed) return; // locked cell
+
+      // Start timer on first letter entry
+      if (!timerStarted) startTimer();
 
       // Clear incorrect flag when typing
       if (flags) flags.incorrect = false;
@@ -564,7 +637,9 @@
     }
     solved = true;
     selectedCell = null;
-    winSubtitle.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
+    stopTimer();
+    const diffLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+    winSubtitle.textContent = `${diffLabel} — ${formatTime(timerElapsed)}`;
     winOverlay.hidden = false;
     updateStatus();
     renderBoard();
