@@ -6,19 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-004]** Input handling — selection, typing, navigation [engine]
-  - Acceptance: Click selects cell; click same cell toggles direction; A–Z places letter and auto-advances; Backspace clears/retreats; arrow keys navigate; Spacebar toggles direction; Tab/Shift+Tab jumps between words; clicking a clue selects its first empty cell; word highlighting updates on every selection change
-  - Files: `games/crossword/game.js`
-  - Click cell to select; click same cell to toggle across/down direction
-  - A–Z places letter and auto-advances to next empty cell in current word
-  - Backspace clears current cell; if empty, retreats and clears previous
-  - Arrow keys navigate between non-black cells
-  - Spacebar toggles direction
-  - Tab/Shift+Tab jumps between words (next/previous clue)
-  - Clicking a clue in the panel selects its first empty cell
-  - Update word highlighting and active clue on every selection change
-  - Depends on: CW-003
-
 - [ ] **[CW-005]** Timer — count-up with pause/resume [engine]
   - Acceptance: Timer displays MM:SS; starts on first letter entry; pause/resume button works; auto-pauses on tab hidden; auto-resumes on tab visible
   - Files: `games/crossword/game.js`
@@ -79,6 +66,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-004]** Input handling — selection, typing, navigation [engine]
+  - _Completed: All input handling was implemented as part of CW-003. Browser-verified all acceptance criteria: cell click selects with word highlighting, click same cell toggles across/down direction, A-Z places letter and auto-advances to next empty cell in word, Backspace clears current cell (if empty retreats and clears previous), arrow keys navigate between non-black cells (updating direction), Spacebar toggles direction, Tab/Shift+Tab jumps between words (wrapping between across/down), clicking a clue selects its first empty cell, word highlighting and active clue update on every selection change. Zero console errors. No additional code changes needed._
 
 - [x] **[CW-003]** Core `game.js` — state model, puzzle loading, rendering [engine]
   - _Completed: Created `games/crossword/game.js` (~330 lines) with IIFE pattern matching sudoku. State model: `puzzle`, `playerGrid`, `selectedCell`, `direction`, `cellFlags`, `wordSpans`, `clueMap`. Core functions: `loadPuzzle()` initializes state from puzzle data, `computeWordSpans()` maps each clue number to its cell list for O(1) lookup, `computeClueMap()` maps each cell to its across/down clue numbers, `getCellNumbers()` builds cell-number overlay map. Rendering: `renderBoard()` builds CSS Grid with `--grid-size` variable, cell numbers, player values, black cells, selected/word-highlight/checked-incorrect/revealed classes. `renderClues()` populates Across/Down panels with active highlighting and completed strikethrough. `updateActiveClueBar()` for mobile clue display. Input handling included early since rendering requires click handlers: cell click selects/toggles direction, clue click selects first empty cell, keyboard A-Z/Backspace/Space/Arrow/Tab navigation, auto-advance and retreat within words. Win detection checks all non-black cells match solution grid. Difficulty selector and New Puzzle button wire up to load random puzzle from pool. Files changed: `games/crossword/game.js` (new)._
