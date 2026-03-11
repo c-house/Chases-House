@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add dynamic Music nav tab — checks DJ site health endpoint on page load, upgrades from "coming soon" to live link when tunnel is running
+- Add ADR-012 documenting music nav health check approach
 - Add custom SVG favicon (house silhouette with warm glowing window)
 - Add ADR-002 documenting favicon decision
 - Build games section: Tic Tac Toe, Checkers, Connect Four, Chess, Snake, Sudoku

@@ -143,8 +143,11 @@
   (function () {
     var el = document.getElementById('music-nav');
     if (!el) return;
-    fetch('https://dj.thewiseguy.ai', { mode: 'no-cors' })
-      .then(function () {
+    var ctrl = new AbortController();
+    setTimeout(function () { ctrl.abort(); }, 4000);
+    fetch('https://dj.thewiseguy.ai/health', { mode: 'cors', signal: ctrl.signal })
+      .then(function (r) {
+        if (!r.ok) return;
         var link = document.createElement('a');
         link.href = 'https://dj.thewiseguy.ai';
         link.target = '_blank';
