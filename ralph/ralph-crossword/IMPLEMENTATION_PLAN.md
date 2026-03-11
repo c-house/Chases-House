@@ -6,16 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-008]** Daily puzzle — djb2 date hash, daily/random mode [engine]
-  - Acceptance: Daily mode selects deterministic puzzle per date via djb2 hash; Random mode picks a different puzzle; toggle between modes works; default is Daily on page load
-  - Files: `games/crossword/game.js`
-  - Implement `djb2(string)` hash function
-  - Daily mode: `djb2(YYYY-MM-DD) % poolSize` selects today's puzzle per difficulty
-  - Random mode: pick random puzzle from pool (not today's)
-  - Toggle between Daily and Random modes in UI
-  - Default to Daily mode on page load
-  - Depends on: CW-003
-
 - [ ] **[CW-009]** Add crossword card to `games/index.html` gallery [ui]
   - Acceptance: Crossword card appears in games gallery with correct link to `games/crossword/`; styling matches existing game cards
   - Files: `games/index.html`
@@ -34,6 +24,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-008]** Daily puzzle — djb2 date hash, daily/random mode [engine]
+  - _Completed: Added `djb2(str)` hash function (hash * 33 + charCode, 32-bit). `getTodayString()` returns `YYYY-MM-DD`. `getDailyPuzzle(diff)` selects `pool[djb2(today) % pool.length]` for deterministic daily selection. `getRandomPuzzle(diff)` picks a random puzzle excluding today's daily index. Added `gameMode` state ('daily'/'random'), `modeBtns` DOM refs, `selectMode()` to toggle with UI update. `startNewGame()` delegates to daily/random based on `gameMode`. Mode persisted in `saveState()`/`loadState()` with mode buttons restored on load. Default is Daily on page load. HTML already had mode toggle buttons from CW-002. Browser-verified: Daily returns same puzzle on re-select, Random loads different puzzle, toggle updates button active states, zero console errors. Files changed: `games/crossword/game.js`._
 
 - [x] **[CW-007]** Persistence — save/load state, best times [engine]
   - _Completed: Added localStorage persistence with two keys: `crossword-state` (game state) and `crossword-best-times` (best times per difficulty). `saveState()` serializes `puzzleId`, `difficulty`, `playerGrid`, `cellFlags`, `timerElapsed`, `timerStarted`, `selectedCell`, `direction` after every action (letter input, backspace, check, reveal, new puzzle load). `loadState()` restores full state on page load by matching puzzle ID in the difficulty pool, rebuilds computed data (wordSpans, clueMap), updates UI (difficulty buttons, timer display with Resume). `clearSavedState()` called on win, new game, and difficulty change. Best times tracked via `saveBestTime(diff, seconds)` and `getBestTimes()` — win overlay shows "New best!" or current best time. Browser-verified: typed letter persists across reload, New Puzzle clears state, win clears state and saves best time, zero console errors. Files changed: `games/crossword/game.js`._

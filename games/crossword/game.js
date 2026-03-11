@@ -9,6 +9,7 @@
 
   // ── State ──────────────────────────────────────────
   let difficulty = 'easy';
+  let gameMode = 'daily';   // 'daily' or 'random'
   let puzzle = null;        // current puzzle object from CrosswordPuzzles
   let playerGrid = [];      // 2D array: null for black, '' for empty, letter for filled
   let selectedCell = null;  // { row, col } or null
@@ -41,6 +42,7 @@
   const checkWordBtn = document.getElementById('check-word-btn');
   const revealLetterBtn = document.getElementById('reveal-letter-btn');
   const revealWordBtn = document.getElementById('reveal-word-btn');
+  const modeBtns = document.querySelectorAll('.mode-btn');
 
   // ── Timer ──────────────────────────────────────────
 
@@ -83,6 +85,45 @@
     timerElapsed = 0;
     timerBtn.textContent = 'Pause';
     updateTimerDisplay();
+  }
+
+  // ── Daily Puzzle (djb2 hash) ───────────────────────
+
+  function djb2(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + c
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+  }
+
+  function getTodayString() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function getDailyPuzzle(diff) {
+    const pool = window.CrosswordPuzzles[diff];
+    if (!pool || pool.length === 0) return null;
+    const idx = djb2(getTodayString()) % pool.length;
+    return pool[idx];
+  }
+
+  function getRandomPuzzle(diff) {
+    const pool = window.CrosswordPuzzles[diff];
+    if (!pool || pool.length === 0) return null;
+    if (pool.length === 1) return pool[0];
+    // Avoid picking today's daily puzzle
+    const dailyIdx = djb2(getTodayString()) % pool.length;
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * pool.length);
+    } while (idx === dailyIdx && pool.length > 1);
+    return pool[idx];
   }
 
   // ── Puzzle Loading ─────────────────────────────────
@@ -418,10 +459,17 @@
 
   function startNewGame() {
     clearSavedState();
-    const pool = window.CrosswordPuzzles[difficulty];
-    if (!pool || pool.length === 0) return;
-    const idx = Math.floor(Math.random() * pool.length);
-    loadPuzzle(pool[idx]);
+    const p = gameMode === 'daily' ? getDailyPuzzle(difficulty) : getRandomPuzzle(difficulty);
+    if (p) loadPuzzle(p);
+  }
+
+  function selectMode(mode) {
+    gameMode = mode;
+    modeBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    clearSavedState();
+    startNewGame();
   }
 
   // ── Wire Up Events ─────────────────────────────────
@@ -434,6 +482,10 @@
 
   newGameBtn.addEventListener('click', () => startNewGame());
   winNewBtn.addEventListener('click', () => startNewGame());
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => selectMode(btn.dataset.mode));
+  });
 
   timerBtn.addEventListener('click', () => {
     if (!timerStarted) return;
@@ -746,6 +798,7 @@
     const state = {
       puzzleId: puzzle.id,
       difficulty,
+      gameMode,
       playerGrid,
       cellFlags,
       timerElapsed,
@@ -773,6 +826,7 @@
       // Restore puzzle and computed data
       puzzle = savedPuzzle;
       difficulty = state.difficulty;
+      gameMode = state.gameMode || 'daily';
       playerGrid = state.playerGrid;
       cellFlags = state.cellFlags;
       selectedCell = state.selectedCell;
@@ -784,9 +838,12 @@
       computeWordSpans();
       computeClueMap();
 
-      // Update difficulty buttons
+      // Update difficulty and mode buttons
       difficultyBtns.forEach(b => {
         b.classList.toggle('active', b.dataset.difficulty === difficulty);
+      });
+      modeBtns.forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === gameMode);
       });
 
       // Update timer display
