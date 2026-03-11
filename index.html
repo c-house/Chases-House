@@ -157,7 +157,7 @@
     <nav class="nav" aria-label="Main navigation">
       <span class="nav-link active" style="--i:0" aria-current="page">Home</span>
       <a class="nav-link" style="--i:1" href="/games/">Games</a>
-      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span id="music-nav" class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
       <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
       <span class="nav-link coming-soon" style="--i:4">Links<span class="coming-soon-tag">soon</span></span>
     </nav>
@@ -179,5 +179,26 @@
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>
   </footer>
+<script>
+  (function () {
+    var el = document.getElementById('music-nav');
+    if (!el) return;
+    var ctrl = new AbortController();
+    setTimeout(function () { ctrl.abort(); }, 4000);
+    fetch('https://dj.thewiseguy.ai/health', { mode: 'cors', signal: ctrl.signal })
+      .then(function (r) {
+        if (!r.ok) return;
+        var link = document.createElement('a');
+        link.href = 'https://dj.thewiseguy.ai';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.className = 'nav-link music-live';
+        link.style.cssText = el.style.cssText;
+        link.textContent = 'Music';
+        el.replaceWith(link);
+      })
+      .catch(function () {});
+  })();
+</script>
 </body>
 </html>
