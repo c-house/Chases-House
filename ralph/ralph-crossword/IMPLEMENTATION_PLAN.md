@@ -6,14 +6,6 @@ _Last updated: 2026-03-10_
 
 ## Todo
 
-- [ ] **[CW-009]** Add crossword card to `games/index.html` gallery [ui]
-  - Acceptance: Crossword card appears in games gallery with correct link to `games/crossword/`; styling matches existing game cards
-  - Files: `games/index.html`
-  - Add a crossword game card matching existing card style
-  - Include title, description, and link to `games/crossword/`
-  - Position in gallery alongside existing 6 games
-  - Depends on: CW-002
-
 - [ ] **[CW-010]** Replace placeholder puzzles with real crossword content [data]
   - Acceptance: 5–10 valid puzzles per difficulty level; all grids have proper symmetry and valid interlocking; clue difficulty matches level (Easy = direct definitions, Extreme = obscure/wordplay)
   - Files: `games/crossword/puzzles.js`
@@ -24,6 +16,9 @@ _Last updated: 2026-03-10_
   - Depends on: CW-008
 
 ## Done
+
+- [x] **[CW-009]** Add crossword card to `games/index.html` gallery [ui]
+  - _Completed: Added crossword game card to `games/index.html` gallery, positioned between Sudoku and Jeopardy (solo puzzles grouped together). Uses ▩ (&#9641;) icon, "Crossword" title, description highlighting four grid sizes, daily puzzles, and timer. Tagged as "solo". Link points to `/games/crossword/`. Styling matches existing card pattern exactly. Browser-verified: card renders correctly, zero console errors. Files changed: `games/index.html`._
 
 - [x] **[CW-008]** Daily puzzle — djb2 date hash, daily/random mode [engine]
   - _Completed: Added `djb2(str)` hash function (hash * 33 + charCode, 32-bit). `getTodayString()` returns `YYYY-MM-DD`. `getDailyPuzzle(diff)` selects `pool[djb2(today) % pool.length]` for deterministic daily selection. `getRandomPuzzle(diff)` picks a random puzzle excluding today's daily index. Added `gameMode` state ('daily'/'random'), `modeBtns` DOM refs, `selectMode()` to toggle with UI update. `startNewGame()` delegates to daily/random based on `gameMode`. Mode persisted in `saveState()`/`loadState()` with mode buttons restored on load. Default is Daily on page load. HTML already had mode toggle buttons from CW-002. Browser-verified: Daily returns same puzzle on re-select, Random loads different puzzle, toggle updates button active states, zero console errors. Files changed: `games/crossword/game.js`._
