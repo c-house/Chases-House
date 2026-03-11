@@ -1,0 +1,51 @@
+
+--- Iteration 1 — 2026-03-10 17:06:52 (exit: 0) ---
+
+Done. CW-001 is complete.
+
+**What I built:** Rewrote `games/crossword/puzzles.js` with 8 validated crossword puzzles (2 per difficulty level):
+- **Easy (5x5):** "Quick Start" and "Mixed Bag" — 3 across + 3 down words using a checkerboard interlocking pattern
+- **Medium (9x9):** "Learning" and "Everyday" — cross-shaped grids with words like DIRECTION/STRUCTURE and EQUIPMENT/TELEPHONE
+- **Hard (13x13):** "Big Words" and "Concepts" — larger crosses with 7-letter and 13-letter words (ADMINISTRATOR, ENTERTAINMENT)
+- **Extreme (15x15):** "Workplace" and "Grand" — 15-letter centerpiece words (PERSONALIZATION, COMMERCIALIZING) with 7-letter arms
+
+All puzzles pass automated validation: correct grid dimensions, clue answers match grid letters, zero orphan letters. The previous file had multiple invalid entries (non-words like NOMEE, PELTR, CLEISTAR) which were all replaced.
+
+--- Iteration 2 — 2026-03-10 17:28:20 (exit: 0) ---
+
+
+
+CW-002 is complete and committed. The dev server port conflict is fine — it was already running from earlier. The task is done. STOP.
+
+--- Iteration 3 — 2026-03-10 17:41:35 (exit: 0) ---
+
+**CW-005 complete.** Added count-up timer with:
+- MM:SS display, starts on first letter entry
+- Pause/Resume button toggle
+- Auto-pause on tab hidden, auto-resume on visible
+- Resets on new game/difficulty change
+- Stops on win, solve time shown in overlay
+
+Next in queue: **CW-006: Check/Reveal**. The loop will pick that up next.
+
+--- Iteration 4 — 2026-03-10 17:53:39 (exit: 0) ---
+
+Done. CW-006 is fully complete and committed. The implementation plan is clean with CW-007 (Persistence) as the next task.
+
+--- Iteration 1 — 2026-03-10 20:41:14 (exit: 0) ---
+
+
+
+CW-008 is done and committed. The task is complete — stopping here for the next session to pick up CW-009.
+
+--- Iteration 2 — 2026-03-10 20:46:14 (exit: 0) ---
+
+
+
+CW-009 is done and committed. The only remaining task is **CW-010** (replace placeholder puzzles with real crossword content). That's the last item in Todo — stopping here as instructed (one task per session).
+
+--- Iteration 3 — 2026-03-10 20:50:27 (exit: 0) ---
+
+All tasks are complete. The implementation plan's Todo section is empty.
+
+<promise>COMPLETE</promise>
