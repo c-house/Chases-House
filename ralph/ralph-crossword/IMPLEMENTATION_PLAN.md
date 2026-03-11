@@ -5,17 +5,13 @@ _Last updated: 2026-03-10_
 (none)
 
 ## Todo
-
-- [ ] **[CW-010]** Replace placeholder puzzles with real crossword content [data]
-  - Acceptance: 5–10 valid puzzles per difficulty level; all grids have proper symmetry and valid interlocking; clue difficulty matches level (Easy = direct definitions, Extreme = obscure/wordplay)
-  - Files: `games/crossword/puzzles.js`
-  - Expand to 5–10 valid puzzles per difficulty level
-  - Ensure all grids have proper symmetry and valid interlocking
-  - Clues are accurate and appropriately difficult for their level
-  - Easy: direct definitions; Medium: moderate wordplay; Hard: tricky clues; Extreme: obscure/wordplay
-  - Depends on: CW-008
+(none — all tasks complete)
 
 ## Done
+
+- [x] **[CW-010]** Replace placeholder puzzles with real crossword content [data]
+  - _Completed: Expanded from 2 to 5 puzzles per difficulty level (20 total). Easy 5×5: 3 new puzzles (easy-003 "Winter Morning", easy-004 "Around the House", easy-005 "Sweet and Simple") using checkerboard pattern with 3 across + 3 down words each. Medium 9×9: 3 new puzzles (med-003 "On the Move", med-004 "Number Cruncher", med-005 "Sharp Eye") using cross pattern with center 9-letter word. Hard 13×13: 3 new puzzles (hard-003 "Fired Up", hard-004 "Close Enough", hard-005 "Deep Thought") using cross pattern with center 13-letter word. Extreme 15×15: 3 new puzzles (ext-003 "Lab Notes", ext-004 "Glossary", ext-005 "In Bloom") using cross pattern with center 15-letter word. All grids hand-constructed with verified interlocking at intersection points and 180° rotational symmetry. Clue styles match difficulty: Easy uses direct definitions, Medium uses double meanings/moderate wordplay, Hard uses tricky misdirection, Extreme uses obscure references and cryptic-lite wordplay. All puzzles browser-verified: zero console errors, all difficulties and Random mode load correctly. Files changed: `games/crossword/puzzles.js`._
+
 
 - [x] **[CW-009]** Add crossword card to `games/index.html` gallery [ui]
   - _Completed: Added crossword game card to `games/index.html` gallery, positioned between Sudoku and Jeopardy (solo puzzles grouped together). Uses ▩ (&#9641;) icon, "Crossword" title, description highlighting four grid sizes, daily puzzles, and timer. Tagged as "solo". Link points to `/games/crossword/`. Styling matches existing card pattern exactly. Browser-verified: card renders correctly, zero console errors. Files changed: `games/index.html`._
