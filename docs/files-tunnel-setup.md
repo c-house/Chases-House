@@ -106,16 +106,28 @@ Verify: `cloudflared tunnel info files-vault` shows active connections.
 
 Copy `serve-vault.py` from the repo root to a permanent location outside the repo — e.g. `C:\Users\chase\tools\serve-vault.py`. The repo copy is a reference; the running copy lives alongside your vault directory.
 
-Create the vault directory:
+Create the vault directory (PowerShell):
 
 ```powershell
 mkdir C:\Users\chase\files-vault
 ```
 
-Start the server (leave this running, or wrap with NSSM / Task Scheduler to auto-start):
+Or Git Bash:
+
+```bash
+mkdir -p /c/Users/chase/files-vault
+```
+
+Start the server (leave this running, or wrap with NSSM / Task Scheduler to auto-start). PowerShell:
 
 ```powershell
 python C:\Users\chase\tools\serve-vault.py C:\Users\chase\files-vault 8765
+```
+
+Git Bash (forward slashes — backslashes get eaten):
+
+```bash
+python C:/Users/chase/tools/serve-vault.py C:/Users/chase/files-vault 8765
 ```
 
 Test locally: `curl http://localhost:8765/test.age` should 404 (file missing) if the path matches the `.age` pattern, or 403 for anything else.
@@ -160,13 +172,17 @@ wmic process where "name='cloudflared.exe' and commandline like '%%files-vault%%
 
 ## Sharing a file
 
-1. **Encrypt locally** with the native `age` CLI (faster than the browser for 1 GB, smaller trusted code base):
+1. **Encrypt locally** with the native `age` CLI (faster than the browser for 1 GB, smaller trusted code base). PowerShell:
    ```powershell
-   age -p -o C:\Users\chase\files-vault\secret.age C:\path\to\secret.bin
+   age -p -o C:\Users\chase\files-vault\example.txt.age C:\path\to\example.txt
+   ```
+   Or Git Bash (requires the `age` alias from [files-user-guide.md](files-user-guide.md) one-time setup):
+   ```bash
+   age -p -o C:/Users/chase/files-vault/example.txt.age C:/path/to/example.txt
    ```
    Enter a strong passphrase when prompted.
 
-2. **Share the URL** with the recipient: `https://files.chases.house/secret.age`. They'll hit the Zero Trust login first, authenticate with their allowlisted email, then the browser downloads the `.age` blob.
+2. **Share the URL** with the recipient: `https://files.chases.house/example.txt.age`. They'll hit the Zero Trust login first, authenticate with their allowlisted email, then the browser downloads the `.age` blob.
 
 3. **Share the passphrase** over a separate channel — phone call, Signal, in person. **Never alongside the file.** If both travel the same channel, the encryption bought you nothing.
 
