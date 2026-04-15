@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <title>Files - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/files/style.css">
+</head>
+<body>
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link" style="--i:1" href="/games/">Games</a>
+      <span id="music-nav" class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link active" style="--i:4" aria-current="page">Files</span>
+      <span class="nav-link coming-soon" style="--i:5">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Files</h1>
+    <p class="page-description">End-to-end encrypted file decryption. Everything runs in your browser — nothing is uploaded, nothing is logged.</p>
+
+    <section id="chrome-banner" class="banner banner-warn" hidden>
+      <strong>Use Chrome, Edge, or Firefox 111+.</strong>
+      This tool needs the File&nbsp;System Access API to stream large files to disk without crashing the tab. Safari isn't supported — install the <code>age</code> CLI and run <code>age&nbsp;-d&nbsp;-o&nbsp;out&nbsp;file.age</code> instead.
+    </section>
+
+    <section class="decrypt-card" aria-labelledby="decrypt-heading">
+      <h2 id="decrypt-heading" class="visually-hidden">Decrypt an .age file</h2>
+
+      <label id="dropzone" class="dropzone" for="file-input">
+        <input id="file-input" type="file" accept=".age,application/octet-stream" hidden>
+        <span class="dropzone-icon" aria-hidden="true">&#9878;</span>
+        <span class="dropzone-label">
+          <span class="dropzone-primary">Drop a <code>.age</code> file here</span>
+          <span class="dropzone-secondary">or click to choose</span>
+        </span>
+        <span id="file-meta" class="dropzone-meta" hidden>
+          <span id="file-name"></span>
+          <span id="file-size"></span>
+        </span>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Passphrase</span>
+        <span class="field-wrap">
+          <input id="passphrase" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
+          <button id="passphrase-toggle" type="button" class="field-toggle" aria-label="Show passphrase">&#128065;</button>
+        </span>
+      </label>
+
+      <button id="decrypt-btn" class="btn btn-primary" type="button" disabled>Decrypt</button>
+
+      <div id="status-row" class="status-row" hidden>
+        <progress id="progress" max="100" value="0"></progress>
+        <span id="status-text" class="status-text">Preparing&hellip;</span>
+        <button id="cancel-btn" type="button" class="btn-link" hidden>Cancel</button>
+      </div>
+
+      <div id="error" class="banner banner-error" hidden></div>
+      <div id="success" class="banner banner-success" hidden></div>
+    </section>
+
+    <section class="explainer">
+      <details>
+        <summary>How it works</summary>
+        <div class="explainer-body">
+          <p><strong>Client-side only.</strong> The file and passphrase never leave your browser. All decryption happens locally in a Web Worker using the audited <a href="https://github.com/FiloSottile/typage" target="_blank" rel="noopener noreferrer">typage</a> library (age encryption: scrypt + ChaCha20-Poly1305).</p>
+          <p><strong>Passphrase handling.</strong> Whoever sent this file should have shared the passphrase over a separate secure channel (phone call, Signal, in person) — never alongside the file itself. If they sent both in the same place, the encryption bought you nothing.</p>
+          <p><strong>Large files.</strong> Decryption streams straight to disk via the File System Access API, so a 1&nbsp;GB file uses only a few megabytes of memory. Requires Chrome, Edge, or Firefox 111+.</p>
+          <p><strong>Paranoid mode.</strong> Save the page source to disk, disconnect your network, open the saved copy, and decrypt offline. The tool will work without internet — proof that nothing phones home.</p>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="/files/ui.js" defer></script>
+</body>
+</html>
