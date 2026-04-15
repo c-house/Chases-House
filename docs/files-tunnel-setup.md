@@ -46,7 +46,7 @@ Writes tunnel credentials to `%USERPROFILE%\.cloudflared\<UUID>.json`. Note the 
 
 ### 4. Config file
 
-Create `%USERPROFILE%\.cloudflared\config.yml`:
+This box also runs the `webdj` tunnel, which owns the default `config.yml`. To avoid stomping it, files-vault uses its own config file: `%USERPROFILE%\.cloudflared\files-vault.yml`.
 
 ```yaml
 tunnel: files-vault
@@ -58,17 +58,21 @@ ingress:
   - service: http_status:404
 ```
 
+Start it with an explicit `--config` flag (see step 7).
+
 ### 5. Route DNS
+
+`chases.house` DNS is hosted on Cloudflare, so the cloudflared CLI can add the CNAME directly:
 
 ```powershell
 cloudflared tunnel route dns files-vault files.chases.house
 ```
 
-This attempts to add a CNAME `files → <UUID>.cfargotunnel.com` in Cloudflare's DNS. **Our DNS is at GoDaddy, not Cloudflare**, so this step will fail — that's expected. Note the target hostname from the output and add the CNAME manually in GoDaddy:
+Or add it manually in the Cloudflare dashboard:
 
-| Type  | Name    | Value                              | TTL  |
-|-------|---------|------------------------------------|------|
-| CNAME | `files` | `<UUID>.cfargotunnel.com`          | 1 hr |
+| Type  | Name    | Target                             | Proxy   | TTL  |
+|-------|---------|------------------------------------|---------|------|
+| CNAME | `files` | `<UUID>.cfargotunnel.com`          | Proxied | Auto |
 
 Apex `chases.house` A-records (GitHub Pages) stay untouched.
 
@@ -88,17 +92,15 @@ In the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/):
 
 No `/health` bypass is needed — the chases.house site no longer calls a health endpoint for the Files nav entry.
 
-### 7. Install cloudflared as a Windows service
+### 7. Run the tunnel
 
-**Run from an Administrator PowerShell**:
+Because the default `cloudflared` Windows service is bound to `webdj`'s `config.yml`, files-vault runs foreground-only (or via Task Scheduler / NSSM if you want auto-start). From Git Bash use forward slashes:
 
-```powershell
-cloudflared service install
+```bash
+cloudflared tunnel --config C:/Users/chase/.cloudflared/files-vault.yml run files-vault
 ```
 
-Without elevation this fails silently or with access-denied. Once installed, the tunnel auto-starts on reboot.
-
-Verify: `Get-Service cloudflared` shows `Running`.
+Verify: `cloudflared tunnel info files-vault` shows active connections.
 
 ### 8. Install serve-vault.py
 
@@ -117,6 +119,42 @@ python C:\Users\chase\tools\serve-vault.py C:\Users\chase\files-vault 8765
 ```
 
 Test locally: `curl http://localhost:8765/test.age` should 404 (file missing) if the path matches the `.age` pattern, or 403 for anything else.
+
+---
+
+## Day-to-day operation
+
+Two processes need to be running for `files.chases.house` to work: `serve-vault.py` (origin) and `cloudflared` (tunnel). Each lives in its own foreground shell.
+
+### Start
+
+**Shell 1 — origin server** (use forward slashes in Git Bash; backslashes in PowerShell):
+```bash
+python C:/Users/chase/tools/serve-vault.py C:/Users/chase/files-vault 8765
+```
+
+**Shell 2 — tunnel** (same forward-slash caveat in Git Bash):
+```bash
+cloudflared tunnel --config C:/Users/chase/.cloudflared/files-vault.yml run files-vault
+```
+
+### Stop
+
+Ctrl-C in each shell. To force-kill without access to the original shell (Git Bash):
+
+```bash
+# Kill whatever is listening on 8765 (serve-vault)
+netstat -ano | grep LISTENING | grep ':8765 ' | awk '{print $5}' | xargs -r -I {} taskkill //F //PID {}
+
+# Kill the files-vault tunnel (leaves webdj running)
+wmic process where "name='cloudflared.exe' and commandline like '%%files-vault%%'" call terminate
+```
+
+### Verify
+
+- `cloudflared tunnel info files-vault` → shows active edge connections
+- `curl http://localhost:8765/test.age` → `HTTP 404` (origin alive, vault empty)
+- Open `https://files.chases.house/` in an incognito window → Cloudflare Access login page
 
 ---
 
