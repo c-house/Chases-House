@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pac-Man - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1.5rem, 5vh, 4rem) clamp(1rem, 4vw, 3rem) clamp(2rem, 5vh, 4rem);
+    }
+
+    .page-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1.5rem, 3.5vw + 0.5rem, 2.25rem);
+      font-weight: 400;
+      color: #FFFF00;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-shadow: 0 0 16px rgba(255, 255, 0, 0.3);
+      margin-bottom: 0.3rem;
+    }
+
+    .page-subtitle {
+      font-family: var(--font-body);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+      margin-bottom: clamp(1rem, 3vw, 1.8rem);
+    }
+
+    /* ── Game Frame ────────────────────────────────────── */
+    .game-frame {
+      position: relative;
+      width: min(100%, calc((100vh - 220px) * 672 / 800));
+      max-width: 672px;
+      aspect-ratio: 672 / 800;
+      background: #000;
+      border: 2px solid #2121DE;
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 1px rgba(74, 74, 255, 0.4) inset,
+        0 10px 40px rgba(33, 33, 222, 0.18),
+        0 2px 8px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    canvas#pacman-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+    }
+
+    /* ── Overlays ─────────────────────────────────────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(1rem, 4vw, 2rem);
+      background: rgba(0, 0, 0, 0.92);
+      color: #f0e6d3;
+      text-align: center;
+      gap: clamp(0.8rem, 2vw, 1.2rem);
+      z-index: 2;
+    }
+    .overlay.hidden { display: none; }
+
+    .overlay-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(1rem, 2.4vw + 0.3rem, 1.6rem);
+      color: #FFFF00;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 14px rgba(255, 255, 0, 0.35);
+    }
+    .overlay-subtitle {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.75rem;
+      color: #00E5FF;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.6rem;
+    }
+
+    /* ── Mode Buttons ─────────────────────────────────── */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: clamp(0.5rem, 2vw, 0.8rem);
+      width: 100%;
+      max-width: 560px;
+    }
+    .mode-btn {
+      font-family: var(--font-body);
+      text-align: left;
+      background: rgba(33, 33, 222, 0.08);
+      border: 1px solid #2121DE;
+      border-radius: 4px;
+      color: var(--text-primary);
+      padding: 0.9rem 1rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .mode-btn:hover {
+      background: rgba(74, 74, 255, 0.16);
+      border-color: #4A4AFF;
+      transform: translateY(-1px);
+    }
+    .mode-btn-name {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.78rem;
+      color: #FFFF00;
+      display: block;
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.04em;
+    }
+    .mode-btn-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Option Controls ─────────────────────────────── */
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-family: var(--font-body);
+      color: var(--text-primary);
+    }
+    .option-row label { font-size: 0.9rem; color: var(--text-muted); }
+    .pill-group { display: flex; gap: 0.3rem; }
+    .pill {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.6rem;
+      background: transparent;
+      border: 1px solid #2121DE;
+      color: var(--text-primary);
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .pill:hover { border-color: #4A4AFF; color: #FFFF00; }
+    .pill.active { background: rgba(255,255,0,0.08); border-color: #FFFF00; color: #FFFF00; }
+
+    .primary-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem;
+      padding: 0.7rem 1.4rem;
+      background: #FFFF00;
+      border: none;
+      border-radius: 3px;
+      color: #000;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px rgba(255, 255, 0, 0.3);
+    }
+    .secondary-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.75rem;
+      padding: 0.55rem 1rem;
+      background: transparent;
+      border: 1px solid #4A4AFF;
+      border-radius: 3px;
+      color: #00E5FF;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+    }
+    .secondary-btn:hover { background: rgba(74,74,255,0.15); }
+
+    /* ── Bind Screen ──────────────────────────────────── */
+    .bind-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 520px;
+    }
+    .bind-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.8rem;
+      align-items: center;
+      padding: 0.6rem 0.8rem;
+      background: rgba(33, 33, 222, 0.08);
+      border: 1px solid #2121DE;
+      border-radius: 4px;
+    }
+    .bind-row.waiting { border-color: #FFFF00; background: rgba(255,255,0,0.05); animation: blink 1s infinite; }
+    .bind-row.bound { border-color: #00FF88; background: rgba(0,255,136,0.05); }
+    @keyframes blink { 50% { opacity: 0.55; } }
+
+    .bind-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.75rem;
+      color: #FFFF00;
+    }
+    .bind-label small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+      letter-spacing: 0;
+    }
+    .bind-status {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.65rem;
+      color: #00E5FF;
+      text-align: right;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── HUD controls ────────────────────────────────── */
+    .hud-controls {
+      margin-top: 0.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: min(100%, 672px);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .hud-left, .hud-right { display: flex; gap: 0.5rem; align-items: center; }
+    .icon-btn {
+      background: transparent;
+      border: 1px solid #2121DE;
+      color: var(--text-primary);
+      width: 2rem; height: 2rem;
+      border-radius: 3px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-btn:hover { border-color: #4A4AFF; color: #FFFF00; }
+
+    /* ── Toast ────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(150%);
+      background: #2121DE;
+      color: #FFFF00;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.65rem;
+      padding: 0.7rem 1rem;
+      border-radius: 3px;
+      transition: transform 0.3s ease-out;
+      z-index: 10;
+      box-shadow: 0 6px 24px rgba(33,33,222,0.35);
+      letter-spacing: 0.04em;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Controller Hint ─────────────────────────────── */
+    .info {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 1.5;
+    }
+    .info strong { color: var(--text-primary); }
+    kbd {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.6rem;
+      background: rgba(33,33,222,0.2);
+      border: 1px solid #2121DE;
+      padding: 0.15rem 0.35rem;
+      border-radius: 2px;
+      color: var(--text-primary);
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 480px) {
+      .game-frame { aspect-ratio: 672 / 800; max-width: 95vw; }
+      .hud-controls { font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (hidden) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link" style="--i:1" href="/games/">Games</a>
+      <span class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
+      <a class="nav-link" style="--i:4" href="/files/">Files</a>
+      <span class="nav-link coming-soon" style="--i:5">Links<span class="coming-soon-tag">soon</span></span>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">PAC-MAN</h1>
+    <p class="page-subtitle">Classic arcade maze chase. Solo, co-op, versus, or battle royale.</p>
+
+    <div class="game-frame" id="game-frame">
+      <canvas id="pacman-canvas" aria-label="Pac-Man game"></canvas>
+
+      <!-- Mode Select Overlay -->
+      <div class="overlay" id="overlay-mode">
+        <div class="overlay-title">SELECT MODE</div>
+        <div class="mode-grid" id="mode-grid"></div>
+        <p class="info">Keyboard or gamepad. Up to 4 players on one PC.</p>
+      </div>
+
+      <!-- Options Overlay -->
+      <div class="overlay hidden" id="overlay-options">
+        <div class="overlay-title" id="options-title">OPTIONS</div>
+        <div class="option-row" id="pac-count-row" style="display:none">
+          <label>PAC-MEN</label>
+          <div class="pill-group" id="pac-count-pills"></div>
+        </div>
+        <div class="option-row" id="ghost-count-row" style="display:none">
+          <label>HUMAN GHOSTS</label>
+          <div class="pill-group" id="ghost-count-pills"></div>
+        </div>
+        <div style="display:flex; gap:0.6rem; margin-top:0.4rem;">
+          <button class="secondary-btn" id="options-back">BACK</button>
+          <button class="primary-btn" id="options-next">CONTINUE</button>
+        </div>
+      </div>
+
+      <!-- Bind Overlay -->
+      <div class="overlay hidden" id="overlay-bind">
+        <div class="overlay-title">BIND CONTROLS</div>
+        <div class="overlay-subtitle" id="bind-prompt">Press a direction on keyboard or gamepad</div>
+        <div class="bind-list" id="bind-list"></div>
+        <div style="display:flex; gap:0.6rem; margin-top:0.6rem;">
+          <button class="secondary-btn" id="bind-back">BACK</button>
+          <button class="primary-btn hidden" id="bind-start">START</button>
+        </div>
+      </div>
+
+      <!-- Game Over Overlay -->
+      <div class="overlay hidden" id="overlay-gameover">
+        <div class="overlay-title" id="gameover-title">GAME OVER</div>
+        <div id="gameover-scores" class="info"></div>
+        <div style="display:flex; gap:0.6rem; margin-top:0.8rem;">
+          <button class="secondary-btn" id="gameover-menu">MAIN MENU</button>
+          <button class="primary-btn" id="gameover-again">PLAY AGAIN</button>
+        </div>
+      </div>
+
+      <!-- Pause Overlay -->
+      <div class="overlay hidden" id="overlay-pause">
+        <div class="overlay-title">PAUSED</div>
+        <div style="display:flex; gap:0.6rem; margin-top:0.6rem;">
+          <button class="secondary-btn" id="pause-menu">MAIN MENU</button>
+          <button class="primary-btn" id="pause-resume">RESUME</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-controls">
+      <div class="hud-left">
+        <button class="icon-btn" id="btn-pause" title="Pause (P)" aria-label="Pause">&#9208;</button>
+        <button class="icon-btn" id="btn-mute" title="Mute (M)" aria-label="Mute">&#128266;</button>
+      </div>
+      <div class="hud-right">
+        <span id="gamepad-list">No controllers</span>
+      </div>
+    </div>
+
+    <p class="info" style="margin-top:1rem">
+      <strong>Keyboard schemes:</strong>
+      <kbd>WASD</kbd> <kbd>Arrows</kbd> <kbd>IJKL</kbd> <kbd>Numpad 8456</kbd> ·
+      <strong>Gamepad:</strong> D-pad or left stick (Xbox, PS, 8BitDo, Switch Pro).
+      Press <kbd>P</kbd> to pause, <kbd>M</kbd> to mute.
+    </p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="maze.js"></script>
+  <script src="engine.js"></script>
+  <script src="ai.js"></script>
+  <script src="render.js"></script>
+  <script src="input.js"></script>
+  <script src="audio.js"></script>
+  <script src="modes.js"></script>
+  <script src="game.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
