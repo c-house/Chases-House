@@ -19,7 +19,8 @@ End-to-end encrypted file sharing via [chases.house/files/](https://chases.house
    ```
    Git Bash (forward slashes):
    ```bash
-   age -p -o C:/Users/chase/files-vault/example.txt.age C:/path/to/example.txt
+   age -p -o "C:/Users/chase/Downloads/example.txt.age" "C:/Users/chase/Downloads/example.txt"
+   age -p -o "C:/Users/chase/Downloads/avatar_aang_raw.mp4.age" "C:/Users/chase/Downloads/avatar_aang_raw.mp4"
    ```
    Type a strong passphrase when prompted (use a password manager).
 2. Add the recipient's email to the Zero Trust allowlist (Cloudflare dashboard → Access → Applications → Files → Allowlist policy).
