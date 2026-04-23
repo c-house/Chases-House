@@ -2,6 +2,18 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-04-23 — Pac-Man
+
+- Add Pac-Man game with four modes: Solo vs AI, Pac vs Ghosts, Co-op, Battle Royale (up to 4 players on one PC)
+- Classic 28×31 arcade maze with authentic Blinky / Pinky / Inky / Clyde targeting and scatter → chase → frightened mode cycling
+- Split-keyboard (WASD / Arrows / IJKL / Numpad) and Gamepad API support for Xbox, PlayStation, 8BitDo, and Switch Pro controllers
+- Pre-game bind screen claims an input scheme per player; pause (P) / mute (M) hotkeys with mute persisted in localStorage
+- Replace buzzing Web Audio synthesis with CC0 retro samples from Juhani Junkala's pack (OpenGameArt) — one-shot `AudioBufferSourceNode`s for SFX and looped tracks for siren / frightened / retreat with fade-in/out
+- Fix latent bug where the `sfx` gain bus was initialized to 0, silently muting every dot / pellet / eat-ghost sound
+- Siren `playbackRate` rises as dots deplete for arcade-authentic intensity ramp
+- Add Pac-Man card to the games gallery (9th game, "multiplayer" tag)
+- Add ADR-014
+
 ## 2026-03-10 — Music Nav Health Check
 
 - Add dynamic Music nav tab — probes `dj.thewiseguy.ai/health` on page load, upgrades from "coming soon" to a live link when the Cloudflare Tunnel is running

@@ -1,15 +1,28 @@
 (function () {
   'use strict';
 
+  const SAMPLES = {
+    waka: 'sounds/waka.wav',
+    pellet: 'sounds/pellet.wav',
+    eat_ghost: 'sounds/eat_ghost.wav',
+    eat_rival: 'sounds/eat_rival.wav',
+    death: 'sounds/death.wav',
+    intro: 'sounds/intro.wav',
+    extra_life: 'sounds/extra_life.wav',
+    siren_loop: 'sounds/siren_loop.wav',
+    frightened_loop: 'sounds/frightened_loop.wav',
+    retreat_loop: 'sounds/retreat_loop.wav',
+  };
+
   let ctx = null;
   let master = null;
-  let gains = {};  // per-channel gains
-  let loops = {};  // loop name -> { osc, lfo, stop }
+  let gains = {};
+  const buffers = {};
+  let loops = {};
   let enabled = true;
   let masterVolume = 0.6;
-  let wakaToggle = 0;
   let introPlayed = false;
-  let dyingActive = false;
+  let wakaToggle = 0;
 
   function ensure() {
     if (ctx) return ctx;
@@ -19,12 +32,26 @@
     master = ctx.createGain();
     master.gain.value = masterVolume;
     master.connect(ctx.destination);
-    for (const name of ['siren', 'frightened', 'retreat', 'sfx']) {
+    gains.sfx = ctx.createGain();
+    gains.sfx.gain.value = 1.0;
+    gains.sfx.connect(master);
+    for (const name of ['siren', 'frightened', 'retreat']) {
       gains[name] = ctx.createGain();
       gains[name].gain.value = 0;
       gains[name].connect(master);
     }
+    loadAll();
     return ctx;
+  }
+
+  function loadAll() {
+    for (const [name, url] of Object.entries(SAMPLES)) {
+      fetch(url)
+        .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+        .then(ab => ctx.decodeAudioData(ab))
+        .then(buf => { buffers[name] = buf; })
+        .catch(e => { console.warn('Pacman audio: failed to load', name, e); });
+    }
   }
 
   function resume() {
@@ -42,195 +69,75 @@
     if (master && enabled) master.gain.value = masterVolume;
   }
 
-  // Schedule a single tone
-  function tone(freq, duration, opts) {
+  function playSample(name, opts) {
     if (!ctx || !enabled) return;
-    const o = ctx.createOscillator();
+    const buf = buffers[name];
+    if (!buf) return;
+    const o = opts || {};
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = o.rate || 1.0;
     const g = ctx.createGain();
-    o.type = (opts && opts.type) || 'square';
-    o.frequency.value = freq;
-    g.gain.value = 0;
-    const now = ctx.currentTime + (opts && opts.delay || 0);
-    const attack = 0.005;
-    const decay = (opts && opts.release) || 0.03;
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime((opts && opts.gain) || 0.25, now + attack);
-    g.gain.setValueAtTime((opts && opts.gain) || 0.25, now + Math.max(attack, duration - decay));
-    g.gain.linearRampToValueAtTime(0, now + duration);
-    o.connect(g);
+    g.gain.value = o.gain != null ? o.gain : 0.6;
+    src.connect(g);
     g.connect(gains.sfx);
-    o.start(now);
-    o.stop(now + duration + 0.02);
-    if (opts && opts.slideTo) {
-      o.frequency.linearRampToValueAtTime(opts.slideTo, now + duration);
-    }
+    src.start();
   }
 
-  // Intro jingle: short 4-note motif (not copy of original but same flavour)
   function playIntro() {
-    if (!ctx || !enabled || introPlayed) return;
+    if (introPlayed) return;
     introPlayed = true;
-    const notes = [
-      [523, 0.12], [659, 0.12], [784, 0.12], [1046, 0.18],
-      [784, 0.12], [1046, 0.30],
-    ];
-    let t = 0;
-    for (const [f, d] of notes) {
-      tone(f, d, { delay: t, gain: 0.2, type: 'square' });
-      t += d + 0.02;
-    }
+    playSample('intro', { gain: 0.55 });
   }
 
-  function playWaka() {
-    if (!ctx || !enabled) return;
+  function playBeep() {
+    // Alternate pitch on each call for a "waka-waka" flavor
     wakaToggle = 1 - wakaToggle;
-    const f1 = wakaToggle ? 520 : 400;
-    const f2 = wakaToggle ? 400 : 520;
-    tone(f1, 0.04, { gain: 0.18, type: 'square' });
-    tone(f2, 0.04, { delay: 0.04, gain: 0.18, type: 'square' });
+    playSample('waka', { gain: 0.35, rate: wakaToggle ? 1.0 : 0.85 });
   }
 
-  function playPellet() {
-    if (!ctx || !enabled) return;
-    // low bwoop
-    tone(180, 0.10, { gain: 0.25, type: 'square', slideTo: 90 });
-    tone(90,  0.10, { delay: 0.10, gain: 0.22, type: 'square', slideTo: 180 });
-  }
-
-  function playEatGhost() {
-    if (!ctx || !enabled) return;
-    const notes = [220, 330, 440, 660, 880];
-    notes.forEach((f, i) => tone(f, 0.06, { delay: i * 0.05, gain: 0.25, type: 'square' }));
-  }
-
-  function playEatRival() {
-    if (!ctx || !enabled) return;
-    const notes = [880, 660, 880, 1200];
-    notes.forEach((f, i) => tone(f, 0.08, { delay: i * 0.06, gain: 0.28, type: 'square' }));
-  }
-
-  function playDeath() {
-    if (!ctx || !enabled) return;
-    // descending whine ~1.5s
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = 'sawtooth';
-    const now = ctx.currentTime;
-    o.frequency.setValueAtTime(650, now);
-    o.frequency.exponentialRampToValueAtTime(80, now + 1.4);
-    g.gain.setValueAtTime(0.0, now);
-    g.gain.linearRampToValueAtTime(0.3, now + 0.03);
-    g.gain.linearRampToValueAtTime(0.0, now + 1.5);
-    o.connect(g);
-    g.connect(gains.sfx);
-    o.start(now);
-    o.stop(now + 1.55);
-  }
-
-  function playExtraLife() {
-    if (!ctx || !enabled) return;
-    const notes = [523, 659, 784, 1046, 1318];
-    notes.forEach((f, i) => tone(f, 0.08, { delay: i * 0.06, gain: 0.25, type: 'triangle' }));
-  }
-
-  function playBeep(freq) {
-    if (!ctx || !enabled) return;
-    tone(freq || 880, 0.05, { gain: 0.15, type: 'triangle' });
-  }
-
-  function startLoop(name) {
+  function startLoop(name, sampleName, volume) {
     if (!ctx || !enabled) return;
     if (loops[name]) return;
-    if (name === 'siren') startSiren();
-    else if (name === 'frightened') startFrightened();
-    else if (name === 'retreat') startRetreat();
+    const buf = buffers[sampleName];
+    if (!buf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.connect(gains[name]);
+    src.start();
+    gains[name].gain.cancelScheduledValues(ctx.currentTime);
+    gains[name].gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.08);
+    loops[name] = {
+      source: src,
+      setRate(rate) { src.playbackRate.setTargetAtTime(rate, ctx.currentTime, 0.25); },
+      stop() { try { src.stop(); } catch (_) {} },
+    };
   }
 
   function stopLoop(name) {
     const l = loops[name];
     if (!l) return;
-    l.stop();
     delete loops[name];
-    if (gains[name]) {
-      gains[name].gain.cancelScheduledValues(ctx.currentTime);
-      gains[name].gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
-    }
-  }
-
-  function startSiren() {
-    const o = ctx.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.value = 120;
-    // LFO for warble
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.value = 9;
-    lfoGain.gain.value = 14;
-    lfo.connect(lfoGain);
-    lfoGain.connect(o.frequency);
-    o.connect(gains.siren);
-    o.start();
-    lfo.start();
-    gains.siren.gain.cancelScheduledValues(ctx.currentTime);
-    gains.siren.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.05);
-    loops.siren = {
-      osc: o, lfo,
-      setPitch(baseHz) { o.frequency.setTargetAtTime(baseHz, ctx.currentTime, 0.2); },
-      stop() { try { o.stop(); lfo.stop(); } catch(_){} },
-    };
-  }
-
-  function startFrightened() {
-    const o = ctx.createOscillator();
-    o.type = 'square';
-    o.frequency.value = 220;
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.value = 14;
-    lfoGain.gain.value = 40;
-    lfo.connect(lfoGain);
-    lfoGain.connect(o.frequency);
-    o.connect(gains.frightened);
-    o.start(); lfo.start();
-    gains.frightened.gain.cancelScheduledValues(ctx.currentTime);
-    gains.frightened.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.05);
-    loops.frightened = { osc: o, lfo, stop() { try { o.stop(); lfo.stop(); } catch(_){} } };
-  }
-
-  function startRetreat() {
-    const o = ctx.createOscillator();
-    o.type = 'square';
-    o.frequency.value = 900;
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.value = 20;
-    lfoGain.gain.value = 160;
-    lfo.connect(lfoGain);
-    lfoGain.connect(o.frequency);
-    o.connect(gains.retreat);
-    o.start(); lfo.start();
-    gains.retreat.gain.cancelScheduledValues(ctx.currentTime);
-    gains.retreat.gain.linearRampToValueAtTime(0.05, ctx.currentTime + 0.05);
-    loops.retreat = { osc: o, lfo, stop() { try { o.stop(); lfo.stop(); } catch(_){} } };
+    const g = gains[name];
+    g.gain.cancelScheduledValues(ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.08);
+    setTimeout(() => l.stop(), 120);
   }
 
   function setDotsRatio(ratio) {
     if (!loops.siren) return;
-    // Pitch rises as dots run out
-    const base = 90 + (1 - ratio) * 140;
-    loops.siren.setPitch(base);
+    loops.siren.setRate(1.0 + (1 - ratio) * 0.6);
   }
 
-  // Called each frame with engine state. Dispatches events + manages loops.
   function sync(state) {
     if (!ctx || !enabled) return;
-    // Process events
     for (const ev of state.events) {
-      if (ev.type === 'dot') playWaka();
-      else if (ev.type === 'pellet') playPellet();
-      else if (ev.type === 'eat_ghost') playEatGhost();
-      else if (ev.type === 'eat_rival') playEatRival();
-      else if (ev.type === 'death') { playDeath(); dyingActive = true; }
+      if (ev.type === 'dot') playBeep();
+      else if (ev.type === 'pellet') playSample('pellet', { gain: 0.6 });
+      else if (ev.type === 'eat_ghost') playSample('eat_ghost', { gain: 0.7 });
+      else if (ev.type === 'eat_rival') playSample('eat_rival', { gain: 0.7 });
+      else if (ev.type === 'death') playSample('death', { gain: 0.75 });
       else if (ev.type === 'round_start') { if (!introPlayed) playIntro(); }
     }
 
@@ -238,36 +145,26 @@
     const anyFright = state.ghosts.some(g => g.mode === 'frightened');
     const anyEaten = state.ghosts.some(g => g.mode === 'eaten');
     const dying = state.phase === 'dying';
-    if (!dying) dyingActive = false;
 
-    // Dying: silence all loops
-    if (dying) {
+    if (dying || !playing) {
       stopLoop('siren');
       stopLoop('frightened');
       stopLoop('retreat');
       return;
     }
 
-    if (!playing) {
-      stopLoop('siren');
-      stopLoop('frightened');
-      stopLoop('retreat');
-      return;
-    }
-
-    // Retreat takes priority (over frightened)
     if (anyEaten) {
       stopLoop('siren');
       stopLoop('frightened');
-      startLoop('retreat');
+      startLoop('retreat', 'retreat_loop', 0.3);
     } else if (anyFright) {
       stopLoop('siren');
       stopLoop('retreat');
-      startLoop('frightened');
+      startLoop('frightened', 'frightened_loop', 0.32);
     } else {
       stopLoop('frightened');
       stopLoop('retreat');
-      startLoop('siren');
+      startLoop('siren', 'siren_loop', 0.22);
       const ratio = state.totalDots ? (state.dotsRemaining / state.totalDots) : 1;
       setDotsRatio(ratio);
     }
@@ -275,9 +172,10 @@
 
   function resetForNewGame() {
     introPlayed = false;
-    dyingActive = false;
     wakaToggle = 0;
-    stopLoop('siren'); stopLoop('frightened'); stopLoop('retreat');
+    stopLoop('siren');
+    stopLoop('frightened');
+    stopLoop('retreat');
   }
 
   window.PacmanAudio = {
