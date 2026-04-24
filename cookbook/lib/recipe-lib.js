@@ -96,7 +96,7 @@ function filterRecipes(recipes, { query, tags, category, favoritesOnly, favorite
 }
 
 // Group recipes by category, preserving category display order.
-function groupByCategory(recipes, order = ['Mains', 'Sides', 'Breakfast', 'Desserts', 'Other']) {
+function groupByCategory(recipes, order = ['Mains', 'Sides', 'Appetizers', 'Sauces', 'Breakfast', 'Desserts', 'Other']) {
   const groups = {};
   for (const c of order) groups[c] = [];
   for (const r of recipes) {

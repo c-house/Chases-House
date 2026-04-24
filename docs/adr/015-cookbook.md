@@ -74,6 +74,34 @@ If the cookbook ever warrants independent identity, promotion to a subdomain is 
 - `games/index.html` — Added Cookbook nav link (re-indexed)
 - `files/index.html` — Added Cookbook nav link (re-indexed)
 
+## Addendum — 2026-04-23 (recipe expansion)
+
+Three more recipes transcribed from `~/Downloads/*.docx.md` source files and folded into the cookbook. Two of them introduced categories the original four (Mains / Sides / Breakfast / Desserts) didn't cover:
+
+- **Fried Artichoke Hearts with Garlic Aioli** (Tasty Kitchen) → new **Appetizers** category
+- **Yum Yum Sauce** (Jason's BBQ Adventures) → new **Sauces** category
+- **Blueberry Ice Cream with Optional Crisp** (Riverside Len / Food.com) → existing **Desserts**
+
+### Category expansion
+
+`Appetizers` and `Sauces` added to two places so the new recipes land in their own tab instead of the `Other` catch-all:
+
+- `cookbook/directions/rustic.jsx:323` — `categories` array drives the tab strip
+- `cookbook/lib/recipe-lib.js:99` — `groupByCategory` default `order` drives the grouping on the home view
+
+Kept insertion order low-churn: `['All', 'Mains', 'Sides', 'Appetizers', 'Sauces', 'Breakfast', 'Desserts']`. Savory-savory-savory-light-sweet flow matches a menu.
+
+### Image handling
+
+The source `.docx.md` files embed the recipe photos as base64 `data:image/png;base64,...` references at the bottom of each file. Decoded once with a throwaway Python script (`base64.b64decode` per `[imageN]:` reference line) and written to `cookbook/images/<recipe-id>/image1.png`. Script was removed after use — it's a one-shot import, not a build step. Same image-folder convention the `keller-chicken` and `pot-roast` recipes already use; `photo` field on each recipe is a relative path.
+
+### Verification
+
+- `node --check` clean on `recipes.js` and `recipe-lib.js`
+- Load-test via Node: all 13 recipes parse; new entries carry expected category / ingredient count / step count / photo path
+- Dev server (`python -m http.server 3003`) returned 200 for `/cookbook/` and for each new `cookbook/images/<id>/image1.png`
+- Did **not** click through the rendered UI (Chrome DevTools MCP wasn't reachable this session) — follow-up task if anything looks off in the browser
+
 ## Verification
 
 - Page loads cleanly at `/cookbook/` — masthead renders, category tabs, filter chips, seven recipe cards populated across Mains / Breakfast / Sides / Desserts

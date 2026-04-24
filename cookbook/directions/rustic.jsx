@@ -320,7 +320,7 @@ function RusticApp() {
 // ─── Home / Browse ───────────────────────────────────────────
 function RusticHome({ query, setQuery, selectedTags, toggleTag, tagCounts, category, setCategory, favoritesOnly, setFavoritesOnly, recipes, favorites, toggleFav, onOpen }) {
   const grouped = groupByCategory(recipes);
-  const categories = ['All', 'Mains', 'Sides', 'Breakfast', 'Desserts'];
+  const categories = ['All', 'Mains', 'Sides', 'Appetizers', 'Sauces', 'Breakfast', 'Desserts'];
 
   return (
     <div className="rustic-fade" style={{ maxWidth: 1120, margin: '0 auto', padding: '48px 56px 80px' }}>

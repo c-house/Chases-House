@@ -2,6 +2,13 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-04-23 — Cookbook recipes (Appetizers, Sauces, Blueberry Ice Cream)
+
+- Add three recipes transcribed from `.docx.md` source files: Fried Artichoke Hearts with Garlic Aioli (Tasty Kitchen), Yum Yum Sauce (Jason's BBQ Adventures), Blueberry Ice Cream with Optional Crisp (Riverside Len / Food.com)
+- Introduce `Appetizers` and `Sauces` categories — `cookbook/directions/rustic.jsx` tab strip and `cookbook/lib/recipe-lib.js` `groupByCategory` order updated so new recipes get their own tab instead of landing in `Other`
+- Decode embedded base64 recipe photos into `cookbook/images/<recipe-id>/image1.png`, matching the convention `keller-chicken` and `pot-roast` already use
+- Update ADR-015 with an addendum covering the expansion and category-list change
+
 ## 2026-04-23 — Cookbook
 
 - Add Family Cookbook at `/cookbook/` — seven family recipes with live serving-size scaling, ingredient-tag filters, full-text search, favorites, personal notes, and cook mode
