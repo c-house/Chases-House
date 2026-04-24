@@ -17,7 +17,7 @@
 ├── CNAME             → Custom domain config
 ├── docs/             → Project documentation (not served)
 │   ├── adr/          → Architecture decision records (one per feature)
-│   └── screenshots/  → Visual test artifacts
+│   └── screenshots/  → Local verification artifacts (gitignored)
 └── games/            → Browser games
     ├── index.html    → Games gallery page
     ├── sudoku/       → Solo puzzle (reference for new games)
@@ -122,7 +122,7 @@ After building any UI component, page, or user flow:
 2. `navigate_page` -> target URL
 3. `wait_for` -> confirm page has loaded (landmark element or heading)
 4. `take_snapshot` -> inspect DOM structure, get UIDs for interaction
-5. `take_screenshot` -> visually verify rendered output (save to `docs/screenshots/`)
+5. `take_screenshot` -> visually verify rendered output (save to `docs/screenshots/` — gitignored, local-only)
 6. `list_console_messages` with `types: ["error"]` -> fix ALL errors before continuing
 7. `list_network_requests` -> confirm no 4xx/5xx responses
 8. For interactive elements: `take_snapshot` -> `click(uid)` or `fill_form` -> verify result

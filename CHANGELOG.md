@@ -2,6 +2,19 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-04-23 — Cookbook
+
+- Add Family Cookbook at `/cookbook/` — seven family recipes with live serving-size scaling, ingredient-tag filters, full-text search, favorites, personal notes, and cook mode
+- React 18 + Babel-standalone via CDN (no build step), rustic paper-and-ink aesthetic scoped under `.rustic` class so nothing leaks to the dark chases.house chrome
+- `cookbook/data/recipes.js` stores recipes as normalized per-serving amounts; `{i:N}` tokens in step text render the scaled ingredient inline when displayed
+- `cookbook/lib/recipe-lib.js` handles amount formatting (unicode fractions), scaling, search, tag filtering, and a `useLocalState` hook
+- Cook mode requests a screen wake-lock so the phone stays bright on the counter
+- Favorites, notes, checked ingredients, and checked steps persist under `rustic:*` localStorage keys
+- Add Cookbook link to the header nav on Home / Games / Files (re-indexed the fade-in stagger for the now-seven-item nav)
+- Add Cookbook room card on the homepage; made `.rooms` flex-wrap so multiple cards sit side-by-side
+- Served path-based (no DNS changes) — rationale captured in ADR-015
+- Add ADR-015
+
 ## 2026-04-23 — Pac-Man
 
 - Add Pac-Man game with four modes: Solo vs AI, Pac vs Ghosts, Co-op, Battle Royale (up to 4 players on one PC)

@@ -71,6 +71,9 @@
     /* ── Rooms Section ────────────────────────────────── */
     .rooms {
       padding: 0 clamp(1.5rem, 5vw, 4rem) clamp(3rem, 8vh, 6rem);
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(1rem, 2vw, 1.5rem);
     }
 
     .room-card {
@@ -157,10 +160,11 @@
     <nav class="nav" aria-label="Main navigation">
       <span class="nav-link active" style="--i:0" aria-current="page">Home</span>
       <a class="nav-link" style="--i:1" href="/games/">Games</a>
-      <span id="music-nav" class="nav-link coming-soon" style="--i:2">Music<span class="coming-soon-tag">soon</span></span>
-      <span class="nav-link coming-soon" style="--i:3">Blog<span class="coming-soon-tag">soon</span></span>
-      <a class="nav-link" style="--i:4" href="/files/">Files</a>
-      <span class="nav-link coming-soon" style="--i:5">Links<span class="coming-soon-tag">soon</span></span>
+      <a class="nav-link" style="--i:2" href="/cookbook/">Cookbook</a>
+      <span id="music-nav" class="nav-link coming-soon" style="--i:3">Music<span class="coming-soon-tag">soon</span></span>
+      <span class="nav-link coming-soon" style="--i:4">Blog<span class="coming-soon-tag">soon</span></span>
+      <a class="nav-link" style="--i:5" href="/files/">Files</a>
+      <span class="nav-link coming-soon" style="--i:6">Links<span class="coming-soon-tag">soon</span></span>
     </nav>
   </header>
 
@@ -174,6 +178,11 @@
       <span class="room-icon" aria-hidden="true">&#9823;</span>
       <h2>Games</h2>
       <p>Browser-based games to play with friends.</p>
+    </a>
+    <a class="room-card" href="/cookbook/">
+      <span class="room-icon" aria-hidden="true">&#127859;</span>
+      <h2>Cookbook</h2>
+      <p>Family recipes, scaled to any serving size.</p>
     </a>
   </section>
 
