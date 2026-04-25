@@ -12,7 +12,56 @@
   <style>
     html { scroll-behavior: smooth; }
 
-    /* ── Home page animation timing (longer stagger for hero sequence) ── */
+    /* Body becomes the forest stage */
+    body.home {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Forest backdrop */
+    .forest-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background-image: url("/assets/forest-house-landscape.png");
+      background-size: cover;
+      background-position: center 60%;
+      background-repeat: no-repeat;
+      animation: forestFadeIn 1400ms ease-out backwards;
+    }
+
+    /* Portrait crop on tall/narrow viewports */
+    @media (max-aspect-ratio: 1/1) {
+      .forest-bg {
+        background-image: url("/assets/forest-house-portrait.png");
+        background-position: center center;
+      }
+    }
+
+    /* Vignette + warm darken so the type holds */
+    .forest-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        linear-gradient(to top right,
+          rgba(8,12,10,0.85) 0%,
+          rgba(8,12,10,0.45) 30%,
+          rgba(8,12,10,0.05) 55%,
+          rgba(8,12,10,0.4) 100%),
+        radial-gradient(ellipse 110% 90% at 50% 50%, transparent 45%, rgba(8,12,10,0.6) 100%);
+    }
+
+    /* Override the body::before / ::after ambient layers from styles.css —
+       the forest carries the page now. */
+    body.home::before,
+    body.home::after { display: none; }
+
+    /* ── Home page animation timing ── */
     .site-header {
       animation-duration: 600ms;
       animation-delay: 600ms;
@@ -33,128 +82,92 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: clamp(4rem, 12vh, 10rem) clamp(1.5rem, 5vw, 4rem) clamp(2rem, 5vh, 4rem);
-      max-width: 72rem;
+      justify-content: flex-end;
+      align-items: flex-start;
+      padding: 0 clamp(1.5rem, 5vw, 4.5rem) clamp(2rem, 5vh, 3rem);
+      max-width: 52rem;
     }
 
     .site-title {
       font-family: var(--font-display);
-      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
-      font-size: clamp(2.8rem, 7vw + 0.5rem, 6rem);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2.6rem, 6.5vw + 0.4rem, 5.4rem);
       font-weight: 350;
       color: var(--text-heading);
       line-height: 1.05;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.015em;
+      white-space: nowrap;
+      text-shadow:
+        0 2px 24px rgba(0,0,0,0.7),
+        0 1px 2px rgba(0,0,0,0.6);
       animation: fadeSlideUp 900ms ease-out backwards;
       animation-delay: 150ms;
     }
 
     .site-title .accent {
-      color: var(--accent-gold);
-      animation: warmGlow 5s ease-in-out infinite;
-      animation-delay: 1200ms;
+      /* Toned gold so it complements (not competes with) the cabin's lit window */
+      color: #d9a458;
+      text-shadow:
+        0 2px 24px rgba(0,0,0,0.7),
+        0 1px 4px rgba(0,0,0,0.55);
+      animation: warmGlow 6s ease-in-out infinite;
+      animation-delay: 1600ms;
       display: inline-block;
     }
 
     .site-tagline {
       font-family: var(--font-body);
-      font-size: clamp(1rem, 1.8vw + 0.3rem, 1.35rem);
+      font-size: clamp(1rem, 1.5vw + 0.25rem, 1.2rem);
       font-weight: 350;
-      color: var(--text-muted);
-      margin-top: clamp(0.8rem, 2vw, 1.5rem);
+      color: rgba(245,238,224,0.92);
+      margin-top: clamp(0.9rem, 2vw, 1.4rem);
       letter-spacing: 0.02em;
+      text-shadow: 0 1px 14px rgba(0,0,0,0.75);
       animation: fadeSlideUp 750ms ease-out backwards;
       animation-delay: 450ms;
     }
 
-    /* ── Rooms Section ────────────────────────────────── */
-    .rooms {
-      padding: 0 clamp(1.5rem, 5vw, 4rem) clamp(3rem, 8vh, 6rem);
-      display: flex;
-      flex-wrap: wrap;
-      gap: clamp(1rem, 2vw, 1.5rem);
-    }
-
-    .room-card {
-      display: block;
-      max-width: 22rem;
-      padding: clamp(1.5rem, 3vw, 2rem);
-      background: var(--bg-surface);
-      border: 1px solid var(--accent-ember);
-      border-radius: 6px;
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-      animation: fadeSlideUp 700ms ease-out backwards;
-      animation-delay: 1000ms;
-    }
-
-    .room-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--accent-gold);
-      box-shadow: 0 8px 32px rgba(200, 148, 62, 0.12), 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .room-icon {
-      display: block;
-      font-size: 1.8rem;
-      margin-bottom: 0.6rem;
-      opacity: 0.9;
-    }
-
-    .room-card h2 {
-      font-family: var(--font-display);
-      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
-      font-size: 1.3rem;
-      font-weight: 500;
-      color: var(--text-heading);
-      margin-bottom: 0.3rem;
-    }
-
-    .room-card p {
-      font-size: 0.92rem;
-      color: var(--text-muted);
-      line-height: 1.5;
+    /* Footer sits above the forest as quiet metadata */
+    .site-footer {
+      color: rgba(240,230,211,0.5);
+      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
     }
 
     @keyframes warmGlow {
-      0%, 100% { text-shadow: 0 0 30px rgba(200, 148, 62, 0.25); }
-      50%      { text-shadow: 0 0 50px rgba(200, 148, 62, 0.45), 0 0 90px rgba(200, 148, 62, 0.12); }
+      0%, 100% { text-shadow: 0 2px 24px rgba(0,0,0,0.7), 0 1px 4px rgba(0,0,0,0.55); }
+      50%      { text-shadow: 0 2px 24px rgba(0,0,0,0.7), 0 0 38px rgba(217,164,88,0.35), 0 1px 4px rgba(0,0,0,0.55); }
+    }
+
+    @keyframes forestFadeIn {
+      from { opacity: 0; transform: scale(1.04); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Lift nav links above the forest */
+    body.home .nav-link {
+      text-shadow: 0 1px 8px rgba(0,0,0,0.5);
     }
 
     /* ── Responsive ───────────────────────────────────── */
     @media (max-width: 768px) {
       .hero {
-        align-items: center;
-        text-align: center;
+        align-items: flex-start;
+        text-align: left;
       }
-
-      .rooms {
-        display: flex;
-        justify-content: center;
-      }
-
-      .room-card {
-        max-width: 100%;
-        width: 100%;
-      }
+      .site-title { white-space: normal; }
     }
 
     @media (max-width: 480px) {
       .hero {
-        padding-top: clamp(3rem, 8vh, 5rem);
+        padding-bottom: clamp(1.5rem, 4vh, 2.5rem);
       }
     }
   </style>
 </head>
-<body>
-  <!-- SVG noise filter (hidden) -->
-  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
-    <filter id="grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
-    </filter>
-  </svg>
+<body class="home">
+  <!-- Forest backdrop layers (fixed, full-viewport) -->
+  <div class="forest-bg" aria-hidden="true"></div>
+  <div class="forest-vignette" aria-hidden="true"></div>
 
   <header class="site-header">
     <nav class="nav" aria-label="Main navigation">
@@ -172,19 +185,6 @@
     <h1 class="site-title">Chase's <span class="accent">House</span></h1>
     <p class="site-tagline">Welcome in. Make yourself at home.</p>
   </main>
-
-  <section class="rooms" aria-label="Explore">
-    <a class="room-card" href="/games/">
-      <span class="room-icon" aria-hidden="true">&#9823;</span>
-      <h2>Games</h2>
-      <p>Browser-based games to play with friends.</p>
-    </a>
-    <a class="room-card" href="/cookbook/">
-      <span class="room-icon" aria-hidden="true">&#127859;</span>
-      <h2>Cookbook</h2>
-      <p>Family recipes, scaled to any serving size.</p>
-    </a>
-  </section>
 
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>

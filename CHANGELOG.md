@@ -2,6 +2,15 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-04-25 — Cleaner home page (forest backdrop)
+
+- Replace the room-card landing with a full-bleed forest-cabin photograph and a quiet "Chase's House" title in the lower-left
+- Drop the Games / Cookbook room cards — both reachable from the existing top nav, ending the duplication that prompted the redesign
+- Add `assets/forest-house-landscape.png` and `assets/forest-house-portrait.png`; CSS swaps to portrait via `@media (max-aspect-ratio: 1/1)` for tall/narrow viewports
+- Toned-gold accent (`#d9a458`) on "House" and a weighted vignette so the title doesn't compete with the cabin's lit window
+- All new styles inline under `body.home`; `styles.css` untouched and other pages keep existing chrome
+- Designed via Claude Design exploration (4 variations, Variation A "Pure Hero" picked); ADR-022
+
 ## 2026-04-23 — Cookbook recipes (Appetizers, Sauces, Blueberry Ice Cream)
 
 - Add three recipes transcribed from `.docx.md` source files: Fried Artichoke Hearts with Garlic Aioli (Tasty Kitchen), Yum Yum Sauce (Jason's BBQ Adventures), Blueberry Ice Cream with Optional Crisp (Riverside Len / Food.com)
