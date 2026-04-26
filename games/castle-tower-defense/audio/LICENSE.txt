@@ -1,0 +1,38 @@
+All audio in this directory is CC0 (Creative Commons Zero / Public Domain).
+No attribution is required; the source mapping below is provided as courtesy.
+
+────────────────────────────────────────────────────────────────────────────
+SFX (12 files)
+────────────────────────────────────────────────────────────────────────────
+
+Sourced from:
+  The Essential Retro Video Game Sound Effects Collection [512 sounds]
+  by Juhani Junkala
+  https://opengameart.org/content/512-sound-effects-8-bit-style
+  License: CC0
+
+Mapping (source path inside Junkala's pack → local filename):
+
+  Weapons/Melee/sfx_wpn_dagger.wav                 -> arrow_loose.wav
+  Weapons/Cannon/sfx_wpn_cannon1.wav               -> cannon_thud.wav
+  Weapons/Lasers/sfx_wpn_laser1.wav                -> magic_zap.wav
+  General Sounds/High Pitched Sounds/sfx_sounds_high1.wav   -> frost_shimmer.wav
+  General Sounds/Coins/sfx_coin_single1.wav        -> gold_pickup.wav
+  Death Screams/Human/sfx_deathscream_human1.wav   -> enemy_death.wav
+  General Sounds/Impacts/sfx_sounds_impact1.wav    -> castle_hit.wav
+  General Sounds/Fanfares/sfx_sounds_fanfare2.wav  -> wave_start.wav
+  General Sounds/Fanfares/sfx_sounds_fanfare1.wav  -> wave_clear.wav
+  General Sounds/Fanfares/sfx_sounds_fanfare3.wav  -> victory.wav
+  General Sounds/Negative Sounds/sfx_sounds_damage1.wav  -> defeat.wav
+  General Sounds/Menu Sounds/sfx_menu_move1.wav    -> ui_click.wav
+
+────────────────────────────────────────────────────────────────────────────
+BGM (1 file)
+────────────────────────────────────────────────────────────────────────────
+
+  bgm_loop.mp3
+  Source: "The Old Tower Inn" by Phil Michalski (Spring Spring)
+  https://opengameart.org/content/medieval-the-old-tower-inn
+  License: CC0
+
+────────────────────────────────────────────────────────────────────────────

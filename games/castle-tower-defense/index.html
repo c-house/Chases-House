@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Castle Tower Defense — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ──────────────────────────────────────────────────────────────────
+       Castle Tower Defense — visual / UI layer
+       Aesthetic: an illuminated manuscript, laid open on a dark table.
+       The dark site chrome IS the table. Parchment IS the playfield.
+       UI lives in the margins as marginalia, not floating panels.
+       ────────────────────────────────────────────────────────────────── */
+
+    :root {
+      /* Parchment family — derived from site --text-primary #f0e6d3 */
+      --parchment-cream:  #ede2c8;
+      --parchment-warm:   #e8d5a8;
+      --parchment-aged:   #d4c191;
+      --parchment-shade:  rgba(50, 35, 20, 0.18);
+      --parchment-edge:   #b9a576;
+
+      /* Ink — slightly warm, not pure black */
+      --ink:              #1a1410;
+      --ink-soft:         #2d251c;
+      --ink-faint:        #4a3f30;
+      --ink-ghost:        rgba(26, 20, 16, 0.22);
+
+      /* Reserved colors used sparingly for meaning */
+      --leaf:             #5a7a3a;     /* nature / Plains */
+      --wine:             #6e1f24;     /* warning / Boss / banners */
+      --frost-blue:       #6a8aa0;     /* Frost tower / Mountain Pass */
+
+      /* Easing & duration tokens */
+      --ease-snap:    cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-stagger: cubic-bezier(0.6, 0, 0.4, 1);
+      --ease-unfurl:  cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-soft:    cubic-bezier(0.32, 0.72, 0.18, 1);
+
+      --dur-snap:    180ms;
+      --dur-stagger:  80ms;
+      --dur-unfurl:  600ms;
+      --dur-fade:    260ms;
+    }
+
+    /* ── Page chrome ──────────────────────────────────────────────── */
+    html, body { height: 100%; }
+    body {
+      background-color: var(--bg-deep);
+      overflow: hidden;
+      font-family: var(--font-body);
+      color: var(--parchment-cream);
+    }
+    body::before {
+      /* dark wood-table mood: warm radial bloom under the parchment */
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 50%,
+          rgba(140, 92, 38, 0.10) 0%, transparent 65%),
+        radial-gradient(ellipse 100% 60% at 50% 100%,
+          rgba(50, 30, 12, 0.4) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* a faint grid of fibers across the dark page — woodgrain hint */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: repeating-linear-gradient(
+        90deg,
+        rgba(255, 220, 160, 0.012) 0 1px,
+        transparent 1px 6px);
+      mix-blend-mode: overlay;
+    }
+
+    .stage {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      padding: clamp(0.6rem, 2vw, 1.6rem);
+      z-index: 1;
+    }
+
+    /* ── Site nav (back to /games) ──────────────────────────────── */
+    .return-link {
+      position: fixed; top: 1rem; left: 1.1rem; z-index: 50;
+      font-family: var(--font-body);
+      font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.55);
+      text-decoration: none;
+      padding: 0.35rem 0.7rem;
+      transition: color var(--dur-fade) ease;
+    }
+    .return-link:hover { color: var(--accent-gold); }
+    .return-link::before { content: '◂  '; opacity: 0.6; }
+
+    /* ──────────────────────────────────────────────────────────────
+       PARCHMENT — the central object on every screen.
+       Deckled edges via SVG mask reference; warm grain via filter overlay.
+       ────────────────────────────────────────────────────────────── */
+    .parchment {
+      position: relative;
+      width: min(96vw, 1180px);
+      height: min(86vh, 760px);
+      background: var(--parchment-cream);
+      color: var(--ink);
+      font-family: var(--font-body);
+
+      /* deckled edge — clip-path with hand-irregular points */
+      clip-path: polygon(
+        0.6% 1.4%,  3.2% 0.4%,  9% 1.1%, 16% 0.5%, 24% 1.3%, 33% 0.7%,
+        42% 1.6%, 51% 0.4%, 60% 1.2%, 69% 0.6%, 78% 1.5%, 87% 0.5%, 95% 1.4%, 99.4% 2.6%,
+        99.4% 9%, 98.7% 17%, 99.5% 26%, 98.6% 36%, 99.3% 47%, 98.7% 58%, 99.4% 70%, 98.5% 82%, 99.5% 93%,
+        98% 98.5%, 92% 99.4%, 84% 98.7%, 75% 99.5%, 66% 98.6%, 56% 99.3%, 47% 98.6%,
+        38% 99.5%, 28% 98.7%, 18% 99.4%, 9% 98.6%, 3% 99.4%, 0.5% 98.2%,
+        1.2% 90%, 0.4% 78%, 1.4% 66%, 0.5% 54%, 1.5% 41%, 0.6% 28%, 1.3% 16%
+      );
+
+      box-shadow:
+        0 1px 0 rgba(255,225,170,0.06) inset,
+        0 -2px 0 rgba(0,0,0,0.2) inset,
+        0 30px 60px -20px rgba(0,0,0,0.7),
+        0 18px 36px -22px rgba(60,30,8,0.6);
+    }
+
+    .parchment::before {
+      /* fine fibrous grain */
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(ellipse 1px 1px at 12% 18%, rgba(80,55,25,0.25), transparent 60%),
+        radial-gradient(ellipse 1px 1px at 78% 32%, rgba(80,55,25,0.18), transparent 60%),
+        radial-gradient(ellipse 1px 1px at 42% 71%, rgba(80,55,25,0.22), transparent 60%),
+        radial-gradient(ellipse 1px 1px at 88% 88%, rgba(80,55,25,0.18), transparent 60%),
+        radial-gradient(ellipse 60% 90% at 50% 50%,
+          transparent 30%, rgba(140, 96, 40, 0.08) 75%, rgba(80, 50, 18, 0.18) 100%);
+      filter: url(#paper-noise);
+      pointer-events: none;
+      mix-blend-mode: multiply;
+    }
+
+    .parchment::after {
+      /* edge burnish: slight darker rim */
+      content: '';
+      position: absolute; inset: 0;
+      box-shadow:
+        inset 0 0 90px 6px rgba(150, 105, 50, 0.18),
+        inset 0 0 30px 2px rgba(110, 70, 30, 0.10);
+      pointer-events: none;
+    }
+
+    /* corner flourish ornaments */
+    .parchment .ornament {
+      position: absolute; width: 56px; height: 56px;
+      color: var(--ink-faint);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .parchment .ornament.tl { top: 14px; left: 18px; }
+    .parchment .ornament.tr { top: 14px; right: 18px; transform: scaleX(-1); }
+    .parchment .ornament.bl { bottom: 14px; left: 18px; transform: scaleY(-1); }
+    .parchment .ornament.br { bottom: 14px; right: 18px; transform: scale(-1, -1); }
+
+    /* ──────────────────────────────────────────────────────────────
+       Screen state: only the active screen is shown.
+       data-screen attribute on <body> drives visibility.
+       ────────────────────────────────────────────────────────────── */
+    .screen { display: none; position: absolute; inset: 0; }
+    body[data-screen="title"]      .screen.title,
+    body[data-screen="map-select"] .screen.map-select,
+    body[data-screen="pause"]      .overlay.pause,
+    body[data-screen="game-over"]  .overlay.game-over,
+    body[data-screen="tutorial"]   .overlay.tutorial { display: block; }
+
+    /* play screen uses grid layout; show whenever the play HUD is active */
+    body[data-screen="play"]       .screen.play,
+    body[data-screen="pause"]      .screen.play,
+    body[data-screen="game-over"]  .screen.play,
+    body[data-screen="tutorial"]   .screen.play {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 1fr;
+      height: 100%;
+      padding: 0.85rem 1.25rem;
+      gap: 0.55rem;
+    }
+
+    /* enter animation reused on all screens */
+    .screen { animation: screenIn var(--dur-unfurl) var(--ease-unfurl) both; }
+    @keyframes screenIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       Common micro-components: ink rule, drop cap, parchment button.
+       ────────────────────────────────────────────────────────────── */
+    .rule {
+      display: block; height: 0;
+      border-top: 1.5px solid var(--ink-soft);
+      position: relative;
+    }
+    .rule.double {
+      border-bottom: 1.5px solid var(--ink-soft);
+      height: 4px;
+    }
+    .rule.flourish::before, .rule.flourish::after {
+      content: '✦';
+      position: absolute; top: -0.85em; font-size: 0.85em;
+      color: var(--ink-soft);
+      background: var(--parchment-cream);
+      padding: 0 0.6em;
+    }
+    .rule.flourish::before { left: 50%; transform: translateX(-50%); }
+    .rule.flourish::after  { display: none; }
+
+    .drop-cap {
+      float: left;
+      font-family: var(--font-display);
+      font-size: 5.6rem;
+      line-height: 0.86;
+      font-weight: 600;
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 0;
+      color: var(--wine);
+      padding: 0.05em 0.18em 0 0;
+      margin-right: 0.05em;
+      text-shadow: 0.5px 0.5px 0 rgba(110,31,36,0.4);
+    }
+
+    /* parchment-strip button: looks like a torn paper ticket */
+    .btn {
+      --btn-fg: var(--ink);
+      --btn-bg: var(--parchment-warm);
+      position: relative;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+      padding: 0.85rem 1.6rem 0.92rem;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.92rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--btn-fg);
+      background: var(--btn-bg);
+      border: none;
+      cursor: pointer;
+      clip-path: polygon(
+        2% 8%, 6% 0%, 14% 4%, 22% 0%, 32% 5%, 44% 1%, 56% 4%, 68% 0%, 78% 5%, 88% 1%, 96% 6%, 100% 18%,
+        99% 38%, 100% 58%, 99% 78%, 100% 92%, 94% 100%, 84% 96%, 72% 100%, 60% 96%, 48% 100%, 36% 96%, 24% 100%, 12% 95%, 4% 99%, 0% 86%,
+        1% 64%, 0% 42%, 1% 22%
+      );
+      transition:
+        transform var(--dur-snap) var(--ease-snap),
+        background var(--dur-fade) ease;
+      box-shadow: 0 2px 0 rgba(80,50,20,0.25);
+    }
+    .btn:hover { transform: translateY(-2px) rotate(-0.4deg); background: #f1dfb2; }
+    .btn:active { transform: translateY(0); }
+    .btn.primary  { --btn-bg: var(--accent-gold); --btn-fg: var(--ink); }
+    .btn.primary:hover { background: var(--accent-glow); }
+    .btn.ghost    { --btn-bg: transparent; --btn-fg: var(--ink); box-shadow: none; }
+    .btn.ghost::before {
+      content: ''; position: absolute; inset: auto 14% 12% 14%; height: 1px; background: var(--ink-faint);
+    }
+    .btn.danger   { --btn-bg: var(--wine); --btn-fg: var(--parchment-cream); }
+    .btn .wax {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--wine);
+      box-shadow: inset -2px -2px 0 rgba(0,0,0,0.25), 0 1px 0 rgba(0,0,0,0.2);
+    }
+
+    /* small chip / pill */
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.18rem 0.6rem 0.2rem;
+      font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+      font-weight: 600;
+      border: 1.5px solid var(--ink-soft);
+      color: var(--ink-soft);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+    }
+    .chip.gold { border-color: var(--accent-ember); color: var(--accent-ember); }
+    .chip.locked { opacity: 0.45; }
+
+    /* ──────────────────────────────────────────────────────────────
+       SCREEN 1 — TITLE
+       ────────────────────────────────────────────────────────────── */
+    .title-wrap {
+      height: 100%; display: grid; place-items: center;
+      padding: clamp(2rem, 6vh, 5rem) clamp(1rem, 4vw, 3rem);
+      text-align: center;
+    }
+    .title-eyebrow {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.75rem; letter-spacing: 0.45em; text-transform: uppercase;
+      color: var(--ink-faint);
+      margin-bottom: 1.4rem;
+    }
+    .title-name {
+      font-family: var(--font-display);
+      font-size: clamp(3.2rem, 8.5vw, 6.8rem);
+      line-height: 0.9;
+      font-weight: 350;
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 30;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+      margin: 0.2em 0;
+    }
+    .title-name .tower-glyph {
+      display: inline-block;
+      transform: translateY(-0.05em) rotate(-2deg);
+      color: var(--accent-ember);
+      font-style: italic;
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 80;
+    }
+    .title-tagline {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+      font-weight: 400;
+      color: var(--ink-soft);
+      max-width: 32em;
+      margin: 1.5rem auto 2.6rem;
+      letter-spacing: 0.02em;
+    }
+    .title-actions {
+      display: inline-flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    }
+    .title-marginalia {
+      position: absolute; pointer-events: none; opacity: 0.7;
+    }
+    .title-marginalia.left  { left: 5%;  top: 28%; width: 70px; transform: rotate(-8deg); }
+    .title-marginalia.right { right: 7%; top: 32%; width: 60px; transform: rotate(6deg); }
+    .title-marginalia.bot   { left: 50%; bottom: 6%; width: 90px; transform: translateX(-50%); }
+    .title-marginalia svg { width: 100%; height: auto; color: var(--ink-faint); }
+
+    .settings-cog {
+      position: absolute; top: 22px; right: 22px;
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      background: transparent; border: none;
+      color: var(--ink-soft);
+      cursor: pointer;
+      border-radius: 50%;
+      transition: transform 360ms linear, color var(--dur-fade) ease;
+    }
+    .settings-cog:hover { color: var(--accent-ember); transform: rotate(60deg); }
+    .settings-cog svg { width: 22px; height: 22px; }
+
+    /* an enemy walks across the bottom edge subtly during attract */
+    .attract-walker {
+      position: absolute;
+      left: -10%; bottom: 8%;
+      width: 36px; height: 36px;
+      color: var(--ink-faint);
+      animation: walkerCross 22s linear infinite;
+    }
+    @keyframes walkerCross {
+      0%   { transform: translateX(0) translateY(0); }
+      48%  { transform: translateX(60vw) translateY(-3px); }
+      52%  { transform: translateX(60vw) translateY(0); }
+      100% { transform: translateX(120vw) translateY(0); }
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       SCREEN 2 — MAP SELECT
+       Three cards as pages from a bestiary.
+       ────────────────────────────────────────────────────────────── */
+    .map-wrap {
+      height: 100%;
+      padding: clamp(2.5rem, 6vh, 4rem) clamp(1.2rem, 4vw, 3rem) 2rem;
+      display: flex; flex-direction: column; gap: 1.4rem;
+      overflow-y: auto;
+    }
+    .map-header {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .map-header h1 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 30;
+      font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+      font-weight: 400;
+      color: var(--ink);
+    }
+    .map-header .progress {
+      font-family: var(--font-body);
+      font-size: 0.78rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--ink-faint);
+    }
+    .map-header .progress strong { color: var(--accent-ember); font-weight: 700; }
+
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.2rem;
+      flex: 1;
+    }
+    @media (max-width: 760px) { .map-grid { grid-template-columns: 1fr; } }
+
+    .map-card {
+      position: relative;
+      background: var(--parchment-warm);
+      border: 1.5px solid var(--ink-soft);
+      padding: 1rem 1rem 1.2rem;
+      cursor: pointer;
+      transition: transform var(--dur-snap) var(--ease-snap), box-shadow var(--dur-fade) ease;
+      display: flex; flex-direction: column; gap: 0.7rem;
+      box-shadow: 4px 4px 0 rgba(80, 50, 20, 0.18);
+    }
+    .map-card:hover {
+      transform: translate(-1px, -2px) rotate(-0.3deg);
+      box-shadow: 6px 6px 0 rgba(80, 50, 20, 0.22);
+    }
+    .map-card.locked { cursor: not-allowed; opacity: 0.85; }
+    .map-card.locked::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(60, 36, 14, 0.18);
+      pointer-events: none;
+    }
+
+    .map-card .card-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .map-card .name {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 0;
+      font-size: 1.4rem; font-weight: 400;
+      color: var(--ink);
+      line-height: 1.05;
+    }
+    .map-card .roman {
+      font-family: var(--font-display); font-style: italic;
+      color: var(--ink-faint);
+      font-size: 0.95rem;
+      letter-spacing: 0.12em;
+    }
+    .map-card .thumb {
+      aspect-ratio: 16 / 9;
+      background: var(--parchment-cream);
+      border: 1.5px solid var(--ink-soft);
+      position: relative;
+      overflow: hidden;
+    }
+    .map-card .thumb svg { width: 100%; height: 100%; display: block; }
+    .map-card .desc {
+      font-family: var(--font-display); font-style: italic;
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+      line-height: 1.45;
+      min-height: 2.6em;
+    }
+    .difficulty-row {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      margin-top: auto;
+      padding-top: 0.4rem;
+      border-top: 1px dashed var(--ink-faint);
+    }
+    .diff-pill {
+      flex: 1;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.35rem 0.55rem;
+      font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase;
+      font-weight: 600;
+      border: 1.5px solid var(--ink-soft);
+      color: var(--ink-soft);
+      background: rgba(255,255,255,0.18);
+      cursor: pointer;
+      transition: background var(--dur-fade) ease;
+    }
+    .diff-pill:hover { background: var(--parchment-cream); }
+    .diff-pill.locked {
+      opacity: 0.5; cursor: not-allowed; pointer-events: none;
+      background: repeating-linear-gradient(45deg,
+        transparent 0 4px, rgba(60,40,20,0.08) 4px 8px);
+    }
+    .stars-mini {
+      display: inline-flex; gap: 1px;
+    }
+    .stars-mini svg { width: 11px; height: 11px; }
+    .stars-mini .filled { color: var(--accent-gold); }
+    .stars-mini .empty  { color: var(--ink-faint); opacity: 0.5; }
+
+    .wax-seal {
+      position: absolute;
+      width: 78px; height: 78px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-7deg);
+      pointer-events: none;
+      z-index: 4;
+    }
+    .wax-seal::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 35% 35%, #8a2429, var(--wine) 45%, #4a1418 90%);
+      border-radius: 50%;
+      box-shadow: inset -4px -6px 0 rgba(0,0,0,0.3), 0 3px 0 rgba(0,0,0,0.25);
+    }
+    .wax-seal .label {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      font-family: var(--font-display); font-style: italic; font-weight: 600;
+      font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--parchment-cream);
+      text-align: center; line-height: 1;
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       SCREEN 3 — PLAY (HUD shell)
+       Playfield is the parchment itself; HUD is marginalia along the
+       parchment edges.
+       ────────────────────────────────────────────────────────────── */
+    /* Note: .screen.play layout is set in the active-state rule below
+       so it doesn't override .screen { display: none }. */
+
+    /* TOP HUD STRIP — gold | wave | lives | preview */
+    .hud-top {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 1.2rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1.5px solid var(--ink-soft);
+    }
+    .hud-resources {
+      display: flex; gap: 1.6rem; align-items: center;
+    }
+    .resource {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 0;
+      font-weight: 500;
+      font-size: 1.4rem;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .resource svg { width: 22px; height: 22px; }
+    .resource.gold svg { color: var(--accent-gold); }
+    .resource.lives svg { color: var(--wine); }
+    .resource .label {
+      font-family: var(--font-body); font-size: 0.66rem; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+      align-self: flex-end; margin-bottom: 4px;
+    }
+    .hud-wave {
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+    }
+    .hud-wave .num {
+      font-size: 2rem; font-weight: 400;
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 30;
+      display: block;
+      line-height: 0.95;
+      color: var(--ink);
+    }
+    .hud-wave .of {
+      font-style: italic; color: var(--ink-faint); letter-spacing: 0.1em;
+      font-size: 0.78rem; text-transform: uppercase;
+    }
+
+    .wave-preview {
+      display: inline-flex; align-items: center; gap: 0.55rem;
+      padding: 0.4rem 0.75rem 0.4rem 0.55rem;
+      border: 1.5px solid var(--ink-soft);
+      background: rgba(255,255,255,0.18);
+    }
+    .wave-preview .label {
+      font-family: var(--font-body); font-size: 0.66rem; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    }
+    .wave-preview .row {
+      display: inline-flex; gap: 0.3rem;
+    }
+    .wave-preview svg { width: 22px; height: 22px; color: var(--ink); }
+
+    /* PLAYFIELD — the active "scroll within the scroll" */
+    .playfield {
+      position: relative;
+      width: 100%; height: 100%;
+      background: var(--parchment-cream);
+      border: 1.5px solid var(--ink-soft);
+      box-shadow: inset 0 0 60px 4px rgba(140, 95, 50, 0.12);
+      overflow: hidden;
+    }
+    .playfield svg.field { width: 100%; height: 100%; display: block; }
+
+    /* dust trail under the leading enemy */
+    .dust {
+      animation: dust 1.6s ease-out infinite;
+      transform-origin: center;
+    }
+    @keyframes dust {
+      0%   { opacity: 0.0; transform: scale(0.6); }
+      30%  { opacity: 0.6; }
+      100% { opacity: 0; transform: scale(1.3) translateY(2px); }
+    }
+
+    /* gold popup */
+    .gold-popup {
+      position: absolute;
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.05rem; color: var(--accent-ember);
+      text-shadow: 0 1px 0 rgba(255,225,170,0.5);
+      pointer-events: none;
+      animation: goldFloat 1.4s var(--ease-unfurl) forwards;
+    }
+    @keyframes goldFloat {
+      from { transform: translateY(0); opacity: 0; }
+      20%  { opacity: 1; }
+      to   { transform: translateY(-32px); opacity: 0; }
+    }
+
+    /* hit flash on enemy under fire */
+    .hit-flash {
+      filter: drop-shadow(0 0 4px var(--accent-ember)) brightness(1.4);
+      animation: hitPulse 80ms steps(1) 1;
+    }
+    @keyframes hitPulse {
+      0%, 100% { filter: none; }
+      50% { filter: drop-shadow(0 0 6px var(--accent-glow)) brightness(1.6); }
+    }
+
+    /* BOTTOM HUD — tower palette + control cluster */
+    .hud-bottom {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0.8rem;
+      align-items: end;
+      padding-top: 0.35rem;
+      border-top: 1.5px solid var(--ink-soft);
+    }
+    .palette {
+      grid-column: 2;
+      display: flex; gap: 0.45rem;
+    }
+    .palette .tower-card {
+      width: clamp(72px, 8.5vw, 92px);
+      background: var(--parchment-warm);
+      border: 1.5px solid var(--ink-soft);
+      padding: 0.4rem 0.4rem 0.25rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.18rem;
+      cursor: pointer;
+      transition: transform var(--dur-snap) var(--ease-snap);
+      box-shadow: 2px 2px 0 rgba(80,50,20,0.2);
+    }
+    .palette .tower-card:hover { transform: translate(-1px,-2px); }
+    .palette .tower-card.selected {
+      background: var(--accent-gold);
+      box-shadow: 0 0 0 2px var(--accent-ember), 2px 2px 0 rgba(80,50,20,0.25);
+    }
+    .palette .tower-card.disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+    .palette .tower-card svg { width: 100%; height: auto; aspect-ratio: 1; }
+    .palette .tower-card .name {
+      font-family: var(--font-display); font-style: italic;
+      font-size: 0.8rem; color: var(--ink);
+      line-height: 1; margin-top: 0.1rem;
+    }
+    .palette .tower-card .cost {
+      display: inline-flex; align-items: center; gap: 0.18rem;
+      font-family: var(--font-body); font-weight: 700;
+      font-size: 0.78rem; color: var(--accent-ember);
+      letter-spacing: 0.04em;
+    }
+    .palette .tower-card .cost svg { width: 11px; height: 11px; aspect-ratio: 1; }
+    .palette .tower-card .key-hint {
+      position: absolute;
+      top: -8px; right: -6px;
+      width: 18px; height: 18px;
+      display: grid; place-items: center;
+      font-family: var(--font-body); font-weight: 700; font-size: 0.62rem;
+      background: var(--ink); color: var(--parchment-cream);
+      border-radius: 50%;
+      letter-spacing: 0;
+    }
+    .palette .tower-card { position: relative; }
+
+    .controls {
+      grid-column: 3; justify-self: end;
+      display: flex; gap: 0.45rem;
+    }
+    .ctrl-btn {
+      width: 42px; height: 42px;
+      display: grid; place-items: center;
+      background: var(--parchment-warm);
+      border: 1.5px solid var(--ink-soft);
+      color: var(--ink);
+      cursor: pointer;
+      transition: transform var(--dur-snap) var(--ease-snap),
+                  background var(--dur-fade) ease;
+      box-shadow: 2px 2px 0 rgba(80,50,20,0.2);
+    }
+    .ctrl-btn:hover { transform: translate(-1px,-1px); background: var(--parchment-cream); }
+    .ctrl-btn.active { background: var(--accent-gold); }
+    .ctrl-btn svg { width: 20px; height: 20px; }
+    .ctrl-btn.next-wave {
+      width: auto; padding: 0 0.85rem; gap: 0.4rem;
+      display: inline-flex; align-items: center;
+      font-family: var(--font-display); font-style: italic;
+      font-weight: 500; font-size: 0.92rem;
+    }
+
+    /* TOWER-INFO PANEL — slides from right when tower selected */
+    .tower-info {
+      position: absolute;
+      top: 4.5rem; right: 1rem; width: 240px;
+      background: var(--parchment-cream);
+      border: 1.5px solid var(--ink-soft);
+      padding: 0.85rem 0.95rem 0.95rem;
+      box-shadow: 4px 4px 0 rgba(80,50,20,0.22);
+      transform: translateX(20px);
+      opacity: 0; pointer-events: none;
+      transition: transform var(--dur-snap) var(--ease-snap), opacity var(--dur-fade) ease;
+    }
+    .tower-info.open {
+      opacity: 1; transform: translateX(0); pointer-events: auto;
+    }
+    .tower-info h3 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 0;
+      font-size: 1.25rem; font-weight: 400; color: var(--ink);
+      margin-bottom: 0.1rem;
+    }
+    .tower-info .tier {
+      display: inline-flex; gap: 4px; margin: 0.2rem 0 0.6rem;
+    }
+    .tier-pip {
+      width: 14px; height: 14px;
+      border: 1.5px solid var(--ink-soft);
+      background: var(--parchment-warm);
+      transform: rotate(45deg);
+    }
+    .tier-pip.filled { background: var(--accent-gold); }
+    .tower-info .stats {
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 0.3rem 0.6rem;
+      font-family: var(--font-body); font-size: 0.82rem;
+      color: var(--ink-soft);
+    }
+    .tower-info .stats .v { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .tower-info .actions {
+      display: flex; gap: 0.4rem; margin-top: 0.7rem;
+    }
+    .tower-info .actions .btn { flex: 1; padding: 0.6rem 0.8rem; font-size: 0.76rem; }
+
+    /* ──────────────────────────────────────────────────────────────
+       OVERLAYS — pause / game-over / tutorial
+       ────────────────────────────────────────────────────────────── */
+    .overlay {
+      display: none;
+      position: absolute; inset: 0;
+      z-index: 30;
+      animation: screenIn var(--dur-fade) var(--ease-unfurl) both;
+    }
+    .overlay::before {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(20, 14, 8, 0.55);
+      backdrop-filter: blur(2px);
+    }
+    .overlay-card {
+      position: relative;
+      width: min(92%, 480px);
+      margin: 8% auto 0;
+      background: var(--parchment-cream);
+      border: 1.5px solid var(--ink-soft);
+      padding: 2rem 2rem 1.6rem;
+      box-shadow: 6px 8px 0 rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    .overlay-card h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 30;
+      font-size: 2.1rem; font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 0.3rem;
+    }
+    .overlay-card .sub {
+      font-family: var(--font-display); font-style: italic;
+      color: var(--ink-faint); font-size: 0.95rem;
+      margin-bottom: 1.2rem;
+    }
+    .overlay-card .actions {
+      display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.2rem;
+    }
+    .overlay-card .actions .row {
+      display: flex; gap: 0.45rem;
+    }
+    .overlay-card .actions .row .btn { flex: 1; }
+
+    /* PAUSE settings sub-panel */
+    .pause-settings {
+      margin-top: 1rem; padding-top: 1rem;
+      border-top: 1px dashed var(--ink-faint);
+      font-family: var(--font-body);
+      text-align: left;
+    }
+    .pause-settings h3 {
+      font-family: var(--font-display); font-style: italic;
+      font-size: 0.95rem; color: var(--ink-soft); margin-bottom: 0.6rem;
+      text-align: center; letter-spacing: 0.06em;
+    }
+    .slider-row {
+      display: grid; grid-template-columns: 5em 1fr auto;
+      gap: 0.6rem; align-items: center;
+      font-size: 0.8rem; color: var(--ink-soft);
+      margin-bottom: 0.45rem;
+    }
+    .slider-row input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px;
+      background: var(--ink-faint);
+    }
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      background: var(--accent-gold);
+      border: 1.5px solid var(--ink);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .slider-row input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px;
+      background: var(--accent-gold);
+      border: 1.5px solid var(--ink);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .slider-row .v { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); }
+    .toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.82rem; color: var(--ink-soft);
+      margin-bottom: 0.4rem;
+    }
+    .toggle {
+      position: relative;
+      width: 36px; height: 20px;
+      background: var(--ink-faint);
+      cursor: pointer;
+      transition: background var(--dur-fade) ease;
+    }
+    .toggle::after {
+      content: ''; position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      background: var(--parchment-cream);
+      transition: left var(--dur-snap) var(--ease-snap);
+    }
+    .toggle.on { background: var(--accent-ember); }
+    .toggle.on::after { left: 18px; }
+
+    /* GAME-OVER — stars + score */
+    .stars-row {
+      display: flex; justify-content: center; gap: 0.5rem;
+      margin: 0.4rem 0 1.2rem;
+    }
+    .stars-row svg {
+      width: 56px; height: 56px;
+      animation: starPop var(--dur-unfurl) var(--ease-snap) both;
+    }
+    .stars-row svg.earned { color: var(--accent-gold); filter: drop-shadow(0 2px 0 rgba(160,104,40,0.4)); }
+    .stars-row svg.empty  { color: var(--ink-faint); opacity: 0.5; }
+    .stars-row svg:nth-child(2) { animation-delay: 120ms; }
+    .stars-row svg:nth-child(3) { animation-delay: 240ms; }
+    @keyframes starPop {
+      from { transform: scale(0.4) rotate(-12deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .score-row {
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 0.6rem; padding: 0.4rem 0.6rem;
+      font-family: var(--font-body); font-size: 0.92rem;
+      color: var(--ink);
+      border-bottom: 1px dashed var(--ink-faint);
+    }
+    .score-row.best { border: none; color: var(--ink-soft); }
+    .score-row .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* victory ribbon flourish */
+    .ribbon {
+      position: absolute;
+      top: -22px; left: 50%; transform: translateX(-50%);
+      background: var(--wine);
+      color: var(--parchment-cream);
+      padding: 0.45rem 1.6rem 0.55rem;
+      font-family: var(--font-display); font-style: italic;
+      font-weight: 600; letter-spacing: 0.16em;
+      font-size: 0.78rem; text-transform: uppercase;
+      clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0% 50%);
+      box-shadow: 0 3px 0 rgba(0,0,0,0.4);
+    }
+
+    /* TUTORIAL pop-up (small parchment scrap) */
+    .tutorial-scrap {
+      position: absolute;
+      top: 38%; left: 30%;
+      width: 220px;
+      background: var(--parchment-warm);
+      border: 1.5px solid var(--ink-soft);
+      padding: 0.7rem 0.9rem 0.8rem;
+      font-family: var(--font-display); font-style: italic;
+      color: var(--ink); font-size: 0.95rem;
+      line-height: 1.3;
+      transform: rotate(-3deg);
+      box-shadow: 4px 5px 0 rgba(80,50,20,0.3);
+    }
+    .tutorial-scrap::before {
+      content: '';
+      position: absolute; top: -8px; left: 14px;
+      width: 14px; height: 14px;
+      background: var(--ink);
+      transform: rotate(45deg);
+    }
+    .tutorial-arrow {
+      position: absolute; pointer-events: none;
+      color: var(--accent-ember);
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       Wave-clear ribbon (in-play, fires on event) — stub for engine
+       ────────────────────────────────────────────────────────────── */
+    .wave-clear {
+      position: absolute; top: 22%; left: 50%;
+      transform: translateX(-50%) scaleX(0);
+      transform-origin: center;
+      background: var(--accent-gold);
+      color: var(--ink);
+      padding: 0.55rem 2rem 0.65rem;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 30;
+      font-size: 1.4rem; font-weight: 500; letter-spacing: 0.18em;
+      text-transform: uppercase;
+      clip-path: polygon(4% 0, 96% 0, 100% 50%, 96% 100%, 4% 100%, 0 50%);
+      pointer-events: none;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+      animation: ribbonUnfurl var(--dur-unfurl) var(--ease-unfurl) forwards;
+    }
+    @keyframes ribbonUnfurl {
+      0%   { transform: translateX(-50%) scaleX(0); }
+      60%  { transform: translateX(-50%) scaleX(1.04); }
+      100% { transform: translateX(-50%) scaleX(1); }
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       Marginalia bird — flies across the parchment border on wave-clear.
+       Engine: add class .flying then remove after animation end.
+       ────────────────────────────────────────────────────────────── */
+    .marginalia-bird {
+      position: absolute; top: 4%; left: -6%;
+      width: 38px; height: 28px;
+      color: var(--ink);
+      pointer-events: none;
+      opacity: 0;
+    }
+    .marginalia-bird.flying {
+      opacity: 1;
+      animation: birdFly 2.2s var(--ease-unfurl) forwards,
+                 birdFlap 220ms steps(2) infinite;
+    }
+    @keyframes birdFly {
+      0%   { offset-distance: 0%;  opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { offset-distance: 100%; opacity: 0; }
+    }
+    @keyframes birdFlap {
+      0%   { transform: scaleY(1); }
+      100% { transform: scaleY(0.7); }
+    }
+    .marginalia-bird {
+      offset-path: path('M -50,40 Q 200,10 500,55 T 1100,30');
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       SVG sprite sizing
+       ────────────────────────────────────────────────────────────── */
+    .sprite { display: inline-block; vertical-align: middle; }
+
+    /* ──────────────────────────────────────────────────────────────
+       Engine-driven entity states (set by render.js)
+       ────────────────────────────────────────────────────────────── */
+    .layer.slots rect { transition: fill var(--dur-fade) ease; }
+    .layer.slots rect:hover { fill: rgba(255, 230, 175, 0.45); }
+    .entity.tower { transition: filter var(--dur-fade) ease; }
+    .entity.tower.selected { filter: drop-shadow(0 0 4px var(--accent-gold)) brightness(1.05); }
+    .entity.enemy.slowed { filter: hue-rotate(190deg) saturate(0.7) brightness(0.95); }
+    .entity.enemy.regenerating { animation: bossPulse 1.4s ease-in-out infinite; }
+    @keyframes bossPulse {
+      0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+      50%      { filter: drop-shadow(0 0 8px rgba(110, 31, 36, 0.75)); }
+    }
+    .entity.enemy.hit-flash > svg { animation: hitPulse 80ms steps(1) 1; }
+    .entity.projectile, .effect { pointer-events: none; }
+    .layer.effects > * { pointer-events: none; }
+    body.reduced-motion .entity.enemy.regenerating { animation: none; }
+    body.reduced-motion .entity.enemy.hit-flash > svg { animation: none; filter: none; }
+
+    /* ──────────────────────────────────────────────────────────────
+       Reduced-motion: kill animations + screen shake; keep fades.
+       ────────────────────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 80ms !important;
+      }
+      .marginalia-bird.flying { animation: none; opacity: 0.7; left: 50%; top: 4%; }
+      .attract-walker { display: none; }
+    }
+    body.reduced-motion .marginalia-bird.flying { animation: none; opacity: 0.7; left: 50%; top: 4%; }
+    body.reduced-motion .attract-walker { display: none; }
+    body.reduced-motion .hit-flash { animation: none; filter: none; }
+
+    /* ──────────────────────────────────────────────────────────────
+       Mobile responsive
+       ────────────────────────────────────────────────────────────── */
+    @media (max-width: 720px) {
+      .parchment {
+        width: 98vw; height: 92vh;
+      }
+      .return-link { font-size: 0.7rem; top: 0.5rem; left: 0.5rem; }
+      .settings-cog { top: 14px; right: 14px; }
+      .title-actions { flex-direction: column; }
+      .hud-resources { gap: 0.9rem; }
+      .resource { font-size: 1.1rem; }
+      .hud-wave .num { font-size: 1.5rem; }
+      .palette .tower-card .name { font-size: 0.7rem; }
+      .palette { gap: 0.3rem; }
+      .controls { gap: 0.3rem; }
+      .ctrl-btn { width: 36px; height: 36px; }
+      .tower-info { right: 0.5rem; left: 0.5rem; width: auto; top: auto; bottom: 5.5rem; }
+    }
+
+    @media (max-width: 480px) {
+      .hud-top { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+      .wave-preview { display: none; }
+      .palette .tower-card { width: 64px; }
+    }
+
+    /* ──────────────────────────────────────────────────────────────
+       Dev nav (visible with ?screens=1 on URL — for design review only;
+       engine team should remove or leave gated for QA).
+       ────────────────────────────────────────────────────────────── */
+    .dev-nav {
+      display: none;
+      position: fixed; bottom: 8px; right: 8px;
+      z-index: 100;
+      gap: 4px; padding: 4px 6px;
+      background: rgba(20, 14, 8, 0.85);
+      border: 1px solid rgba(200, 148, 62, 0.4);
+      font-family: var(--font-body);
+      font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    body.show-dev-nav .dev-nav { display: inline-flex; }
+    .dev-nav button {
+      background: transparent; color: rgba(240, 230, 211, 0.7);
+      border: 1px solid transparent;
+      padding: 3px 7px;
+      cursor: pointer;
+      font: inherit;
+    }
+    .dev-nav button:hover { color: var(--accent-gold); border-color: rgba(200,148,62,0.4); }
+    .dev-nav button.active { color: var(--accent-gold); border-color: var(--accent-gold); }
+  </style>
+</head>
+<body data-screen="title">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SVG SPRITE LIBRARY
+       All sprites flat-color + ink stroke. viewBox 0 0 64 64 unless noted.
+       Reference via <svg><use href="#sprite-id"/></svg>.
+       ════════════════════════════════════════════════════════════════ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- Paper grain noise filter -->
+      <filter id="paper-noise" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="7"/>
+        <feColorMatrix values="0 0 0 0 0.4
+                                0 0 0 0 0.28
+                                0 0 0 0 0.12
+                                0 0 0 0.18 0"/>
+      </filter>
+
+      <!-- Subtle ink wobble for hand-drawn feel -->
+      <filter id="wobble" x="-3%" y="-3%" width="106%" height="106%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="1" seed="3"/>
+        <feDisplacementMap in="SourceGraphic" scale="0.6"/>
+      </filter>
+
+      <!-- ── UI ICONS ───────────────────────────────────────────── -->
+      <symbol id="i-coin" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="#1a1410" stroke-width="2"/>
+        <circle cx="12" cy="12" r="6" fill="none" stroke="#1a1410" stroke-width="1.5" stroke-dasharray="2 2"/>
+        <text x="12" y="16" font-family="Fraunces, serif" font-size="9" font-weight="700"
+              text-anchor="middle" fill="#1a1410">G</text>
+      </symbol>
+
+      <symbol id="i-heart" viewBox="0 0 24 24">
+        <path d="M12 21 C 4 15 2 10 4 7 C 6 4 10 4 12 8 C 14 4 18 4 20 7 C 22 10 20 15 12 21 Z"
+              fill="currentColor" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+      </symbol>
+
+      <symbol id="i-star" viewBox="0 0 24 24">
+        <path d="M12 2 L14.6 8.5 L21.5 9.2 L16.3 13.8 L17.9 20.6 L12 17 L6.1 20.6 L7.7 13.8 L2.5 9.2 L9.4 8.5 Z"
+              fill="currentColor" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+      </symbol>
+
+      <symbol id="i-lock" viewBox="0 0 24 24">
+        <rect x="5" y="11" width="14" height="10" fill="currentColor" stroke="#1a1410" stroke-width="2"/>
+        <path d="M8 11 V 8 Q 8 4 12 4 Q 16 4 16 8 V 11" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="12" cy="16" r="1.4" fill="#1a1410"/>
+      </symbol>
+
+      <symbol id="i-cog" viewBox="0 0 24 24">
+        <path d="M12 2 L13 5 L16 4 L17 7 L20 7 L20 11 L23 12 L20 13 L20 17 L17 17 L16 20 L13 19 L12 22 L11 19 L8 20 L7 17 L4 17 L4 13 L1 12 L4 11 L4 7 L7 7 L8 4 L11 5 Z"
+              fill="currentColor" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="3.2" fill="none" stroke="#1a1410" stroke-width="2"/>
+      </symbol>
+
+      <symbol id="i-pause" viewBox="0 0 24 24">
+        <rect x="6" y="5" width="4" height="14" fill="currentColor" stroke="#1a1410" stroke-width="1.5"/>
+        <rect x="14" y="5" width="4" height="14" fill="currentColor" stroke="#1a1410" stroke-width="1.5"/>
+      </symbol>
+
+      <symbol id="i-fastfwd" viewBox="0 0 24 24">
+        <path d="M3 5 L11 12 L3 19 Z" fill="currentColor" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M12 5 L20 12 L12 19 Z" fill="currentColor" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+      </symbol>
+
+      <symbol id="i-wave-arrow" viewBox="0 0 24 24">
+        <path d="M3 12 L18 12 M14 7 L19 12 L14 17" fill="none" stroke="currentColor" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+
+      <symbol id="i-bird" viewBox="0 0 64 32">
+        <path d="M2 22 Q 14 8 24 18 Q 32 6 40 18 Q 50 8 62 22"
+              fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </symbol>
+
+      <symbol id="i-flourish" viewBox="0 0 60 60">
+        <!-- corner ornament: ink scroll-vine -->
+        <path d="M2 2 Q 18 2 28 12 T 56 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M28 12 Q 22 22 12 22" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="12" cy="22" r="2" fill="currentColor"/>
+        <path d="M40 18 Q 44 14 50 16" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="50" cy="16" r="1.6" fill="currentColor"/>
+      </symbol>
+
+      <!-- ── TOWERS — flat ink-line, distinct silhouettes ─────────
+           Approach: tier 1 = base; tier 2 adds a banner; tier 3
+           adds a glow halo + crown detail. -->
+
+      <!-- ARCHER tower — tall, narrow, crenellated, arrow-slit window -->
+      <symbol id="t-archer-1" viewBox="0 0 64 64">
+        <!-- base socket -->
+        <path d="M14 56 L18 60 L46 60 L50 56 Z" fill="#7a5a30" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- shaft -->
+        <rect x="20" y="22" width="24" height="36" fill="#cdb88d" stroke="#1a1410" stroke-width="2.2"/>
+        <!-- horizontal banding -->
+        <line x1="20" y1="36" x2="44" y2="36" stroke="#1a1410" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <!-- arrow slit window -->
+        <rect x="29" y="40" width="6" height="12" fill="#1a1410"/>
+        <path d="M29 46 L35 46" stroke="#cdb88d" stroke-width="1.2"/>
+        <!-- crenellated top -->
+        <path d="M16 22 L16 14 L22 14 L22 19 L26 19 L26 14 L32 14 L32 19 L38 19 L38 14 L44 14 L44 19 L48 19 L48 14 L48 22 Z"
+              fill="#a08864" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- archer silhouette in window -->
+        <circle cx="32" cy="29" r="2" fill="#1a1410"/>
+        <path d="M28 32 Q 32 30 36 32" fill="none" stroke="#1a1410" stroke-width="1.8" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="t-archer-2" viewBox="0 0 64 64">
+        <use href="#t-archer-1"/>
+        <path d="M48 14 L48 8 L60 8 L57 11 L60 14 Z" fill="#6e1f24" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="t-archer-3" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="32" fill="#c8943e" opacity="0.18"/>
+        <use href="#t-archer-2"/>
+        <!-- gold-tipped roof -->
+        <path d="M16 14 L32 4 L48 14 Z" fill="#c8943e" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="32" cy="4" r="2" fill="#c8943e" stroke="#1a1410" stroke-width="1.5"/>
+      </symbol>
+
+      <!-- CANNON tower — squat round, cannon barrel sticking out -->
+      <symbol id="t-cannon-1" viewBox="0 0 64 64">
+        <path d="M10 56 L14 60 L50 60 L54 56 Z" fill="#7a5a30" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <ellipse cx="32" cy="42" rx="22" ry="16" fill="#cdb88d" stroke="#1a1410" stroke-width="2.2"/>
+        <!-- iron banding -->
+        <path d="M14 36 Q 32 40 50 36" fill="none" stroke="#1a1410" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <path d="M14 48 Q 32 52 50 48" fill="none" stroke="#1a1410" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <!-- top platform -->
+        <ellipse cx="32" cy="26" rx="20" ry="6" fill="#a08864" stroke="#1a1410" stroke-width="2"/>
+        <!-- cannon -->
+        <rect x="42" y="20" width="18" height="8" rx="1.5" fill="#2d251c" stroke="#1a1410" stroke-width="2"/>
+        <circle cx="59" cy="24" r="2" fill="#1a1410"/>
+        <!-- wheel -->
+        <circle cx="44" cy="32" r="4" fill="#7a5a30" stroke="#1a1410" stroke-width="1.5"/>
+        <line x1="40" y1="32" x2="48" y2="32" stroke="#1a1410" stroke-width="1.2"/>
+      </symbol>
+      <symbol id="t-cannon-2" viewBox="0 0 64 64">
+        <use href="#t-cannon-1"/>
+        <path d="M5 22 L10 16 L18 22 Z" fill="#6e1f24" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="t-cannon-3" viewBox="0 0 64 64">
+        <circle cx="32" cy="36" r="30" fill="#c8943e" opacity="0.18"/>
+        <use href="#t-cannon-2"/>
+        <!-- brass cannon overlay -->
+        <rect x="42" y="20" width="18" height="8" rx="1.5" fill="#c8943e" stroke="#1a1410" stroke-width="2"/>
+        <!-- smoke wisp -->
+        <path d="M60 22 Q 64 18 62 14 Q 66 14 64 10" fill="none" stroke="#1a1410" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+      </symbol>
+
+      <!-- MAGE tower — tall pointed conical roof with stars -->
+      <symbol id="t-mage-1" viewBox="0 0 64 64">
+        <path d="M16 56 L20 60 L44 60 L48 56 Z" fill="#7a5a30" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <rect x="22" y="28" width="20" height="32" fill="#cdb88d" stroke="#1a1410" stroke-width="2.2"/>
+        <line x1="22" y1="44" x2="42" y2="44" stroke="#1a1410" stroke-width="1.5" stroke-dasharray="3 2"/>
+        <!-- conical roof -->
+        <path d="M18 28 L32 4 L46 28 Z" fill="#3d2a55" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- stars on roof -->
+        <circle cx="27" cy="20" r="1.4" fill="#ede2c8"/>
+        <circle cx="36" cy="16" r="1.2" fill="#ede2c8"/>
+        <circle cx="32" cy="24" r="1" fill="#ede2c8"/>
+        <!-- arched window -->
+        <path d="M28 38 Q 32 34 36 38 L 36 48 L 28 48 Z" fill="#1a1410"/>
+      </symbol>
+      <symbol id="t-mage-2" viewBox="0 0 64 64">
+        <use href="#t-mage-1"/>
+        <!-- floating runes -->
+        <text x="14" y="38" font-family="serif" font-size="9" fill="#3d2a55" font-style="italic">⚝</text>
+        <text x="48" y="36" font-family="serif" font-size="9" fill="#3d2a55" font-style="italic">⚜</text>
+      </symbol>
+      <symbol id="t-mage-3" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="32" fill="#c8943e" opacity="0.20"/>
+        <use href="#t-mage-2"/>
+        <!-- floating crystal -->
+        <path d="M32 -2 L38 6 L32 14 L26 6 Z" fill="#c8943e" stroke="#1a1410" stroke-width="1.5" stroke-linejoin="round"/>
+        <circle cx="32" cy="6" r="6" fill="#c8943e" opacity="0.35"/>
+      </symbol>
+
+      <!-- FROST tower — angular ice crystal -->
+      <symbol id="t-frost-1" viewBox="0 0 64 64">
+        <path d="M16 56 L20 60 L44 60 L48 56 Z" fill="#7a5a30" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- crystalline body -->
+        <path d="M22 56 L18 30 L26 14 L38 14 L46 30 L42 56 Z"
+              fill="#a8c4d6" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- internal facets -->
+        <path d="M22 56 L32 30 L42 56 M 32 14 L 32 30" fill="none" stroke="#1a1410" stroke-width="1.4"/>
+        <path d="M18 30 L46 30" stroke="#1a1410" stroke-width="1.4" stroke-dasharray="2 2"/>
+        <!-- top spike -->
+        <path d="M26 14 L32 4 L38 14 Z" fill="#cfe1ec" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="t-frost-2" viewBox="0 0 64 64">
+        <use href="#t-frost-1"/>
+        <!-- icicles -->
+        <path d="M20 32 L22 42 L24 32 Z" fill="#cfe1ec" stroke="#1a1410" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M40 32 L42 44 L44 32 Z" fill="#cfe1ec" stroke="#1a1410" stroke-width="1.2" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="t-frost-3" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="32" fill="#cfe1ec" opacity="0.30"/>
+        <use href="#t-frost-2"/>
+        <!-- snow particles -->
+        <circle cx="10" cy="20" r="1.2" fill="#ede2c8"/>
+        <circle cx="55" cy="24" r="1.2" fill="#ede2c8"/>
+        <circle cx="14" cy="48" r="1" fill="#ede2c8"/>
+        <circle cx="52" cy="50" r="1" fill="#ede2c8"/>
+        <circle cx="32" cy="-1" r="1.4" fill="#ede2c8"/>
+      </symbol>
+
+      <!-- ── ENEMIES — silhouette-distinct, colorblind safe ─────── -->
+
+      <!-- GOBLIN — small hunched, club, pointed ears -->
+      <symbol id="e-goblin" viewBox="0 0 64 64">
+        <!-- club -->
+        <path d="M14 32 L20 26 L26 24 L24 30 L18 36 Z" fill="#7a5a30" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- body -->
+        <path d="M30 30 Q 26 36 30 50 L 42 50 Q 46 36 42 30 Z"
+              fill="#5a7a3a" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- legs -->
+        <rect x="30" y="48" width="4" height="10" fill="#5a7a3a" stroke="#1a1410" stroke-width="1.8"/>
+        <rect x="38" y="48" width="4" height="10" fill="#5a7a3a" stroke="#1a1410" stroke-width="1.8"/>
+        <!-- head + ears -->
+        <circle cx="36" cy="22" r="9" fill="#5a7a3a" stroke="#1a1410" stroke-width="2.2"/>
+        <path d="M28 18 L22 12 L26 22 Z" fill="#5a7a3a" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M44 18 L50 12 L46 22 Z" fill="#5a7a3a" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- eyes -->
+        <circle cx="33" cy="22" r="1.3" fill="#1a1410"/>
+        <circle cx="39" cy="22" r="1.3" fill="#1a1410"/>
+      </symbol>
+
+      <!-- ORC — bulky, broad shoulders, axe high -->
+      <symbol id="e-orc" viewBox="0 0 64 64">
+        <!-- axe haft + head, raised -->
+        <line x1="50" y1="6" x2="42" y2="34" stroke="#7a5a30" stroke-width="3" stroke-linecap="round"/>
+        <path d="M44 4 L60 8 L54 14 Z" fill="#9aa0a8" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- broad torso -->
+        <path d="M16 32 Q 14 40 18 50 L 46 50 Q 50 40 48 32 Z"
+              fill="#6e1f24" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- legs -->
+        <rect x="22" y="48" width="6" height="12" fill="#6e1f24" stroke="#1a1410" stroke-width="1.8"/>
+        <rect x="36" y="48" width="6" height="12" fill="#6e1f24" stroke="#1a1410" stroke-width="1.8"/>
+        <!-- head -->
+        <ellipse cx="32" cy="22" rx="11" ry="10" fill="#6e1f24" stroke="#1a1410" stroke-width="2.2"/>
+        <!-- tusks -->
+        <path d="M28 26 L26 32 L30 28 Z" fill="#ede2c8" stroke="#1a1410" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M36 26 L38 32 L34 28 Z" fill="#ede2c8" stroke="#1a1410" stroke-width="1.4" stroke-linejoin="round"/>
+        <!-- eyes -->
+        <circle cx="28" cy="20" r="1.3" fill="#1a1410"/>
+        <circle cx="36" cy="20" r="1.3" fill="#1a1410"/>
+      </symbol>
+
+      <!-- WOLF-RIDER — four-legged silhouette + rider hunched -->
+      <symbol id="e-wolfrider" viewBox="0 0 64 64">
+        <!-- wolf body -->
+        <path d="M6 44 L14 36 L48 36 L58 44 L56 52 L48 50 L42 54 L20 54 L14 50 L8 52 Z"
+              fill="#3d2a1a" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- legs -->
+        <rect x="14" y="48" width="3" height="12" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.4"/>
+        <rect x="22" y="50" width="3" height="10" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.4"/>
+        <rect x="38" y="50" width="3" height="10" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.4"/>
+        <rect x="46" y="48" width="3" height="12" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.4"/>
+        <!-- head + snout -->
+        <path d="M48 36 L60 32 L62 38 L56 40 Z" fill="#3d2a1a" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- ears -->
+        <path d="M50 32 L52 26 L54 32 Z" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.6" stroke-linejoin="round"/>
+        <!-- eye -->
+        <circle cx="56" cy="35" r="1.2" fill="#c8943e"/>
+        <!-- rider -->
+        <ellipse cx="30" cy="22" rx="6" ry="8" fill="#5a7a3a" stroke="#1a1410" stroke-width="2"/>
+        <circle cx="30" cy="14" r="5" fill="#5a7a3a" stroke="#1a1410" stroke-width="1.8"/>
+        <!-- spear -->
+        <line x1="36" y1="6" x2="22" y2="36" stroke="#7a5a30" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- SHIELDED — figure with large round shield up front -->
+      <symbol id="e-shielded" viewBox="0 0 64 64">
+        <!-- legs -->
+        <rect x="26" y="48" width="5" height="12" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.8"/>
+        <rect x="33" y="48" width="5" height="12" fill="#3d2a1a" stroke="#1a1410" stroke-width="1.8"/>
+        <!-- body -->
+        <path d="M22 30 Q 20 38 24 50 L 40 50 Q 44 38 42 30 Z"
+              fill="#5c5347" stroke="#1a1410" stroke-width="2"/>
+        <!-- head -->
+        <circle cx="32" cy="22" r="8" fill="#5c5347" stroke="#1a1410" stroke-width="2"/>
+        <!-- helmet horn -->
+        <path d="M28 14 L24 8 L30 12 Z" fill="#9aa0a8" stroke="#1a1410" stroke-width="1.5"/>
+        <path d="M36 14 L40 8 L34 12 Z" fill="#9aa0a8" stroke="#1a1410" stroke-width="1.5"/>
+        <!-- shield (dominant) -->
+        <path d="M8 26 Q 6 38 12 52 Q 22 56 26 52 Q 32 38 26 26 Q 18 22 8 26 Z"
+              fill="#7a5a30" stroke="#1a1410" stroke-width="2.5" stroke-linejoin="round"/>
+        <!-- shield boss -->
+        <circle cx="17" cy="40" r="3.5" fill="#c8943e" stroke="#1a1410" stroke-width="1.8"/>
+        <path d="M17 30 V 50 M 8 40 H 26" stroke="#1a1410" stroke-width="1.2"/>
+      </symbol>
+
+      <!-- FLYING — winged silhouette, clearly aloft (small body + big wings) -->
+      <symbol id="e-flying" viewBox="0 0 64 64">
+        <!-- shadow underneath, indicates flight -->
+        <ellipse cx="32" cy="58" rx="14" ry="2.5" fill="#1a1410" opacity="0.18"/>
+        <!-- left wing -->
+        <path d="M30 32 L 4 18 L 8 36 L 20 38 Z"
+              fill="#3d2a1a" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- right wing -->
+        <path d="M34 32 L 60 18 L 56 36 L 44 38 Z"
+              fill="#3d2a1a" stroke="#1a1410" stroke-width="2.2" stroke-linejoin="round"/>
+        <!-- body -->
+        <ellipse cx="32" cy="34" rx="7" ry="10" fill="#3d2a1a" stroke="#1a1410" stroke-width="2.2"/>
+        <!-- head -->
+        <ellipse cx="32" cy="22" rx="5" ry="5" fill="#3d2a1a" stroke="#1a1410" stroke-width="2"/>
+        <!-- horns -->
+        <path d="M28 18 L26 12 M 36 18 L 38 12" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+        <!-- eye -->
+        <circle cx="32" cy="22" r="1.4" fill="#c8943e"/>
+        <!-- tail -->
+        <path d="M32 44 L 32 56 L 36 52" fill="none" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- BOSS — oversized horned, throne-like, regen glow -->
+      <symbol id="e-boss" viewBox="0 0 64 64">
+        <!-- glow halo (regen indicator) -->
+        <circle cx="32" cy="34" r="32" fill="#6e1f24" opacity="0.18"/>
+        <circle cx="32" cy="34" r="26" fill="#6e1f24" opacity="0.10"/>
+        <!-- legs (huge) -->
+        <rect x="20" y="46" width="8" height="14" fill="#1a1410" stroke="#1a1410" stroke-width="1.5"/>
+        <rect x="36" y="46" width="8" height="14" fill="#1a1410" stroke="#1a1410" stroke-width="1.5"/>
+        <!-- huge body -->
+        <path d="M10 30 Q 8 42 14 56 L 50 56 Q 56 42 54 30 Z"
+              fill="#3d2a1a" stroke="#1a1410" stroke-width="2.6" stroke-linejoin="round"/>
+        <!-- shoulders -->
+        <ellipse cx="14" cy="32" rx="6" ry="5" fill="#3d2a1a" stroke="#1a1410" stroke-width="2"/>
+        <ellipse cx="50" cy="32" rx="6" ry="5" fill="#3d2a1a" stroke="#1a1410" stroke-width="2"/>
+        <!-- head -->
+        <ellipse cx="32" cy="20" rx="11" ry="10" fill="#3d2a1a" stroke="#1a1410" stroke-width="2.4"/>
+        <!-- massive horns -->
+        <path d="M22 14 L 12 4 L 22 20" fill="#9aa0a8" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M42 14 L 52 4 L 42 20" fill="#9aa0a8" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/>
+        <!-- glowing eyes -->
+        <circle cx="28" cy="20" r="1.7" fill="#c8943e"/>
+        <circle cx="36" cy="20" r="1.7" fill="#c8943e"/>
+        <!-- chest medallion -->
+        <circle cx="32" cy="40" r="4" fill="#6e1f24" stroke="#1a1410" stroke-width="1.5"/>
+      </symbol>
+
+      <!-- arrow projectile (used for the hero-frame snapshot) -->
+      <symbol id="i-arrow" viewBox="0 0 24 8">
+        <line x1="2" y1="4" x2="20" y2="4" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+        <path d="M20 4 L 16 1 M 20 4 L 16 7" stroke="#1a1410" stroke-width="2" stroke-linecap="round"/>
+        <path d="M2 4 L 4 2 M 2 4 L 4 6" stroke="#1a1410" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- ── Map thumbnails (mini illustrations) ────────────────── -->
+      <symbol id="map-plains" viewBox="0 0 160 90">
+        <rect width="160" height="90" fill="#ede2c8"/>
+        <!-- rolling hills -->
+        <path d="M0 65 Q 30 45 60 60 T 120 50 T 160 60 L 160 90 L 0 90 Z" fill="#5a7a3a" opacity="0.7" stroke="#1a1410" stroke-width="1"/>
+        <!-- path -->
+        <path d="M0 75 Q 40 65 80 75 T 160 70" fill="none" stroke="#7a5a30" stroke-width="3" stroke-dasharray="4 3"/>
+        <!-- castle silhouette -->
+        <path d="M140 60 L 140 50 L 144 50 L 144 56 L 148 56 L 148 50 L 152 50 L 152 60 Z"
+              fill="#1a1410"/>
+        <!-- sun -->
+        <circle cx="130" cy="20" r="6" fill="#c8943e"/>
+        <!-- trees -->
+        <path d="M30 60 L 26 70 L 34 70 Z" fill="#3d6020" stroke="#1a1410" stroke-width="1"/>
+        <path d="M52 60 L 48 70 L 56 70 Z" fill="#3d6020" stroke="#1a1410" stroke-width="1"/>
+      </symbol>
+
+      <symbol id="map-forest" viewBox="0 0 160 90">
+        <rect width="160" height="90" fill="#ede2c8"/>
+        <!-- dense tree silhouettes -->
+        <path d="M0 80 L 8 60 L 16 80 Z M 18 80 L 26 55 L 34 80 Z M 36 80 L 44 60 L 52 80 Z M 54 80 L 62 55 L 70 80 Z" fill="#2d4520" stroke="#1a1410" stroke-width="1"/>
+        <path d="M88 80 L 96 55 L 104 80 Z M 106 80 L 114 60 L 122 80 Z M 124 80 L 132 55 L 140 80 Z M 142 80 L 150 60 L 158 80 Z" fill="#2d4520" stroke="#1a1410" stroke-width="1"/>
+        <!-- path winding through -->
+        <path d="M0 80 Q 35 75 65 82 Q 80 88 95 82 Q 130 75 160 80" fill="none" stroke="#5d3a1a" stroke-width="3"/>
+        <!-- castle -->
+        <path d="M70 78 L 70 68 L 74 68 L 74 76 L 80 76 L 80 68 L 84 68 L 84 78 Z" fill="#1a1410"/>
+        <!-- moon -->
+        <circle cx="135" cy="22" r="6" fill="#cfe1ec"/>
+      </symbol>
+
+      <symbol id="map-mountain" viewBox="0 0 160 90">
+        <rect width="160" height="90" fill="#ede2c8"/>
+        <!-- jagged peaks -->
+        <path d="M0 80 L 25 30 L 45 60 L 70 20 L 95 55 L 120 35 L 160 70 L 160 90 L 0 90 Z"
+              fill="#9aa0a8" stroke="#1a1410" stroke-width="1.2" stroke-linejoin="round"/>
+        <!-- snow caps -->
+        <path d="M22 35 L 25 30 L 28 35 Z M 67 25 L 70 20 L 73 25 Z M 117 38 L 120 35 L 123 38 Z"
+              fill="#ede2c8" stroke="#1a1410" stroke-width="1"/>
+        <!-- pass path -->
+        <path d="M0 78 Q 30 70 50 75 T 100 78 Q 130 80 160 75" fill="none" stroke="#5d3a1a" stroke-width="3" stroke-dasharray="3 3"/>
+        <!-- castle at end -->
+        <path d="M138 75 L 138 65 L 142 65 L 142 73 L 148 73 L 148 65 L 152 65 L 152 75 Z" fill="#1a1410"/>
+      </symbol>
+
+    </defs>
+  </svg>
+
+
+  <!-- back-to-games -->
+  <a class="return-link" href="/games/">Games</a>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       MAIN STAGE
+       ════════════════════════════════════════════════════════════════ -->
+  <main class="stage">
+    <div class="parchment">
+
+      <!-- corner ornaments (every screen sees these) -->
+      <svg class="ornament tl" aria-hidden="true"><use href="#i-flourish"/></svg>
+      <svg class="ornament tr" aria-hidden="true"><use href="#i-flourish"/></svg>
+      <svg class="ornament bl" aria-hidden="true"><use href="#i-flourish"/></svg>
+      <svg class="ornament br" aria-hidden="true"><use href="#i-flourish"/></svg>
+
+      <!-- marginalia bird (lives offscreen until .flying class added) -->
+      <svg class="marginalia-bird" aria-hidden="true"><use href="#i-bird"/></svg>
+
+
+      <!-- ─────────── SCREEN: TITLE ─────────── -->
+      <section class="screen title">
+        <button class="settings-cog" aria-label="Settings">
+          <svg aria-hidden="true"><use href="#i-cog"/></svg>
+        </button>
+
+        <!-- attract: an enemy walking across the bottom -->
+        <svg class="attract-walker" aria-hidden="true"><use href="#e-goblin"/></svg>
+
+        <!-- decorative marginalia drawings -->
+        <svg class="title-marginalia left" viewBox="0 0 64 64"><use href="#t-archer-1"/></svg>
+        <svg class="title-marginalia right" viewBox="0 0 64 64"><use href="#e-orc"/></svg>
+
+        <div class="title-wrap">
+          <div>
+            <div class="title-eyebrow">A Tale of Towers &amp; Sieges</div>
+            <h1 class="title-name">
+              Castle<br>
+              <span class="tower-glyph">Tower</span><br>
+              Defense
+            </h1>
+            <p class="title-tagline">
+              Stand the gates. Loose the arrows.<br>
+              Hold the line until the last horn sounds.
+            </p>
+            <div class="title-actions">
+              <button class="btn primary" data-go="map-select">
+                <span class="wax"></span>
+                Begin the Watch
+              </button>
+              <button class="btn ghost">How to Play</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ─────────── SCREEN: MAP SELECT ─────────── -->
+      <section class="screen map-select">
+        <div class="map-wrap">
+          <div class="map-header">
+            <h1>Choose Thy Field</h1>
+            <div class="progress">Stars Earned <strong data-bind="totalStars">0</strong> / <span data-bind="maxStars">27</span></div>
+          </div>
+
+          <div class="map-grid" data-bind="mapGrid">
+            <!-- engine populates from MAPS -->
+          </div>
+
+          <div style="text-align: center; margin-top: 0.4rem;">
+            <button class="btn ghost" data-go="title">◂ Back to Title</button>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ─────────── SCREEN: PLAY (HUD shell) ─────────── -->
+      <section class="screen play">
+
+        <!-- TOP BAR -->
+        <div class="hud-top">
+          <div class="hud-resources">
+            <span class="resource gold">
+              <svg aria-hidden="true"><use href="#i-coin"/></svg>
+              <span id="hud-gold">120</span>
+              <span class="label">Gold</span>
+            </span>
+            <span class="resource lives">
+              <svg aria-hidden="true"><use href="#i-heart"/></svg>
+              <span id="hud-lives">12</span>
+              <span class="label">Lives</span>
+            </span>
+          </div>
+
+          <div class="hud-wave">
+            <span class="num">3</span>
+            <span class="of">Wave · of 10</span>
+          </div>
+
+          <div class="wave-preview">
+            <span class="label">Next</span>
+            <span class="row" data-bind="wavePreview"></span>
+          </div>
+        </div>
+
+        <!-- PLAYFIELD: hero-frame demo (engine replaces these statics) -->
+        <div class="playfield" id="playfield">
+          <svg class="field" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <pattern id="grass-hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+                <line x1="0" y1="6" x2="6" y2="6" stroke="#5a7a3a" stroke-width="1" opacity="0.35"/>
+              </pattern>
+            </defs>
+            <rect width="1200" height="640" fill="url(#grass-hatch)" opacity="0.3"/>
+            <!-- engine populates: terrain path, build slots, towers, enemies, projectiles, effects -->
+            <g class="layer terrain"></g>
+            <g class="layer slots"></g>
+            <g class="layer ranges"></g>
+            <g class="layer towers"></g>
+            <g class="layer enemies"></g>
+            <g class="layer projectiles"></g>
+            <g class="layer effects"></g>
+          </svg>
+
+          <!-- tower-info side panel (engine adds .open and fills #towerInfo body) -->
+          <aside class="tower-info" id="towerInfo">
+            <h3 data-bind="towerName">Tower</h3>
+            <div class="tier" data-bind="tier"></div>
+            <div class="stats" data-bind="stats"></div>
+            <div class="actions">
+              <button class="btn primary" data-action="upgrade"><span data-bind="upgradeLabel">Upgrade</span></button>
+              <button class="btn ghost" data-action="sell"><span data-bind="sellLabel">Sell</span></button>
+            </div>
+          </aside>
+
+        </div>
+
+        <!-- BOTTOM BAR -->
+        <div class="hud-bottom">
+
+          <!-- left empty slot (engine: status messages, tutorial anchor) -->
+          <div></div>
+
+          <!-- TOWER PALETTE — engine populates costs and selection state -->
+          <div class="palette" role="toolbar" aria-label="Build towers">
+            <button class="tower-card" data-key="1" data-tower="archer" data-action="select-tower">
+              <span class="key-hint">1</span>
+              <svg viewBox="0 0 64 64"><use href="#t-archer-1"/></svg>
+              <span class="name">Archer</span>
+              <span class="cost"><svg><use href="#i-coin"/></svg><span data-bind="cost">50</span></span>
+            </button>
+            <button class="tower-card" data-key="2" data-tower="cannon" data-action="select-tower">
+              <span class="key-hint">2</span>
+              <svg viewBox="0 0 64 64"><use href="#t-cannon-1"/></svg>
+              <span class="name">Cannon</span>
+              <span class="cost"><svg><use href="#i-coin"/></svg><span data-bind="cost">120</span></span>
+            </button>
+            <button class="tower-card" data-key="3" data-tower="mage" data-action="select-tower">
+              <span class="key-hint">3</span>
+              <svg viewBox="0 0 64 64"><use href="#t-mage-1"/></svg>
+              <span class="name">Mage</span>
+              <span class="cost"><svg><use href="#i-coin"/></svg><span data-bind="cost">200</span></span>
+            </button>
+            <button class="tower-card" data-key="4" data-tower="frost" data-action="select-tower">
+              <span class="key-hint">4</span>
+              <svg viewBox="0 0 64 64"><use href="#t-frost-1"/></svg>
+              <span class="name">Frost</span>
+              <span class="cost"><svg><use href="#i-coin"/></svg><span data-bind="cost">90</span></span>
+            </button>
+          </div>
+
+          <!-- CONTROL CLUSTER -->
+          <div class="controls">
+            <button class="ctrl-btn next-wave" data-action="send-next-wave" title="Send next wave (+5 gold)">
+              <svg><use href="#i-wave-arrow"/></svg>
+              Next Wave
+            </button>
+            <button class="ctrl-btn" data-action="toggle-fast-forward" title="Fast-forward 2x">
+              <svg><use href="#i-fastfwd"/></svg>
+            </button>
+            <button class="ctrl-btn" data-action="pause" title="Pause">
+              <svg><use href="#i-pause"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ─────────── OVERLAY: PAUSE ─────────── -->
+      <aside class="overlay pause" role="dialog" aria-label="Paused">
+        <div class="overlay-card">
+          <div style="font-family: var(--font-display); font-style: italic; font-size: 0.85rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.5rem;">Stayed by your hand</div>
+          <h2>Paused</h2>
+          <p class="sub">The siege rests. Resume when you are ready.</p>
+
+          <div class="actions">
+            <button class="btn primary" data-action="resume">Resume</button>
+            <div class="row">
+              <button class="btn" data-action="restart">Restart</button>
+              <button class="btn ghost" data-action="quit-to-map-select">Map Select</button>
+            </div>
+          </div>
+
+          <div class="pause-settings">
+            <h3>~ Settings ~</h3>
+            <div class="slider-row">
+              <span>Music</span>
+              <input type="range" min="0" max="100" value="40">
+              <span class="v">40</span>
+            </div>
+            <div class="slider-row">
+              <span>Effects</span>
+              <input type="range" min="0" max="100" value="80">
+              <span class="v">80</span>
+            </div>
+            <div class="toggle-row">
+              <span>Reduced Motion</span>
+              <button class="toggle" id="rmToggle" aria-pressed="false"></button>
+            </div>
+            <div class="toggle-row">
+              <span>Colorblind Hints (always on)</span>
+              <button class="toggle on" disabled style="opacity: 0.7;"></button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+
+      <!-- ─────────── OVERLAY: GAME OVER ─────────── -->
+      <aside class="overlay game-over" role="dialog" aria-label="Game Over">
+        <div class="overlay-card">
+          <div class="ribbon" data-bind="resultRibbon">Victory</div>
+          <div class="overcontext" style="font-family: var(--font-display); font-style: italic; font-size: 0.85rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); margin-top: 0.4rem; margin-bottom: 0.3rem;" data-bind="mapDifficulty">—</div>
+          <h2 data-bind="resultHeading">The Watch Holds</h2>
+
+          <div class="stars-row" data-bind="starsRow"></div>
+
+          <div class="score-row">
+            <span>Lives Remaining</span>
+            <span></span>
+            <span class="v" data-bind="livesRemaining">—</span>
+          </div>
+          <div class="score-row">
+            <span>Score</span>
+            <span></span>
+            <span class="v" data-bind="score">—</span>
+          </div>
+          <div class="score-row best">
+            <span>Personal Best</span>
+            <span></span>
+            <span class="v" data-bind="bestScore">—</span>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" data-action="play-again">Play Again</button>
+            <div class="row">
+              <button class="btn" data-action="next-map">Next Map</button>
+              <button class="btn ghost" data-action="quit-to-map-select">Map Select</button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+
+      <!-- ─────────── OVERLAY: TUTORIAL ─────────── -->
+      <aside class="overlay tutorial" role="dialog" aria-label="Tutorial">
+        <div style="position: absolute; inset: 0; pointer-events: none;">
+          <div class="tutorial-scrap">
+            Place an <strong style="color: var(--wine)">Archer</strong> upon yon vacant plot &mdash;
+            <em style="font-style: italic;">the goblins approach.</em>
+          </div>
+          <!-- arrow drawn in SVG, points from scrap toward a slot -->
+          <svg class="tutorial-arrow" style="left: 38%; top: 48%; width: 180px; height: 120px;" viewBox="0 0 180 120" aria-hidden="true">
+            <path d="M 10 10 Q 80 80 160 100" fill="none" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round" stroke-dasharray="6 4"/>
+            <path d="M 160 100 L 150 92 M 160 100 L 152 108" fill="none" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round"/>
+          </svg>
+          <div style="position: absolute; bottom: 8rem; left: 50%; transform: translateX(-50%); pointer-events: auto;">
+            <button class="btn ghost" style="background: var(--parchment-cream); box-shadow: 2px 2px 0 rgba(0,0,0,0.3);" data-action="dismiss-tutorial">Got it</button>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+  <!-- Engine modules (load order matters: pure data → audio/render → input → engine → game) -->
+  <script src="../shared/gamepad.js"></script>
+  <script src="entities.js"></script>
+  <script src="maps.js"></script>
+  <script src="audio.js"></script>
+  <script src="render.js"></script>
+  <script src="input.js"></script>
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+
+</body>
+</html>
