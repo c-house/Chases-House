@@ -6,7 +6,7 @@ All notable changes to [chases.house](https://chases.house) are documented here.
 
 - Replace the room-card landing with a full-bleed forest-cabin photograph and a quiet "Chase's House" title in the lower-left
 - Drop the Games / Cookbook room cards — both reachable from the existing top nav, ending the duplication that prompted the redesign
-- Slim the nav site-wide to Home · Games · Cookbook · Music · Files; drop Blog and Links (no implementation behind them) from all 19 HTML pages; Music stays because its live-check script promotes it to a real link when the stream is up
+- Slim the nav site-wide to Home · Games · Cookbook · Music · Files; drop Blog and Links (no implementation behind them) from every live page that carries the nav (home + 14 interior); Music stays because its live-check script promotes it to a real link when the stream is up
 - Add `assets/forest-house-landscape.png` and `assets/forest-house-portrait.png`; CSS swaps to portrait via `@media (max-aspect-ratio: 1/1)` for tall/narrow viewports
 - Toned-gold accent (`#d9a458`) on "House" and a weighted vignette so the title doesn't compete with the cabin's lit window
 - All new styles inline under `body.home`; `styles.css` untouched and other pages keep existing chrome
