@@ -165,15 +165,17 @@ body::after {
   margin-left: 0.3em;
 }
 
-/* ── Music tab activation ────────────────────────── */
-.nav-link.music-live {
+/* ── Nav-link activation (Music, Lookout, future tunneled subsites) ──
+   Triggered by nav-health.js when the corresponding /health endpoint
+   responds 200. One shared class + keyframe per ADR-024. */
+.nav-link.nav-link-live {
   color: var(--text-primary);
   pointer-events: auto;
   cursor: pointer;
-  animation: musicActivate 600ms ease-out forwards;
+  animation: navActivate 600ms ease-out forwards;
 }
 
-@keyframes musicActivate {
+@keyframes navActivate {
   0%   { color: var(--text-muted); }
   50%  { color: var(--accent-glow); text-shadow: 0 0 12px rgba(232, 176, 74, 0.4); }
   100% { color: var(--text-primary); text-shadow: none; }
