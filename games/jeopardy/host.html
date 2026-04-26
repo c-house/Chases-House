@@ -381,6 +381,85 @@
       transform: none;
     }
 
+    /* Couch Players */
+    .couch-section-title { margin-top: 1.25rem; }
+    .couch-help {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0 0 0.5rem;
+      line-height: 1.45;
+    }
+    .couch-key {
+      display: inline-block;
+      padding: 0 0.35rem;
+      border: 1px solid var(--text-muted);
+      border-radius: 3px;
+      font-family: var(--font-mono, monospace);
+      font-size: 0.72rem;
+      color: var(--text-primary);
+    }
+    .couch-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-height: 1.5rem;
+    }
+    .couch-empty { color: var(--text-faint); font-size: 0.82rem; }
+    .couch-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: rgba(176, 90, 58, 0.08);
+      border: 1px solid rgba(176, 90, 58, 0.25);
+      border-radius: 4px;
+      font-size: 0.88rem;
+    }
+    .couch-row.disconnected { background: rgba(120, 120, 120, 0.08); border-color: rgba(120, 120, 120, 0.25); }
+    .couch-row .couch-name { flex: 1; color: var(--text-primary); }
+    .couch-row .couch-meta { color: var(--text-muted); font-size: 0.72rem; }
+    .couch-row .couch-reclaim {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.72rem;
+      background: var(--accent-gold);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .add-couch-btn {
+      margin-top: 0.6rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.82rem;
+      background: transparent;
+      color: var(--accent-gold);
+      border: 1px dashed var(--accent-gold);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .add-couch-btn:hover { background: rgba(200, 148, 62, 0.1); }
+    .add-couch-btn.pending { background: rgba(200, 148, 62, 0.15); border-style: solid; }
+
+    /* Controller Toast */
+    .gp-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translate(-50%, 1.5rem);
+      background: rgba(14, 14, 16, 0.92);
+      color: var(--text-primary);
+      border: 1px solid rgba(200, 148, 62, 0.35);
+      border-radius: 999px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 1000;
+    }
+    .gp-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
     /* ═══════════════════════════════════════════════════
        BOARD PHASE
        ═══════════════════════════════════════════════════ */
@@ -1148,6 +1227,13 @@
             <div id="player-list" class="player-list">
               <span class="player-list-empty">Waiting for players to join...</span>
             </div>
+
+            <h2 class="config-section-title couch-section-title">Couch Players</h2>
+            <p class="couch-help">Plug a controller into this device, click below, then press <span class="couch-key">A</span> on it.</p>
+            <div id="couch-panel" class="couch-panel">
+              <span class="couch-empty">No couch players yet</span>
+            </div>
+            <button id="add-couch-btn" class="add-couch-btn" type="button">+ Add couch player</button>
           </div>
         </div>
 
@@ -1282,6 +1368,8 @@
     </div>
   </main>
 
+  <div id="gp-toast" class="gp-toast" role="status" aria-live="polite"></div>
+
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>
   </footer>
@@ -1295,7 +1383,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <!-- Game Scripts -->
+  <script src="../shared/gamepad.js"></script>
+  <script src="../shared/firebase.js"></script>
   <script src="shared.js"></script>
+  <script src="couch.js"></script>
   <script src="host.js"></script>
 </body>
 </html>

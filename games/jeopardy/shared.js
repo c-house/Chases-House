@@ -6,17 +6,6 @@
 (function () {
   'use strict';
 
-  // ── Firebase Config (public client-side identifiers) ──────────
-  const FIREBASE_CONFIG = {
-    apiKey: 'AIzaSyDXxXxXxXxXxXxXxXxXxXxXxXxXxXxXxXx',
-    authDomain: 'chases-house.firebaseapp.com',
-    databaseURL: 'https://chases-house-default-rtdb.firebaseio.com',
-    projectId: 'chases-house',
-    storageBucket: 'chases-house.appspot.com',
-    messagingSenderId: '000000000000',
-    appId: '1:000000000000:web:0000000000000000000000'
-  };
-
   // ── Constants ─────────────────────────────────────────────────
 
   /** Top-level room status values (meta/status) */
@@ -66,52 +55,23 @@
   const ROOM_CODE_LENGTH = 4;
 
   // ── Firebase Init ─────────────────────────────────────────────
-
-  let app = null;
-  let db = null;
-  let auth = null;
+  // Delegates to SharedFirebase (games/shared/firebase.js). Function
+  // names are preserved for callers that import them off window.Jeopardy.
 
   function initFirebase() {
-    if (app) return;
-    if (typeof firebase === 'undefined') {
-      console.error('Jeopardy: Firebase SDK not loaded. Include firebase-app-compat and firebase-database-compat via CDN.');
-      return;
-    }
-    if (!firebase.apps.length) {
-      app = firebase.initializeApp(FIREBASE_CONFIG);
-    } else {
-      app = firebase.apps[0];
-    }
-    db = firebase.database();
-    auth = firebase.auth();
+    window.SharedFirebase.init();
   }
 
-  /**
-   * Sign in anonymously. Returns the Firebase user object.
-   * @returns {Promise<firebase.User>}
-   */
-  async function signInAnonymously() {
-    initFirebase();
-    const cred = await auth.signInAnonymously();
-    return cred.user;
+  function signInAnonymously() {
+    return window.SharedFirebase.signInAnonymously();
   }
 
-  /**
-   * Get a Firebase database reference.
-   * @param {string} path
-   * @returns {firebase.database.Reference}
-   */
   function ref(path) {
-    initFirebase();
-    return db.ref(path);
+    return window.SharedFirebase.ref(path);
   }
 
-  /**
-   * Get the Firebase server timestamp sentinel.
-   * @returns {object}
-   */
   function serverTimestamp() {
-    return firebase.database.ServerValue.TIMESTAMP;
+    return window.SharedFirebase.serverTimestamp();
   }
 
   // ── Room Code Generation ──────────────────────────────────────
@@ -135,7 +95,7 @@
     const maxAttempts = 20;
     for (let i = 0; i < maxAttempts; i++) {
       const code = generateCode();
-      const snap = await db.ref('rooms/' + code + '/meta').once('value');
+      const snap = await ref('rooms/' + code + '/meta').once('value');
       if (!snap.exists()) return code;
     }
     throw new Error('Could not generate a unique room code after ' + maxAttempts + ' attempts.');
@@ -170,7 +130,7 @@
       }
     };
 
-    await db.ref('rooms/' + roomCode).set(roomData);
+    await ref('rooms/' + roomCode).set(roomData);
     return roomCode;
   }
 
@@ -244,17 +204,17 @@
     initFirebase();
 
     // Verify room exists
-    const metaSnap = await db.ref('rooms/' + roomCode + '/meta').once('value');
+    const metaSnap = await ref('rooms/' + roomCode + '/meta').once('value');
     if (!metaSnap.exists()) {
       throw new Error('Room not found.');
     }
     const meta = metaSnap.val();
 
     // Check if this player already exists in the room (rejoin case)
-    const playerSnap = await db.ref('rooms/' + roomCode + '/players/' + playerId).once('value');
+    const playerSnap = await ref('rooms/' + roomCode + '/players/' + playerId).once('value');
     if (playerSnap.exists()) {
       // Rejoin: restore connection, update name if changed
-      await db.ref('rooms/' + roomCode + '/players/' + playerId).update({
+      await ref('rooms/' + roomCode + '/players/' + playerId).update({
         name: playerName,
         connected: true
       });
@@ -263,7 +223,7 @@
       if (meta.status !== STATUS.LOBBY) {
         throw new Error('Game has already started.');
       }
-      await db.ref('rooms/' + roomCode + '/players/' + playerId).set({
+      await ref('rooms/' + roomCode + '/players/' + playerId).set({
         name: playerName,
         score: 0,
         connected: true,
@@ -272,7 +232,7 @@
     }
 
     // Set onDisconnect to mark player as disconnected
-    db.ref('rooms/' + roomCode + '/players/' + playerId + '/connected')
+    ref('rooms/' + roomCode + '/players/' + playerId + '/connected')
       .onDisconnect().set(false);
   }
 
@@ -284,7 +244,55 @@
    */
   async function leaveRoom(roomCode, playerId) {
     initFirebase();
-    await db.ref('rooms/' + roomCode + '/players/' + playerId).remove();
+    await ref('rooms/' + roomCode + '/players/' + playerId).remove();
+  }
+
+  /**
+   * Add a player record directly. Skips the lobby/auth-uid checks in joinRoom
+   * so the host can add hot-seat players (using synthetic IDs) at any time.
+   * @param {string} roomCode
+   * @param {string} playerId
+   * @param {string} playerName
+   * @returns {Promise<void>}
+   */
+  async function joinRoomDirect(roomCode, playerId, playerName) {
+    initFirebase();
+    const playerRef = ref('rooms/' + roomCode + '/players/' + playerId);
+    await playerRef.set({
+      name: playerName,
+      score: 0,
+      connected: true,
+      joinedAt: serverTimestamp()
+    });
+    ref('rooms/' + roomCode + '/players/' + playerId + '/connected')
+      .onDisconnect().set(false);
+  }
+
+  /**
+   * Write a buzz timestamp for a player.
+   * @param {string} roomCode
+   * @param {string} playerId
+   * @returns {Promise<void>}
+   */
+  function writeBuzz(roomCode, playerId) {
+    initFirebase();
+    return ref('rooms/' + roomCode + '/game/buzzer/buzzedPlayers/' + playerId)
+      .set(serverTimestamp());
+  }
+
+  /**
+   * Probe whether the current user can write to a non-self playerId path.
+   * Used by hot-seat mode to detect Firebase rules misconfigurations at the
+   * moment a feature is used, rather than failing silently mid-game.
+   * Resolves on success, rejects with the Firebase error on permission_denied.
+   * @param {string} roomCode
+   * @param {string} playerId
+   * @returns {Promise<void>}
+   */
+  function probeWritePermission(roomCode, playerId) {
+    initFirebase();
+    const probeRef = ref('rooms/' + roomCode + '/players/' + playerId + '/_probe');
+    return probeRef.set(true).then(function () { return probeRef.remove(); });
   }
 
   // ── Board Validation ──────────────────────────────────────────
@@ -393,7 +401,10 @@
     // Room management
     createRoom: createRoom,
     joinRoom: joinRoom,
+    joinRoomDirect: joinRoomDirect,
     leaveRoom: leaveRoom,
+    writeBuzz: writeBuzz,
+    probeWritePermission: probeWritePermission,
 
     // Board utilities
     validateBoard: validateBoard,

@@ -7,6 +7,7 @@
   'use strict';
 
   var J = window.Jeopardy;
+  var Couch = window.JeopardyCouch;
 
   // ── State ───────────────────────────────────────────────────
   var hostId = null;
@@ -55,6 +56,8 @@
     els.playerCount = document.getElementById('player-count');
     els.playerList = document.getElementById('player-list');
     els.startGameBtn = document.getElementById('start-game-btn');
+    els.couchPanel = document.getElementById('couch-panel');
+    els.addCouchBtn = document.getElementById('add-couch-btn');
     // Board phase
     els.board = document.getElementById('jeopardy-board');
     els.roundLabel = document.getElementById('round-label');
@@ -283,6 +286,85 @@
       item.appendChild(nameSpan);
       els.playerList.appendChild(item);
     });
+  }
+
+  // ── Couch Players ───────────────────────────────────────────
+
+  function renderCouchPanel(s) {
+    if (!els.couchPanel) return;
+    var rows = [];
+    Object.keys(s.assignments).forEach(function (idxKey) {
+      var rec = s.assignments[idxKey];
+      var p = players[rec.synthId] || {};
+      rows.push({
+        kind: 'active',
+        synthId: rec.synthId,
+        name: rec.name,
+        idx: idxKey,
+        score: p.score || 0
+      });
+    });
+    Object.keys(s.orphans).forEach(function (sid) {
+      rows.push({
+        kind: 'orphan',
+        synthId: sid,
+        name: s.orphans[sid].name
+      });
+    });
+
+    if (rows.length === 0) {
+      els.couchPanel.innerHTML = '<span class="couch-empty">No couch players yet</span>';
+    } else {
+      els.couchPanel.innerHTML = '';
+      rows.forEach(function (r) {
+        var row = document.createElement('div');
+        row.className = 'couch-row' + (r.kind === 'orphan' ? ' disconnected' : '');
+
+        var nameEl = document.createElement('span');
+        nameEl.className = 'couch-name';
+        nameEl.textContent = r.name;
+        row.appendChild(nameEl);
+
+        var meta = document.createElement('span');
+        meta.className = 'couch-meta';
+        meta.textContent = r.kind === 'orphan'
+          ? 'disconnected'
+          : 'pad ' + r.idx + (typeof r.score === 'number' ? ' · $' + r.score : '');
+        row.appendChild(meta);
+
+        if (r.kind === 'orphan') {
+          var btn = document.createElement('button');
+          btn.className = 'couch-reclaim';
+          btn.textContent = 'Re-claim';
+          btn.addEventListener('click', function () { onReclaimOrphan(r.synthId); });
+          row.appendChild(btn);
+        }
+        els.couchPanel.appendChild(row);
+      });
+    }
+
+    if (s.pendingBind) {
+      els.addCouchBtn.classList.add('pending');
+      els.addCouchBtn.textContent = 'Press A on a controller for ' + s.pendingBind.name + '...';
+    } else {
+      els.addCouchBtn.classList.remove('pending');
+      els.addCouchBtn.textContent = '+ Add couch player';
+    }
+  }
+
+  function onAddCouchClick() {
+    var name = (window.prompt('Couch player name?') || '').trim();
+    if (!name) return;
+    Couch.startBindFlow(name);
+  }
+
+  function onReclaimOrphan(synthId) {
+    var pads = window.SharedGamepad.listGamepads();
+    // Find first unassigned pad. couch.js exposes its assignments through onPanelUpdate;
+    // we keep things simple by trying each connected pad until one fits.
+    for (var i = 0; i < pads.length; i++) {
+      Couch.reclaimOrphan(synthId, pads[i].index);
+    }
   }
 
   function updateStartButton() {
@@ -677,6 +759,7 @@
     buzzStartTime = null;
     buzzRemainingMs = 0;
     lockedOutPlayers = {};
+    if (Couch) Couch.resetForNewClue();
   }
 
   function updatePlayerScore(playerId, delta) {
@@ -1274,6 +1357,7 @@
     // Wire up events
     els.boardSelector.addEventListener('change', onBoardChange);
     els.startGameBtn.addEventListener('click', startGame);
+    if (els.addCouchBtn) els.addCouchBtn.addEventListener('click', onAddCouchClick);
     els.openBuzzingBtn.addEventListener('click', onOpenBuzzing);
     els.returnBoardBtn.addEventListener('click', returnToBoard);
     els.judgeCorrectBtn.addEventListener('click', onJudgeCorrect);
@@ -1292,6 +1376,16 @@
       var user = await J.signInAnonymously();
       hostId = user.uid;
       await createAndJoinRoom();
+
+      // Couch players: 2-4 controllers plugged into this host device, each
+      // acting as its own Firebase player.
+      Couch.init({
+        roomCode: roomCode,
+        authUid: hostId,
+        getCurrentClueState: function () { return currentClueData ? currentClueData.state : null; },
+        getLockout: function () { return lockedOutPlayers; },
+        onPanelUpdate: renderCouchPanel
+      });
     } catch (err) {
       console.error('Failed to initialize host:', err);
     }

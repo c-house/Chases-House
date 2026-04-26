@@ -813,6 +813,29 @@
     .back-link:hover {
       color: var(--accent-gold);
     }
+
+    /* ── Controller Toast ──────────────────────────────── */
+    .gp-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.5rem;
+      transform: translate(-50%, 1.5rem);
+      background: rgba(14, 14, 16, 0.92);
+      color: var(--text-primary);
+      border: 1px solid rgba(200, 148, 62, 0.35);
+      border-radius: 999px;
+      padding: 0.55rem 1.1rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 1000;
+    }
+    .gp-toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
   </style>
 </head>
 <body>
@@ -965,6 +988,8 @@
     <p class="host-disconnected-text">The host has lost connection. The game will resume when they reconnect.</p>
   </div>
 
+  <div id="gp-toast" class="gp-toast" role="status" aria-live="polite"></div>
+
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>
   </footer>
@@ -975,6 +1000,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
   <!-- Game Scripts -->
+  <script src="../shared/gamepad.js"></script>
+  <script src="../shared/firebase.js"></script>
   <script src="shared.js"></script>
   <script src="player.js"></script>
 </body>

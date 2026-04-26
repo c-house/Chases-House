@@ -7,6 +7,11 @@
   'use strict';
 
   var J = window.Jeopardy;
+  var SG = window.SharedGamepad;
+
+  // ── Gamepad rumble patterns (ms / 0..1) ──────────────────
+  var BUZZ_RUMBLE = { duration: 80, strongMagnitude: 0.7, weakMagnitude: 0.3 };
+  var LOCKOUT_RUMBLE = { duration: 220, strongMagnitude: 0, weakMagnitude: 0.5 };
 
   // ── State ───────────────────────────────────────────────────
   var playerId = null;
@@ -401,22 +406,71 @@
     if (hasBuzzed || isLockedOut) return;
     hasBuzzed = true;
 
-    J.ref('rooms/' + roomCode + '/game/buzzer/buzzedPlayers/' + playerId)
-      .set(J.serverTimestamp());
+    J.writeBuzz(roomCode, playerId);
 
     setBuzzerBuzzed();
     els.gameStatus.textContent = 'Waiting for host...';
   }
 
+  // ── Gamepad Polling ──────────────────────────────────────
+
+  var gamepadPollRunning = false;
+
+  function startGamepadPolling() {
+    if (gamepadPollRunning) return;
+    gamepadPollRunning = true;
+    function tick() {
+      if (!gamepadPollRunning) return;
+      if (playerId && currentClueState === J.CLUE_STATE.BUZZING && !hasBuzzed && !isLockedOut) {
+        var pads = SG.listGamepads();
+        for (var i = 0; i < pads.length; i++) {
+          if (SG.consumeButtonPress(pads[i].index, SG.BUTTONS.A)) {
+            handleBuzz();
+            SG.rumble(pads[i].index, BUZZ_RUMBLE);
+            break;
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function rumbleAllPads(opts) {
+    var pads = SG.listGamepads();
+    for (var i = 0; i < pads.length; i++) SG.rumble(pads[i].index, opts);
+  }
+
+  // ── Toast ────────────────────────────────────────────────
+
+  var toastTimer = null;
+  function showToast(msg) {
+    var t = document.getElementById('gp-toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+
+  function shortPadName(id) {
+    if (!id) return 'Gamepad';
+    var m = id.match(/([A-Za-z0-9_ -]{3,})/);
+    return m ? m[1].trim().slice(0, 28) : 'Gamepad';
+  }
+
   // ── Lockout Listener ─────────────────────────────────────
 
   function listenForLockout() {
+    var prevLockedOut = false;
     J.ref('rooms/' + roomCode + '/game/buzzer/lockedOut/' + playerId)
       .on('value', function (snap) {
         isLockedOut = !!snap.val();
         if (isLockedOut) {
           hasBuzzed = false;
+          if (!prevLockedOut) rumbleAllPads(LOCKOUT_RUMBLE);
         }
+        prevLockedOut = isLockedOut;
         // Re-evaluate buzzer if we're in an active clue state
         if (currentClueState) {
           updateBuzzerForState(currentClueState);
@@ -896,6 +950,13 @@
       console.error('Failed to initialize player:', err);
       showJoinError('Failed to connect. Please refresh and try again.');
     }
+
+    // Gamepad: announce connect/disconnect, poll for buzz button
+    SG.init({
+      onConnect: function (idx, id) { showToast('Controller connected: ' + shortPadName(id)); },
+      onDisconnect: function (idx, id) { showToast('Controller ' + shortPadName(id) + ' disconnected'); }
+    });
+    startGamepadPolling();
   }
 
   if (document.readyState === 'loading') {
