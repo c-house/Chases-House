@@ -234,6 +234,8 @@
       case 'quit-to-map-select': backToMapSelect(); break;
       case 'dismiss-tutorial': actions.dismissTutorial(); break;
       case 'start-map':     startMap(el.dataset.mapId, el.dataset.difficulty || 'normal'); break;
+      case 'show-help':     document.body.classList.add('show-help'); break;
+      case 'dismiss-help':  document.body.classList.remove('show-help'); break;
     }
     // Reduced-motion toggle button
     if (el.id === 'rmToggle') {

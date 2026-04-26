@@ -175,7 +175,9 @@
     body[data-screen="map-select"] .screen.map-select,
     body[data-screen="pause"]      .overlay.pause,
     body[data-screen="game-over"]  .overlay.game-over,
-    body[data-screen="tutorial"]   .overlay.tutorial { display: block; }
+    body[data-screen="tutorial"]   .overlay.tutorial,
+    body.show-help                 .overlay.how-to-play { display: block; }
+    body.show-help                 .screen.title { display: block; }
 
     /* play screen uses grid layout; show whenever the play HUD is active */
     body[data-screen="play"]       .screen.play,
@@ -792,6 +794,104 @@
       display: flex; gap: 0.45rem;
     }
     .overlay-card .actions .row .btn { flex: 1; }
+
+    /* HOW-TO-PLAY card */
+    .overlay-card.help-card {
+      width: min(94%, 640px);
+      max-height: 86vh;
+      overflow-y: auto;
+      padding: 1.6rem 1.6rem 1.4rem;
+      text-align: left;
+    }
+    .help-card h2 {
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 0.4rem;
+    }
+    .help-card .help-eyebrow {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.78rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      text-align: center;
+      margin-bottom: 0.2rem;
+    }
+    .help-card .help-intro {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--ink-soft);
+      text-align: center;
+      margin: 0.4rem auto 1rem;
+      max-width: 36em;
+    }
+    .help-card .help-section { margin-top: 0.85rem; }
+    .help-card .help-section-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--wine);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-bottom: 1px dashed var(--ink-faint);
+      padding-bottom: 0.18rem;
+      margin-bottom: 0.5rem;
+    }
+    .help-card .help-list {
+      list-style: none; padding: 0; margin: 0;
+      display: grid;
+      gap: 0.45rem 0.6rem;
+      grid-template-columns: 1fr;
+    }
+    .help-card .help-list.compact { gap: 0.3rem 0.5rem; }
+    .help-card .help-list li {
+      display: grid;
+      grid-template-columns: 32px 5.5em 1fr;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.86rem;
+      color: var(--ink-soft);
+      line-height: 1.35;
+    }
+    .help-card .help-icon { width: 30px; height: 30px; }
+    .help-card .help-name {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--ink);
+      font-size: 0.95rem;
+    }
+    .help-card .help-desc { color: var(--ink-soft); }
+    .help-card .help-controls {
+      display: flex; flex-direction: column; gap: 0.35rem;
+      font-size: 0.86rem;
+      color: var(--ink-soft);
+      line-height: 1.45;
+    }
+    .help-card .help-kbd {
+      display: inline-block;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      padding: 0.04rem 0.42rem 0.08rem;
+      margin: 0 0.04em;
+      background: var(--parchment-warm);
+      border: 1px solid var(--ink-soft);
+      border-radius: 3px;
+      box-shadow: 0 1px 0 rgba(80,50,20,0.25);
+      color: var(--ink);
+    }
+    .help-card .actions { margin-top: 1.2rem; }
+    @media (max-width: 480px) {
+      .help-card .help-list li { grid-template-columns: 26px 1fr; }
+      .help-card .help-list li .help-name { font-size: 0.9rem; }
+      .help-card .help-list li .help-desc { grid-column: 1 / -1; padding-left: calc(26px + 0.5rem); margin-top: -0.18rem; }
+    }
 
     /* PAUSE settings sub-panel */
     .pause-settings {
@@ -1509,7 +1609,7 @@
                 <span class="wax"></span>
                 Begin the Watch
               </button>
-              <button class="btn ghost">How to Play</button>
+              <button class="btn ghost" data-action="show-help">How to Play</button>
             </div>
           </div>
         </div>
@@ -1740,6 +1840,70 @@
           </svg>
           <div style="position: absolute; bottom: 8rem; left: 50%; transform: translateX(-50%); pointer-events: auto;">
             <button class="btn ghost" style="background: var(--parchment-cream); box-shadow: 2px 2px 0 rgba(0,0,0,0.3);" data-action="dismiss-tutorial">Got it</button>
+          </div>
+        </div>
+      </aside>
+
+
+      <!-- ─────────── OVERLAY: HOW TO PLAY ─────────── -->
+      <aside class="overlay how-to-play" role="dialog" aria-label="How to play">
+        <div class="overlay-card help-card">
+          <div class="help-eyebrow">The Watch · Field Manual</div>
+          <h2>How to Play</h2>
+          <p class="help-intro">
+            Defend thy keep against ten waves of marching foes. Build towers along the road, hold the line, and conserve thy lives — three stars await those who lose none.
+          </p>
+
+          <div class="help-section">
+            <div class="help-section-title">Towers</div>
+            <ul class="help-list">
+              <li>
+                <svg class="help-icon"><use href="#t-archer-1"/></svg>
+                <span class="help-name">Archer</span>
+                <span class="help-desc">Fast single-target. Tier 3 looses two arrows at once.</span>
+              </li>
+              <li>
+                <svg class="help-icon"><use href="#t-cannon-1"/></svg>
+                <span class="help-name">Cannon</span>
+                <span class="help-desc">Slow splash damage. Strikes ground only — flying foes pass unharmed.</span>
+              </li>
+              <li>
+                <svg class="help-icon"><use href="#t-mage-1"/></svg>
+                <span class="help-name">Mage</span>
+                <span class="help-desc">Magic damage that ignores armour and chains between enemies at higher tiers.</span>
+              </li>
+              <li>
+                <svg class="help-icon"><use href="#t-frost-1"/></svg>
+                <span class="help-name">Frost</span>
+                <span class="help-desc">Slows enemies. Tier 3 may freeze on hit.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">Foes</div>
+            <ul class="help-list compact">
+              <li><svg class="help-icon"><use href="#e-goblin"/></svg><span class="help-name">Goblin</span><span class="help-desc">Baseline. Anything kills it.</span></li>
+              <li><svg class="help-icon"><use href="#e-orc"/></svg><span class="help-name">Orc</span><span class="help-desc">Heavy and slow — favour Cannon splash or focused fire.</span></li>
+              <li><svg class="help-icon"><use href="#e-wolfrider"/></svg><span class="help-name">Wolf-rider</span><span class="help-desc">Fast and fragile. Frost slow keeps them in your range.</span></li>
+              <li><svg class="help-icon"><use href="#e-shielded"/></svg><span class="help-name">Shielded</span><span class="help-desc">Armour resists physical damage. Mages punch through.</span></li>
+              <li><svg class="help-icon"><use href="#e-flying"/></svg><span class="help-name">Flying</span><span class="help-desc">Bypasses ground towers. Archers and Mages can hit them.</span></li>
+              <li><svg class="help-icon"><use href="#e-boss"/></svg><span class="help-name">Warlord</span><span class="help-desc">Map 3 boss. Regenerates unless steadily damaged.</span></li>
+            </ul>
+          </div>
+
+          <div class="help-section">
+            <div class="help-section-title">Controls</div>
+            <div class="help-controls">
+              <div><span class="help-kbd">Click</span> a slot then a tower card — or press <span class="help-kbd">1</span>–<span class="help-kbd">4</span> — to build.</div>
+              <div><span class="help-kbd">Click</span> a placed tower to upgrade or sell. Keys: <span class="help-kbd">U</span> upgrade · <span class="help-kbd">S</span> sell.</div>
+              <div><span class="help-kbd">Space</span> pause · <span class="help-kbd">N</span> send next wave (+5 gold) · <span class="help-kbd">F</span> fast-forward · <span class="help-kbd">Esc</span> menu.</div>
+              <div>Xbox controller supported: D-pad / stick to move cursor, <span class="help-kbd">A</span> confirm, <span class="help-kbd">B</span> cancel, <span class="help-kbd">X</span>/<span class="help-kbd">Y</span> upgrade/sell, <span class="help-kbd">START</span> pause.</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn primary" data-action="dismiss-help">Got it · Begin the Watch</button>
           </div>
         </div>
       </aside>
