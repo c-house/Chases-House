@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yahtzee — visual design mock (ADR-017)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Tokens (extends chases.house /styles.css) ─────────────────────── */
+    :root {
+      --bg-deep: #0a0a0b;
+      --bg-main: #141416;
+      --bg-surface: #1e1e21;
+      --bg-elevated: #28282c;
+
+      --text-primary: #f0e6d3;
+      --text-heading: #faf3e6;
+      --text-muted: #9a8e7a;
+      --text-faint: #5c5347;
+
+      --accent-gold: #c8943e;
+      --accent-glow: #e8b04a;
+      --accent-ember: #a06828;
+      --terracotta: #b05a3a;
+      --sage: #6a7d5a;
+
+      /* Yahtzee-specific (built from existing tokens, no new top-level vars) */
+      --felt: #3a4a32;
+      --felt-deep: #2a3624;
+      --felt-edge: #1a2418;
+      --bakelite: #f0e6d3;
+      --bakelite-warm: #faf3e6;
+      --bakelite-shadow: #c4b59a;
+      --pip-ink: #0a0a0b;
+      --paper: #efe4cc;
+      --paper-warm: #f6ecd3;
+      --paper-line: #c8a87a;
+      --ink: #4a3520;
+
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 3rem 2rem;
+    }
+
+    /* ─── Mock-page chrome (review-only — not part of game UI) ──────────── */
+    .mock-header {
+      max-width: 72rem;
+      margin: 0 auto 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px dashed var(--accent-ember);
+    }
+    .mock-header h1 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 60;
+      font-weight: 350;
+      font-size: 2.4rem;
+      color: var(--text-heading);
+      letter-spacing: -0.01em;
+    }
+    .mock-header p {
+      color: var(--text-muted);
+      max-width: 48rem;
+      margin-top: 0.6rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+    }
+    .frame {
+      max-width: 72rem;
+      margin: 0 auto 4rem;
+      border: 1px solid var(--bg-elevated);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-main);
+    }
+    .frame-label {
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--bg-elevated);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .frame-label em {
+      font-style: normal;
+      color: var(--text-faint);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      font-size: 0.8rem;
+    }
+    .frame-body {
+      position: relative;
+      min-height: 560px;
+      overflow: hidden;
+    }
+
+    /* ─── Felt table backdrop (the green canvas under most game screens) ── */
+    .felt {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 30%, var(--felt) 0%, var(--felt-deep) 60%, var(--felt-edge) 100%);
+    }
+    .felt::before {
+      /* Grain — same SVG noise pattern as site-wide <filter id="grain"> */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: 0.35;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+    }
+    .felt::after {
+      /* Vignette + warm spotlight */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(248, 220, 150, 0.08) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 110%, rgba(0, 0, 0, 0.55) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ─── Reusable: a die ─────────────────────────────────────────────── */
+    .die {
+      --d-size: 76px;
+      width: var(--d-size);
+      height: var(--d-size);
+      position: relative;
+      border-radius: calc(var(--d-size) * 0.16);
+      background:
+        linear-gradient(155deg, var(--bakelite-warm) 0%, var(--bakelite) 50%, var(--bakelite-shadow) 100%);
+      box-shadow:
+        inset 0 calc(var(--d-size) * -0.04) calc(var(--d-size) * 0.08) rgba(60, 40, 10, 0.18),
+        inset 0 calc(var(--d-size) * 0.03) calc(var(--d-size) * 0.08) rgba(255, 250, 235, 0.55),
+        inset 0 0 0 1px rgba(120, 90, 50, 0.15),
+        0 calc(var(--d-size) * 0.10) calc(var(--d-size) * 0.18) rgba(0, 0, 0, 0.4),
+        0 calc(var(--d-size) * 0.03) calc(var(--d-size) * 0.06) rgba(0, 0, 0, 0.35);
+      transition: transform 240ms cubic-bezier(.2,.8,.3,1.2), box-shadow 240ms ease;
+    }
+    .die::after {
+      /* Soft top-edge highlight */
+      content: '';
+      position: absolute;
+      inset: 4% 6% auto 6%;
+      height: 22%;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.45), transparent);
+      pointer-events: none;
+    }
+    .pip {
+      position: absolute;
+      width: 14%;
+      height: 14%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #2c2a26 0%, var(--pip-ink) 80%);
+      box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.7),
+        inset 0 -1px 1px rgba(60,40,10,0.4);
+    }
+    /* Pip grid: 3x3 positions at 22% / 50% / 78% */
+    .pip.tl { top: 22%; left: 22%; transform: translate(-50%, -50%); }
+    .pip.tc { top: 22%; left: 50%; transform: translate(-50%, -50%); }
+    .pip.tr { top: 22%; left: 78%; transform: translate(-50%, -50%); }
+    .pip.ml { top: 50%; left: 22%; transform: translate(-50%, -50%); }
+    .pip.mc { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .pip.mr { top: 50%; left: 78%; transform: translate(-50%, -50%); }
+    .pip.bl { top: 78%; left: 22%; transform: translate(-50%, -50%); }
+    .pip.bc { top: 78%; left: 50%; transform: translate(-50%, -50%); }
+    .pip.br { top: 78%; left: 78%; transform: translate(-50%, -50%); }
+
+    .die.held {
+      transform: translateY(-10px);
+      box-shadow:
+        inset 0 calc(var(--d-size) * -0.04) calc(var(--d-size) * 0.08) rgba(60, 40, 10, 0.18),
+        inset 0 calc(var(--d-size) * 0.03) calc(var(--d-size) * 0.08) rgba(255, 250, 235, 0.55),
+        inset 0 0 0 2px var(--accent-gold),
+        0 calc(var(--d-size) * 0.16) calc(var(--d-size) * 0.26) rgba(0, 0, 0, 0.5),
+        0 0 0 2px rgba(232, 176, 74, 0.35),
+        0 0 36px rgba(232, 176, 74, 0.32);
+    }
+    .die.held .lock {
+      opacity: 1;
+      transform: translate(-50%, -150%) scale(1);
+    }
+    .lock {
+      position: absolute;
+      top: 0; left: 50%;
+      width: 22px; height: 22px;
+      transform: translate(-50%, -130%) scale(0.8);
+      opacity: 0;
+      transition: opacity 200ms ease, transform 240ms cubic-bezier(.2,.8,.3,1.2);
+      pointer-events: none;
+    }
+    .lock svg {
+      width: 100%; height: 100%;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+    }
+
+    /* ─── Frame 1: TITLE ──────────────────────────────────────────────── */
+    .title-frame {
+      position: relative;
+      height: 100%;
+      min-height: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .title-mark {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 100, 'wght' 400;
+      font-size: clamp(4rem, 11vw + 1rem, 9rem);
+      line-height: 0.92;
+      color: var(--text-heading);
+      letter-spacing: -0.02em;
+      text-shadow:
+        0 2px 0 rgba(0, 0, 0, 0.35),
+        0 12px 30px rgba(0, 0, 0, 0.6);
+      animation: rise 900ms cubic-bezier(.2,.8,.3,1) backwards;
+    }
+    .title-mark .accent {
+      color: var(--accent-glow);
+      font-style: italic;
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 100, 'wght' 500;
+    }
+    .title-tagline {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 0.6rem;
+      animation: rise 900ms cubic-bezier(.2,.8,.3,1) 150ms backwards;
+    }
+    .cup-stage {
+      margin-top: 2.6rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 0.6rem;
+      animation: rise 900ms cubic-bezier(.2,.8,.3,1) 320ms backwards;
+    }
+    .cup {
+      transform-origin: 50% 95%;
+      animation: rock 6s ease-in-out infinite;
+      filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.55));
+    }
+    @keyframes rock {
+      0%, 38%, 62%, 100% { transform: rotate(0deg); }
+      48% { transform: rotate(-7deg); }
+      55% { transform: rotate(4deg); }
+    }
+    .title-cta {
+      display: flex;
+      gap: 0.9rem;
+      margin-top: 2rem;
+      animation: rise 900ms cubic-bezier(.2,.8,.3,1) 480ms backwards;
+    }
+    .btn {
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.85rem 1.6rem;
+      border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease, transform 0.15s ease;
+    }
+    .btn:hover { color: var(--accent-glow); border-color: var(--accent-glow); }
+    .btn-primary {
+      background: linear-gradient(180deg, var(--accent-glow) 0%, var(--accent-gold) 60%, var(--accent-ember) 100%);
+      color: var(--bg-deep);
+      border-color: var(--accent-ember);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 244, 200, 0.5),
+        inset 0 -2px 0 rgba(80, 50, 10, 0.4),
+        0 4px 12px rgba(160, 104, 40, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      color: var(--bg-deep);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 244, 200, 0.6),
+        inset 0 -2px 0 rgba(80, 50, 10, 0.4),
+        0 6px 18px rgba(232, 176, 74, 0.55);
+    }
+    .title-foot {
+      position: absolute;
+      bottom: 1.4rem;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2rem;
+      font-size: 0.78rem;
+      color: var(--text-faint);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .title-foot a { color: var(--text-muted); text-decoration: none; }
+    .title-foot a:hover { color: var(--accent-gold); }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Frame 2: SETUP ──────────────────────────────────────────────── */
+    .setup-frame {
+      position: relative;
+      height: 100%;
+      min-height: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .setup-card {
+      position: relative;
+      width: min(28rem, 100%);
+      background: linear-gradient(180deg, var(--paper-warm), var(--paper));
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 2rem 2.2rem 2.4rem;
+      box-shadow:
+        0 22px 44px rgba(0, 0, 0, 0.55),
+        0 6px 12px rgba(0, 0, 0, 0.3),
+        inset 0 0 0 1px rgba(120, 90, 40, 0.2);
+    }
+    .setup-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.06'/></svg>");
+      mix-blend-mode: multiply;
+      pointer-events: none;
+      border-radius: 8px;
+    }
+    .setup-h {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 50;
+      font-size: 1.6rem;
+      color: var(--ink);
+      margin-bottom: 0.3rem;
+    }
+    .setup-sub {
+      font-size: 0.88rem;
+      color: rgba(74, 53, 32, 0.7);
+      margin-bottom: 1.6rem;
+    }
+    .player-count {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.4rem;
+    }
+    .pc-btn {
+      flex: 1;
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 500;
+      padding: 0.7rem 0;
+      background: transparent;
+      color: rgba(74, 53, 32, 0.6);
+      border: 1px solid rgba(160, 104, 40, 0.4);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .pc-btn:hover { color: var(--ink); border-color: var(--accent-ember); }
+    .pc-btn.active {
+      background: var(--accent-ember);
+      color: var(--paper-warm);
+      border-color: var(--accent-ember);
+    }
+    .name-input {
+      width: 100%;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      padding: 0.55rem 0.2rem;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--paper-line);
+      color: var(--ink);
+      margin-bottom: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .name-input::placeholder { color: rgba(74, 53, 32, 0.4); font-style: italic; }
+    .name-input:focus { border-bottom-color: var(--accent-ember); }
+    .setup-actions {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1.4rem;
+    }
+    .btn-paper {
+      flex: 1;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.85rem 1.2rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-paper.ghost {
+      border: 1px solid rgba(160, 104, 40, 0.4);
+      background: transparent;
+      color: rgba(74, 53, 32, 0.7);
+    }
+    .btn-paper.ghost:hover { color: var(--ink); border-color: var(--accent-ember); }
+    .btn-paper.solid {
+      border: none;
+      background: var(--ink);
+      color: var(--paper-warm);
+    }
+    .btn-paper.solid:hover { background: var(--accent-ember); }
+
+    /* ─── Frame 3: ACTIVE PLAY ────────────────────────────────────────── */
+    .play-frame {
+      position: relative;
+      height: 100%;
+      min-height: 660px;
+      display: grid;
+      grid-template-columns: 1fr 22rem;
+      gap: 0;
+    }
+    .play-stage {
+      position: relative;
+      padding: 2rem 1.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .turn-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(248, 230, 200, 0.08);
+    }
+    .turn-bar .who {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-variation-settings: 'opsz' 36, 'WONK' 0, 'SOFT' 30;
+      color: var(--text-heading);
+    }
+    .turn-bar .who small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 0.2rem;
+    }
+    .roll-meter {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .roll-pip {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid var(--accent-ember);
+    }
+    .roll-pip.spent {
+      background: var(--accent-gold);
+      box-shadow: 0 0 8px rgba(232, 176, 74, 0.5);
+      border-color: var(--accent-gold);
+    }
+    .roll-meter-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-left: 0.5rem;
+    }
+
+    .dice-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.4rem;
+    }
+    .dice-row {
+      display: flex;
+      gap: 1rem;
+      perspective: 800px;
+    }
+    .die-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+    .die-slot small {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .die-slot.held small {
+      color: var(--accent-glow);
+      opacity: 1;
+    }
+
+    .roll-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .btn-roll {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 0, 'SOFT' 30;
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      padding: 0.95rem 2.8rem;
+      border-radius: 6px;
+      border: 1px solid rgba(80, 50, 10, 0.6);
+      cursor: pointer;
+      color: var(--bg-deep);
+      background: linear-gradient(180deg, var(--accent-glow) 0%, var(--accent-gold) 55%, var(--accent-ember) 100%);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 244, 200, 0.6),
+        inset 0 -3px 0 rgba(80, 50, 10, 0.45),
+        0 6px 16px rgba(160, 104, 40, 0.45),
+        0 2px 4px rgba(0, 0, 0, 0.4);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .btn-roll:hover { transform: translateY(-1px); }
+    .btn-roll:active {
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 2px 4px rgba(80, 50, 10, 0.5),
+        inset 0 -1px 0 rgba(255, 244, 200, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .roll-hint {
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+
+    /* Scorecard */
+    .scorecard {
+      position: relative;
+      background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper) 100%);
+      color: var(--ink);
+      border-left: 1px solid var(--bg-elevated);
+      box-shadow: -10px 0 28px rgba(0, 0, 0, 0.45);
+      overflow-y: auto;
+      padding: 1.4rem 1.2rem 1.4rem;
+      font-family: var(--font-body);
+    }
+    .scorecard::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.07'/></svg>");
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+    .sc-section-h {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24, 'WONK' 0, 'SOFT' 40;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-ember);
+      padding: 0.6rem 0 0.4rem;
+      border-bottom: 1px solid var(--paper-line);
+      margin-bottom: 0.4rem;
+    }
+    .sc-row {
+      display: grid;
+      grid-template-columns: 1.1rem 1fr auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.4rem;
+      border-bottom: 1px dotted rgba(160, 104, 40, 0.35);
+      font-size: 0.88rem;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      position: relative;
+    }
+    .sc-row:hover { background: rgba(232, 176, 74, 0.12); }
+    .sc-row .glyph {
+      width: 1.1rem; height: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sc-row .label { font-weight: 500; }
+    .sc-row .score {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 18, 'WONK' 0, 'SOFT' 0;
+      font-weight: 500;
+      font-size: 1rem;
+      color: var(--ink);
+      min-width: 2.2rem;
+      text-align: right;
+    }
+    .sc-row.scored .score { color: var(--accent-ember); }
+    .sc-row.scored {
+      color: rgba(74, 53, 32, 0.6);
+    }
+    .sc-row.scored::before {
+      content: '✓';
+      position: absolute;
+      left: -0.2rem;
+      color: var(--accent-ember);
+      font-size: 0.7rem;
+    }
+    .sc-row.preview {
+      background: linear-gradient(90deg, rgba(232, 176, 74, 0.22), rgba(232, 176, 74, 0.08));
+      box-shadow: inset 3px 0 0 var(--accent-gold);
+    }
+    .sc-row.preview .score {
+      color: var(--accent-ember);
+      font-weight: 700;
+    }
+    .sc-row.preview .preview-tag {
+      position: absolute;
+      right: 3rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent-ember);
+      opacity: 0.85;
+    }
+    .sc-row.empty .score { color: rgba(74, 53, 32, 0.25); }
+    .sc-row.empty .score::before { content: '—'; }
+
+    .sc-bonus {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.55rem 0.4rem;
+      font-size: 0.78rem;
+      color: rgba(74, 53, 32, 0.7);
+      border-bottom: 1px solid var(--paper-line);
+    }
+    .sc-bonus.earned {
+      color: var(--accent-ember);
+      font-weight: 600;
+      background: linear-gradient(90deg, rgba(232, 176, 74, 0.18), transparent);
+    }
+    .sc-bonus.earned::after { content: ' ★'; color: var(--accent-gold); }
+    .sc-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 0.85rem 0.4rem 0.4rem;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 0, 'SOFT' 30;
+      font-size: 1.4rem;
+      color: var(--ink);
+      border-top: 2px solid var(--ink);
+      margin-top: 0.6rem;
+    }
+    .sc-total .label {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-ember);
+    }
+
+    /* SVG glyphs */
+    .glyph svg { width: 100%; height: 100%; opacity: 0.6; }
+
+    /* ─── Frame 4: PAUSE OVERLAY (rendered atop a play frame) ─────────── */
+    .pause-veil {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.85));
+      backdrop-filter: blur(6px) saturate(0.8);
+      -webkit-backdrop-filter: blur(6px) saturate(0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+    .pause-card {
+      width: min(22rem, 90%);
+      background: linear-gradient(180deg, var(--bg-elevated), var(--bg-surface));
+      border: 1px solid rgba(248, 230, 200, 0.08);
+      border-radius: 10px;
+      padding: 1.6rem 1.6rem 1.4rem;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    }
+    .pause-card h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 60;
+      font-weight: 400;
+      font-size: 1.6rem;
+      color: var(--text-heading);
+      margin-bottom: 1rem;
+    }
+    .pause-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .pause-actions .btn {
+      width: 100%;
+      text-align: left;
+      padding-left: 1.1rem;
+      padding-right: 1.1rem;
+    }
+    .pause-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.55rem 0.2rem;
+      border-bottom: 1px solid rgba(248, 230, 200, 0.06);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .toggle {
+      width: 38px; height: 22px;
+      background: var(--bg-deep);
+      border: 1px solid var(--bg-elevated);
+      border-radius: 11px;
+      position: relative;
+      cursor: pointer;
+    }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+    .toggle.on { background: var(--accent-ember); border-color: var(--accent-ember); }
+    .toggle.on::after { left: 18px; background: var(--bakelite); }
+
+    /* ─── Frame 5: YAHTZEE FANFARE ────────────────────────────────────── */
+    .fanfare {
+      position: relative;
+      height: 100%;
+      min-height: 560px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .burst {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .burst::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 140vmin; height: 140vmin;
+      transform: translate(-50%, -50%);
+      background:
+        radial-gradient(circle, rgba(255, 220, 130, 0.55) 0%, rgba(232, 176, 74, 0.35) 18%, rgba(160, 104, 40, 0.2) 35%, transparent 60%);
+      animation: burst-pulse 2.6s ease-in-out infinite;
+      filter: blur(4px);
+    }
+    @keyframes burst-pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.65; }
+      50%      { transform: translate(-50%, -50%) scale(1.05); opacity: 0.95; }
+    }
+    .rays {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 110vmin; height: 110vmin;
+      transform: translate(-50%, -50%);
+      background:
+        conic-gradient(from 0deg,
+          rgba(255, 230, 150, 0.16) 0deg,  transparent 6deg,
+          transparent 24deg,                rgba(255, 230, 150, 0.16) 30deg, transparent 36deg,
+          transparent 54deg,                rgba(255, 230, 150, 0.16) 60deg, transparent 66deg,
+          transparent 84deg,                rgba(255, 230, 150, 0.16) 90deg, transparent 96deg,
+          transparent 114deg,               rgba(255, 230, 150, 0.16) 120deg, transparent 126deg,
+          transparent 144deg,               rgba(255, 230, 150, 0.16) 150deg, transparent 156deg,
+          transparent 174deg,               rgba(255, 230, 150, 0.16) 180deg, transparent 186deg,
+          transparent 204deg,               rgba(255, 230, 150, 0.16) 210deg, transparent 216deg,
+          transparent 234deg,               rgba(255, 230, 150, 0.16) 240deg, transparent 246deg,
+          transparent 264deg,               rgba(255, 230, 150, 0.16) 270deg, transparent 276deg,
+          transparent 294deg,               rgba(255, 230, 150, 0.16) 300deg, transparent 306deg,
+          transparent 324deg,               rgba(255, 230, 150, 0.16) 330deg, transparent 336deg,
+          transparent 360deg);
+      animation: spin 24s linear infinite;
+      mix-blend-mode: screen;
+      mask-image: radial-gradient(circle, black 30%, transparent 65%);
+      -webkit-mask-image: radial-gradient(circle, black 30%, transparent 65%);
+    }
+    @keyframes spin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to   { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    .fanfare-mark {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 100, 'wght' 600;
+      font-style: italic;
+      font-size: clamp(3.2rem, 9vw + 1rem, 7rem);
+      line-height: 0.95;
+      letter-spacing: -0.01em;
+      color: var(--accent-glow);
+      text-shadow:
+        0 0 24px rgba(255, 220, 130, 0.7),
+        0 0 60px rgba(232, 176, 74, 0.45),
+        0 4px 0 rgba(80, 50, 10, 0.35),
+        0 14px 30px rgba(0, 0, 0, 0.5);
+      animation: punch 1.6s cubic-bezier(.2,.8,.3,1.2) infinite;
+    }
+    @keyframes punch {
+      0%, 100% { transform: scale(1); }
+      8%       { transform: scale(1.08) rotate(-1deg); }
+      14%      { transform: scale(0.98) rotate(0.5deg); }
+      22%      { transform: scale(1.02); }
+    }
+    .fanfare-sub {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: rgba(248, 230, 200, 0.85);
+      margin-top: 0.6rem;
+    }
+    .fanfare-dice {
+      position: relative;
+      z-index: 2;
+      margin-top: 2.2rem;
+      display: flex;
+      gap: 0.9rem;
+    }
+    .fanfare-dice .die {
+      animation: float 2.2s ease-in-out infinite;
+      box-shadow:
+        inset 0 -3px 6px rgba(60, 40, 10, 0.18),
+        inset 0 3px 6px rgba(255, 250, 235, 0.55),
+        inset 0 0 0 2px rgba(232, 176, 74, 0.6),
+        0 8px 18px rgba(0, 0, 0, 0.45),
+        0 0 36px rgba(232, 176, 74, 0.55),
+        0 0 64px rgba(232, 176, 74, 0.35);
+    }
+    .fanfare-dice .die:nth-child(2) { animation-delay: 0.12s; }
+    .fanfare-dice .die:nth-child(3) { animation-delay: 0.24s; }
+    .fanfare-dice .die:nth-child(4) { animation-delay: 0.36s; }
+    .fanfare-dice .die:nth-child(5) { animation-delay: 0.48s; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(-2deg); }
+      50%      { transform: translateY(-10px) rotate(2deg); }
+    }
+    .spark {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-glow) 0%, var(--accent-gold) 60%, transparent 100%);
+      pointer-events: none;
+    }
+
+    /* ─── Frame 6: GAME OVER / RANKING ────────────────────────────────── */
+    .gameover {
+      position: relative;
+      height: 100%;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .gameover h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 60, 'WONK' 1, 'SOFT' 80;
+      font-style: italic;
+      font-size: clamp(2.4rem, 6vw, 3.6rem);
+      color: var(--text-heading);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.2rem;
+    }
+    .gameover .gosub {
+      font-size: 0.82rem;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1.8rem;
+    }
+    .ranking {
+      width: min(34rem, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-bottom: 1.6rem;
+    }
+    .rank-row {
+      display: grid;
+      grid-template-columns: 2.4rem 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem 1.2rem;
+      border-radius: 6px;
+      background: rgba(248, 230, 200, 0.04);
+      border: 1px solid rgba(248, 230, 200, 0.06);
+      font-family: var(--font-body);
+    }
+    .rank-row .place {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 0, 'SOFT' 50;
+      font-size: 1.6rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .rank-row .name { font-size: 1.1rem; color: var(--text-primary); }
+    .rank-row .score {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 0, 'SOFT' 30;
+      font-size: 1.7rem;
+      color: var(--text-heading);
+      letter-spacing: -0.02em;
+    }
+    .rank-row.winner {
+      background: linear-gradient(90deg, rgba(232, 176, 74, 0.16), rgba(232, 176, 74, 0.04));
+      border-color: rgba(232, 176, 74, 0.4);
+    }
+    .rank-row.winner .place { color: var(--accent-glow); }
+    .rank-row.winner .score { color: var(--accent-glow); }
+    .rank-row.winner .crown {
+      width: 22px; height: 22px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+    }
+    .gameover-cta { display: flex; gap: 0.8rem; }
+
+    /* ─── Notes ────────────────────────────────────────────────────────── */
+    .notes {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 1.4rem;
+      background: var(--bg-surface);
+      border: 1px dashed var(--bg-elevated);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.65;
+    }
+    .notes h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--text-heading);
+      margin-bottom: 0.6rem;
+      font-variation-settings: 'opsz' 24, 'WONK' 1, 'SOFT' 50;
+    }
+    .notes ul { padding-left: 1.2rem; }
+    .notes ul li { margin-bottom: 0.3rem; }
+    .notes code {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.78rem;
+      color: var(--accent-glow);
+      background: var(--bg-deep);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 720px) {
+      .play-frame { grid-template-columns: 1fr; }
+      .scorecard { border-left: none; border-top: 1px solid var(--bg-elevated); }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="mock-header">
+    <h1>Yahtzee — visual design pass</h1>
+    <p>Six static frames for review. Felt-and-bakelite midcentury aesthetic, extending the existing chases.house tokens (gold / ember / sage). Custom inline-SVG dice, paper scorecard, signature "YAHTZEE!" fanfare. Animations are CSS-only on this page so you can watch them loop. Mobile portrait collapses the play screen to stacked dice + scorecard.</p>
+  </header>
+
+  <!-- ───── FRAME 1: TITLE ─────────────────────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">1 — Title <em>idle attract; dice cup rocks every 6s</em></div>
+    <div class="frame-body">
+      <div class="felt"></div>
+      <div class="title-frame">
+        <div class="title-mark">Yahtz<span class="accent">ee</span></div>
+        <div class="title-tagline">Five dice · Three rolls · Thirteen turns</div>
+
+        <div class="cup-stage">
+          <!-- Bakelite dice cup, idle-rocking -->
+          <svg class="cup" width="120" height="140" viewBox="0 0 120 140" aria-hidden="true">
+            <defs>
+              <linearGradient id="cupBody" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#7a4a1c"/>
+                <stop offset="40%" stop-color="#b07232"/>
+                <stop offset="60%" stop-color="#c8843e"/>
+                <stop offset="100%" stop-color="#5a3614"/>
+              </linearGradient>
+              <radialGradient id="cupTop" cx="0.5" cy="0.5">
+                <stop offset="0%"  stop-color="#1a0e04"/>
+                <stop offset="100%" stop-color="#2c1a08"/>
+              </radialGradient>
+            </defs>
+            <!-- Cup body (trapezoid) -->
+            <path d="M 22 22 L 98 22 L 90 130 L 30 130 Z" fill="url(#cupBody)" stroke="#3a200c" stroke-width="1"/>
+            <!-- Rim -->
+            <ellipse cx="60" cy="22" rx="38" ry="6" fill="url(#cupTop)" stroke="#3a200c" stroke-width="1"/>
+            <!-- Decorative bands -->
+            <path d="M 24 38 L 96 38" stroke="#3a200c" stroke-width="0.8" opacity="0.4"/>
+            <path d="M 26 110 L 94 110" stroke="#3a200c" stroke-width="0.8" opacity="0.4"/>
+            <!-- Highlight -->
+            <path d="M 32 28 L 36 124" stroke="#f5d18a" stroke-width="2.5" opacity="0.35" stroke-linecap="round"/>
+          </svg>
+          <!-- A few loose dice next to the cup -->
+          <div class="die" style="--d-size: 44px;">
+            <span class="pip tl"></span><span class="pip tr"></span>
+            <span class="pip mc"></span>
+            <span class="pip bl"></span><span class="pip br"></span>
+          </div>
+          <div class="die" style="--d-size: 44px; transform: rotate(8deg);">
+            <span class="pip tl"></span><span class="pip tr"></span>
+            <span class="pip ml"></span><span class="pip mr"></span>
+            <span class="pip bl"></span><span class="pip br"></span>
+          </div>
+        </div>
+
+        <div class="title-cta">
+          <button class="btn btn-primary">New Game</button>
+          <button class="btn">Continue</button>
+          <button class="btn">High Scores</button>
+        </div>
+      </div>
+
+      <div class="title-foot">
+        <a href="#">How to Play</a>
+        <a href="#">♪ Music · Off</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── FRAME 2: SETUP ─────────────────────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">2 — Mode &amp; player setup <em>hot-seat selected; 3 players named</em></div>
+    <div class="frame-body">
+      <div class="felt"></div>
+      <div class="setup-frame">
+        <div class="setup-card">
+          <div class="setup-h">Hot Seat</div>
+          <div class="setup-sub">Same screen, alternating turns.</div>
+
+          <div class="player-count">
+            <button class="pc-btn">2</button>
+            <button class="pc-btn active">3</button>
+            <button class="pc-btn">4</button>
+          </div>
+
+          <input class="name-input" value="Chase">
+          <input class="name-input" value="Avery">
+          <input class="name-input" placeholder="Player 3 name…">
+
+          <div class="setup-actions">
+            <button class="btn-paper ghost">Back</button>
+            <button class="btn-paper solid">Start Game →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── FRAME 3: ACTIVE PLAY ───────────────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">3 — Active play <em>roll 2 of 3 · 6s held · scorecard previewing Large Straight</em></div>
+    <div class="frame-body" style="min-height: 660px;">
+      <div class="felt"></div>
+      <div class="play-frame">
+        <div class="play-stage">
+          <div class="turn-bar">
+            <div class="who"><small>Up next</small>Chase</div>
+            <div style="display:flex; align-items:center;">
+              <div class="roll-meter" aria-label="Rolls remaining">
+                <span class="roll-pip spent"></span>
+                <span class="roll-pip spent"></span>
+                <span class="roll-pip"></span>
+              </div>
+              <span class="roll-meter-label">Roll 2 / 3</span>
+            </div>
+          </div>
+
+          <div class="dice-area">
+            <div class="dice-row">
+              <!-- Die 1: 2 -->
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip br"></span></div><small>tap to hold</small></div>
+              <!-- Die 2: 6 (held) -->
+              <div class="die-slot held">
+                <div class="die held">
+                  <span class="lock">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <rect x="5" y="11" width="14" height="10" rx="2" fill="#e8b04a" stroke="#5a3614" stroke-width="1.2"/>
+                      <path d="M 8 11 V 8 a 4 4 0 0 1 8 0 v 3" stroke="#e8b04a" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  <span class="pip tl"></span><span class="pip tr"></span>
+                  <span class="pip ml"></span><span class="pip mr"></span>
+                  <span class="pip bl"></span><span class="pip br"></span>
+                </div>
+                <small>Held</small>
+              </div>
+              <!-- Die 3: 3 -->
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip mc"></span><span class="pip br"></span></div><small>tap to hold</small></div>
+              <!-- Die 4: 5 -->
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip mc"></span><span class="pip bl"></span><span class="pip br"></span></div><small>tap to hold</small></div>
+              <!-- Die 5: 4 -->
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip bl"></span><span class="pip br"></span></div><small>tap to hold</small></div>
+            </div>
+
+            <div class="roll-controls">
+              <button class="btn-roll">Roll</button>
+              <span class="roll-hint">Space · A button · or tap</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="scorecard">
+          <div class="sc-section-h">Upper</div>
+
+          <div class="sc-row scored">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.4" fill="#4a3520"/></svg></span>
+            <span class="label">Aces</span>
+            <span class="score">3</span>
+          </div>
+          <div class="sc-row scored">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="2.2" fill="#4a3520"/><circle cx="16" cy="12" r="2.2" fill="#4a3520"/></svg></span>
+            <span class="label">Twos</span>
+            <span class="score">8</span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2" fill="#4a3520"/><circle cx="12" cy="12" r="2" fill="#4a3520"/><circle cx="17" cy="17" r="2" fill="#4a3520"/></svg></span>
+            <span class="label">Threes</span>
+            <span class="score"></span>
+          </div>
+          <div class="sc-row scored">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2" fill="#4a3520"/><circle cx="17" cy="7" r="2" fill="#4a3520"/><circle cx="7" cy="17" r="2" fill="#4a3520"/><circle cx="17" cy="17" r="2" fill="#4a3520"/></svg></span>
+            <span class="label">Fours</span>
+            <span class="score">12</span>
+          </div>
+          <div class="sc-row scored">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.8" fill="#4a3520"/><circle cx="18" cy="6" r="1.8" fill="#4a3520"/><circle cx="12" cy="12" r="1.8" fill="#4a3520"/><circle cx="6" cy="18" r="1.8" fill="#4a3520"/><circle cx="18" cy="18" r="1.8" fill="#4a3520"/></svg></span>
+            <span class="label">Fives</span>
+            <span class="score">15</span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.6" fill="#4a3520"/><circle cx="18" cy="6" r="1.6" fill="#4a3520"/><circle cx="6" cy="12" r="1.6" fill="#4a3520"/><circle cx="18" cy="12" r="1.6" fill="#4a3520"/><circle cx="6" cy="18" r="1.6" fill="#4a3520"/><circle cx="18" cy="18" r="1.6" fill="#4a3520"/></svg></span>
+            <span class="label">Sixes</span>
+            <span class="score"></span>
+          </div>
+
+          <div class="sc-bonus">
+            <span>Upper subtotal · 38 / 63</span>
+            <span>+0</span>
+          </div>
+
+          <div class="sc-section-h" style="margin-top:0.4rem;">Lower</div>
+
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="4" height="4" fill="#4a3520"/><rect x="10" y="10" width="4" height="4" fill="#4a3520"/><rect x="16" y="10" width="4" height="4" fill="#4a3520"/></svg></span>
+            <span class="label">3 of a Kind</span>
+            <span class="score"></span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><rect x="3" y="10" width="3.5" height="4" fill="#4a3520"/><rect x="8" y="10" width="3.5" height="4" fill="#4a3520"/><rect x="13" y="10" width="3.5" height="4" fill="#4a3520"/><rect x="18" y="10" width="3.5" height="4" fill="#4a3520"/></svg></span>
+            <span class="label">4 of a Kind</span>
+            <span class="score"></span>
+          </div>
+          <div class="sc-row scored">
+            <span class="glyph"><svg viewBox="0 0 24 24"><path d="M 4 18 L 4 12 L 8 8 L 12 12 L 12 18 Z M 14 18 L 14 14 L 17 11 L 20 14 L 20 18 Z" fill="#4a3520"/></svg></span>
+            <span class="label">Full House</span>
+            <span class="score">25</span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><path d="M 4 18 L 8 14 L 12 10 L 16 6" stroke="#4a3520" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></span>
+            <span class="label">Sm Straight</span>
+            <span class="score"></span>
+          </div>
+          <div class="sc-row preview">
+            <span class="glyph"><svg viewBox="0 0 24 24"><path d="M 3 19 L 7 15 L 11 11 L 15 7 L 19 3" stroke="#a06828" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg></span>
+            <span class="label">Lg Straight</span>
+            <span class="preview-tag">Preview</span>
+            <span class="score">40</span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph">
+              <svg viewBox="0 0 24 24">
+                <path d="M 4 18 L 7 8 L 12 14 L 17 8 L 20 18 Z" fill="#4a3520"/>
+                <circle cx="12" cy="6" r="2" fill="#4a3520"/>
+              </svg>
+            </span>
+            <span class="label">Yahtzee</span>
+            <span class="score"></span>
+          </div>
+          <div class="sc-row empty">
+            <span class="glyph"><svg viewBox="0 0 24 24"><path d="M 4 16 Q 12 6 20 16" stroke="#4a3520" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span>
+            <span class="label">Chance</span>
+            <span class="score"></span>
+          </div>
+
+          <div class="sc-total">
+            <span class="label">Total</span>
+            <span>78</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── FRAME 4: PAUSE OVERLAY ─────────────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">4 — Pause overlay <em>blurred play screen behind; settings live here</em></div>
+    <div class="frame-body" style="min-height: 660px;">
+      <div class="felt"></div>
+      <!-- Reuse simplified play backdrop -->
+      <div class="play-frame">
+        <div class="play-stage">
+          <div class="turn-bar">
+            <div class="who"><small>Up next</small>Chase</div>
+            <div style="display:flex; align-items:center;">
+              <div class="roll-meter">
+                <span class="roll-pip spent"></span>
+                <span class="roll-pip"></span>
+                <span class="roll-pip"></span>
+              </div>
+              <span class="roll-meter-label">Roll 1 / 3</span>
+            </div>
+          </div>
+          <div class="dice-area">
+            <div class="dice-row">
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip br"></span></div></div>
+              <div class="die-slot"><div class="die"><span class="pip mc"></span></div></div>
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip mc"></span><span class="pip br"></span></div></div>
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip bl"></span><span class="pip br"></span></div></div>
+              <div class="die-slot"><div class="die"><span class="pip tl"></span><span class="pip br"></span></div></div>
+            </div>
+            <div class="roll-controls"><button class="btn-roll">Roll</button></div>
+          </div>
+        </div>
+        <aside class="scorecard"></aside>
+      </div>
+
+      <div class="pause-veil">
+        <div class="pause-card">
+          <h2>Paused</h2>
+          <div class="pause-actions">
+            <button class="btn">↩ Resume</button>
+            <button class="btn">↻ Restart Round</button>
+          </div>
+          <div style="margin: 1rem 0 0.4rem; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint);">Settings</div>
+          <div class="pause-row">
+            <span>Music</span>
+            <div class="toggle"></div>
+          </div>
+          <div class="pause-row">
+            <span>Sound effects</span>
+            <div class="toggle on"></div>
+          </div>
+          <div class="pause-row">
+            <span>Reduced motion</span>
+            <div class="toggle"></div>
+          </div>
+          <div class="pause-actions" style="margin-top: 1rem;">
+            <button class="btn" style="border-color: var(--terracotta); color: var(--terracotta);">Quit to title</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── FRAME 5: YAHTZEE FANFARE ───────────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">5 — Yahtzee fanfare <em>fires for ~2.6s on a 5-of-a-kind; horn sting + dice glow + radial burst + screen shake (not shown)</em></div>
+    <div class="frame-body">
+      <div class="felt"></div>
+      <div class="fanfare">
+        <div class="burst"></div>
+        <div class="rays"></div>
+
+        <div class="fanfare-mark">YAHTZEE!</div>
+        <div class="fanfare-sub">Five of a kind · +50</div>
+
+        <div class="fanfare-dice">
+          <div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip ml"></span><span class="pip mr"></span><span class="pip bl"></span><span class="pip br"></span></div>
+          <div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip ml"></span><span class="pip mr"></span><span class="pip bl"></span><span class="pip br"></span></div>
+          <div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip ml"></span><span class="pip mr"></span><span class="pip bl"></span><span class="pip br"></span></div>
+          <div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip ml"></span><span class="pip mr"></span><span class="pip bl"></span><span class="pip br"></span></div>
+          <div class="die"><span class="pip tl"></span><span class="pip tr"></span><span class="pip ml"></span><span class="pip mr"></span><span class="pip bl"></span><span class="pip br"></span></div>
+        </div>
+
+        <!-- Scattered sparks -->
+        <span class="spark" style="top: 22%; left: 18%;"></span>
+        <span class="spark" style="top: 32%; right: 14%; width: 12px; height: 12px;"></span>
+        <span class="spark" style="bottom: 28%; left: 26%; width: 6px; height: 6px;"></span>
+        <span class="spark" style="bottom: 18%; right: 20%; width: 10px; height: 10px;"></span>
+        <span class="spark" style="top: 44%; right: 30%; width: 5px; height: 5px;"></span>
+        <span class="spark" style="bottom: 42%; left: 12%; width: 8px; height: 8px;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── FRAME 6: GAME OVER / RANKING ──────────────────────────── -->
+  <div class="frame">
+    <div class="frame-label">6 — Game over &amp; ranking <em>hot-seat 3-player result; winner highlighted</em></div>
+    <div class="frame-body">
+      <div class="felt"></div>
+      <div class="gameover">
+        <h2>Game over</h2>
+        <div class="gosub">13 turns · 18 minutes elapsed</div>
+
+        <div class="ranking">
+          <div class="rank-row winner">
+            <div class="place">1</div>
+            <div class="name">
+              Avery
+              <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M 3 18 L 4 8 L 9 13 L 12 5 L 15 13 L 20 8 L 21 18 Z" fill="#e8b04a" stroke="#5a3614" stroke-width="0.8"/>
+                <circle cx="4" cy="8" r="1.2" fill="#faf3e6"/>
+                <circle cx="20" cy="8" r="1.2" fill="#faf3e6"/>
+                <circle cx="12" cy="5" r="1.2" fill="#faf3e6"/>
+              </svg>
+            </div>
+            <div class="score">312</div>
+          </div>
+          <div class="rank-row">
+            <div class="place">2</div>
+            <div class="name">Chase</div>
+            <div class="score">274</div>
+          </div>
+          <div class="rank-row">
+            <div class="place">3</div>
+            <div class="name">Sam</div>
+            <div class="score">231</div>
+          </div>
+        </div>
+
+        <div class="gameover-cta">
+          <button class="btn btn-primary">Play Again</button>
+          <button class="btn">View Scorecards</button>
+          <button class="btn">Title</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── DESIGN NOTES ──────────────────────────────────────────── -->
+  <div class="notes">
+    <h3>Design notes for handoff</h3>
+    <ul>
+      <li><strong>Tokens:</strong> no new top-level CSS variables. Yahtzee-only colors (<code>--felt</code>, <code>--bakelite</code>, <code>--paper</code>, <code>--ink</code>) are derived from the site palette and live in the game's local <code>:root</code> block.</li>
+      <li><strong>Type:</strong> Fraunces with <code>'WONK' 1, 'SOFT' 50–100</code> for display moments; bumped to italic + WONK for the fanfare; Bricolage everywhere else. Already on the site — no extra font load.</li>
+      <li><strong>Dice:</strong> 100% CSS + DOM (no SVG, no canvas). One <code>.die</code> shell, nine <code>.pip</code> positions selected by class. Faces are presentational only; <code>data-face</code> attribute will drive class toggling in JS. Built to scale via <code>--d-size</code>.</li>
+      <li><strong>Held state:</strong> distinguished by (a) <code>translateY(-10px)</code> elevation, (b) gold inner-stroke ring, (c) gold outer glow, AND (d) a separate lock-icon SVG that sits above the die. Color-blind-safe by construction.</li>
+      <li><strong>Tumble animation:</strong> not shown in this static mock. Plan: 3D <code>rotateX/Y/Z</code> CSS keyframe ~600ms with a settle bounce; held dice are excluded from the keyframe. <code>prefers-reduced-motion</code> swap shows the result instantly with a soft fade.</li>
+      <li><strong>Scorecard glyphs:</strong> hand-drawn inline SVG per row (pip stacks for upper section, gable for full house, ascending step for straights, mountain + crown for Yahtzee, arc for Chance). Ink color = <code>var(--ink)</code>, opacity 0.6 for unfilled rows.</li>
+      <li><strong>Preview row:</strong> live score appears on focus/hover with a gold inset bar + "Preview" tag. Click commits; <code>Esc</code> cancels.</li>
+      <li><strong>Yahtzee fanfare:</strong> three layered effects — animated radial burst (<code>::before</code>), slow-spinning conic-gradient ray pattern, floating glowing dice. Subtitle line shows the points awarded ("+50" first time, "+100" on each subsequent Yahtzee bonus) so the rule communicates itself. Add screen shake + horn sting in the implementation pass.</li>
+      <li><strong>Pause overlay:</strong> backdrop-filter blur + saturate keeps the table visible but de-emphasizes it. Toggles for Music / SFX / Reduced motion are persisted to <code>localStorage["yahtzee-audio"]</code> and <code>["yahtzee-prefs"]</code>.</li>
+      <li><strong>Hot-seat layout:</strong> the ADR calls for "side-by-side scorecards on desktop" — for &gt;2 players the right rail becomes a tabbed scorecard with the active player's card shown by default (other tabs show name + running total in a strip). The mock shows the 1-card variant; multi-tab variant is a render flag, not a separate screen.</li>
+      <li><strong>Mobile:</strong> below 720px the grid collapses; scorecard moves below dice; roll button stays in the thumb zone. Header turn-bar wraps to two lines if names are long.</li>
+      <li><strong>Konami easter egg:</strong> swaps <code>--bakelite</code> for a deeper gold ramp on the next round only. Cosmetic; no scoring effect.</li>
+    </ul>
+  </div>
+
+</body>
+</html>
