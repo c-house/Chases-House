@@ -317,17 +317,22 @@
 
   // Numeric count-up animation for score chips. rAF loop because
   // textContent is not a CSS property — Web Animations API doesn't fit.
-  function cueScoreUpdate(oldScore, newScore, chipEl, formatScore) {
+  // chipElOrFn can be either an Element or a () => Element lookup that
+  // re-queries on each frame (survives DOM re-renders).
+  function cueScoreUpdate(oldScore, newScore, chipElOrFn, formatScore) {
     var start = oldScore || 0;
     var end = newScore || 0;
     if (start === end) return;
     var duration = Math.min(900, Math.max(280, Math.abs(end - start) / 2));
     var startTime = performance.now();
+    var lookup = typeof chipElOrFn === 'function' ? chipElOrFn : function () { return chipElOrFn; };
     function step(t) {
+      var el = lookup();
+      if (!el) return; // chip removed (DOM re-render); stop quietly
       var progress = Math.min(1, (t - startTime) / duration);
       var eased = 1 - Math.pow(1 - progress, 3); // cubic ease-out
       var current = Math.round(start + (end - start) * eased);
-      if (chipEl) chipEl.textContent = formatScore(current);
+      el.textContent = formatScore(current);
       if (progress < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);

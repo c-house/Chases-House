@@ -583,7 +583,7 @@
   }
 
   function showDDWagerForm() {
-    var limits = getDDWagerLimits();
+    var limits = J.getDDWagerLimits(currentScore, currentRound);
     els.ddInstruction.textContent = 'Enter your wager';
     els.ddWagerForm.style.display = '';
     els.ddWaiting.style.display = 'none';
@@ -594,24 +594,15 @@
     els.ddWagerBtn.disabled = true;
   }
 
-  function getDDWagerLimits() {
-    var roundValues = J.ROUND_VALUES[currentRound];
-    var maxClueValue = roundValues ? roundValues[roundValues.length - 1] : 1000;
-    return {
-      min: 5,
-      max: Math.max(currentScore, maxClueValue)
-    };
-  }
-
   function validateDDWager() {
     var val = parseInt(els.ddWagerInput.value, 10);
-    var limits = getDDWagerLimits();
+    var limits = J.getDDWagerLimits(currentScore, currentRound);
     els.ddWagerBtn.disabled = isNaN(val) || val < limits.min || val > limits.max;
   }
 
   function submitDDWager() {
     var val = parseInt(els.ddWagerInput.value, 10);
-    var limits = getDDWagerLimits();
+    var limits = J.getDDWagerLimits(currentScore, currentRound);
     if (isNaN(val) || val < limits.min || val > limits.max) return;
 
     ddWagerSubmitted = true;
@@ -688,7 +679,7 @@
       // Can't wager with $0 or negative score
       els.finalWagerForm.style.display = 'none';
       els.finalWaiting.style.display = '';
-      els.finalWaiting.textContent = 'You cannot wager with a score of ' + formatPlayerScore(currentScore);
+      els.finalWaiting.textContent = 'You cannot wager with a score of ' + J.formatScore(currentScore);
       // Auto-submit $0 wager
       if (!finalWagerSubmitted) {
         finalWagerSubmitted = true;
@@ -839,12 +830,6 @@
     els.finalWaiting.textContent = 'Host is judging answers...';
   }
 
-  function formatPlayerScore(score) {
-    score = score || 0;
-    if (score < 0) return '-$' + Math.abs(score).toLocaleString();
-    return '$' + score.toLocaleString();
-  }
-
   // ── Game Over ────────────────────────────────────────────
 
   function transitionToGameOver() {
@@ -859,7 +844,7 @@
     }
 
     // Show player's final score
-    els.finalScoreDisplay.textContent = formatPlayerScore(currentScore);
+    els.finalScoreDisplay.textContent = J.formatScore(currentScore);
     if (currentScore < 0) {
       els.finalScoreDisplay.classList.add('negative');
     } else {
@@ -891,7 +876,7 @@
 
       var score = document.createElement('span');
       score.className = 'standing-score';
-      score.textContent = formatPlayerScore(p.score);
+      score.textContent = J.formatScore(p.score);
 
       row.appendChild(rank);
       row.appendChild(name);

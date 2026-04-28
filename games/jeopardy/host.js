@@ -200,12 +200,22 @@
     }
 
     // If we reconnected and status is still PAUSED (set by our prior onDisconnect),
-    // restore an appropriate status. Use currentClue presence as the heuristic.
+    // restore. Heuristic: prefer FINAL/ENDED if FJ data exists or we have a final
+    // judging trail; otherwise PLAYING if a clue is in flight; otherwise LOBBY.
     try {
       var statusSnap = await J.ref('rooms/' + roomCode + '/meta/status').once('value');
       if (statusSnap.val() === J.STATUS.PAUSED) {
+        var fjSnap = await J.ref('rooms/' + roomCode + '/game/finalJeopardy').once('value');
         var clueSnap = await J.ref('rooms/' + roomCode + '/game/currentClue').once('value');
-        var newStatus = clueSnap.exists() ? J.STATUS.PLAYING : J.STATUS.LOBBY;
+        var newStatus;
+        if (fjSnap.exists() && fjSnap.val() && fjSnap.val().state) {
+          // FJ in progress (any sub-state). Stay in FINAL.
+          newStatus = J.STATUS.FINAL;
+        } else if (clueSnap.exists()) {
+          newStatus = J.STATUS.PLAYING;
+        } else {
+          newStatus = J.STATUS.LOBBY;
+        }
         await J.ref('rooms/' + roomCode + '/meta/status').set(newStatus);
       }
     } catch (e) { /* non-fatal */ }
@@ -332,9 +342,13 @@
   function renderScoreboard() {
     if (!els.scoreboardBar) return;
     els.scoreboardBar.innerHTML = '';
+    // Only play correct/incorrect audio for score deltas that happen DURING
+    // gameplay — not on play-again reset (LOBBY), not on initial render.
+    var inGameplay = currentStatus === J.STATUS.PLAYING || currentStatus === J.STATUS.FINAL;
     Object.keys(players).forEach(function (id) {
       var p = players[id];
       var chip = document.createElement('div');
+      chip.id = 'score-chip-' + id; // re-queryable from animation loop
       chip.className = 'score-chip';
       if (id === pickingPlayerId) chip.classList.add('picker');
       if (currentClueData && currentClueData.state === J.CLUE_STATE.ANSWERING && id === currentBuzzerForRender) {
@@ -345,6 +359,7 @@
       name.textContent = p.name;
       var val = document.createElement('span');
       val.className = 'score-chip-value';
+      val.id = 'score-val-' + id;
       var s = p.score || 0;
       if (s < 0) val.classList.add('negative');
       var prev = prevPlayerScores[id];
@@ -353,10 +368,13 @@
         val.textContent = J.formatScore(s);
       } else if (prev !== s) {
         val.textContent = J.formatScore(prev);
-        Audio.cueScoreUpdate(prev, s, val, J.formatScore);
-        // Audio cue based on direction (correct/incorrect)
-        if (s > prev) Audio.play('correct');
-        else if (s < prev) Audio.play('incorrect');
+        // Pass a lookup function so the rAF loop survives re-renders.
+        var elId = val.id;
+        Audio.cueScoreUpdate(prev, s, function () { return document.getElementById(elId); }, J.formatScore);
+        if (inGameplay) {
+          if (s > prev) Audio.play('correct');
+          else if (s < prev) Audio.play('incorrect');
+        }
       } else {
         val.textContent = J.formatScore(s);
       }
@@ -642,16 +660,20 @@
       els.finalPlayerReveal.style.display = 'none';
       renderFinalWagerStatus(fj);
     } else if (state === J.FINAL_STATE.CLUE) {
-      // Reveal clue + start canonical 30s timer + Stardew-warm Think music
-      J.ref('rooms/' + roomCode + '/board/final').once('value', function (snap) {
-        var f = snap.val();
-        if (f) {
-          els.finalClueText.textContent = f.clue;
-          els.finalClueText.style.display = '';
-        }
-      });
-      startFinalTimer();
-      if (Audio && prevFinalState !== J.FINAL_STATE.CLUE) Audio.startThinkMusic();
+      // Reveal clue + start canonical 30s timer + Stardew-warm Think music.
+      // Only fire timer/music on the *edge* into CLUE — other field updates
+      // inside finalJeopardy will refire this listener.
+      if (prevFinalState !== J.FINAL_STATE.CLUE) {
+        J.ref('rooms/' + roomCode + '/board/final').once('value', function (snap) {
+          var f = snap.val();
+          if (f) {
+            els.finalClueText.textContent = f.clue;
+            els.finalClueText.style.display = '';
+          }
+        });
+        startFinalTimer();
+        if (Audio) Audio.startThinkMusic();
+      }
       renderFinalWagerStatus(fj);
     } else if (state === J.FINAL_STATE.ANSWER) {
       if (fjTimerId) { clearInterval(fjTimerId); fjTimerId = null; }
