@@ -19,7 +19,18 @@ User direction:
 
 A new `games/jeopardy/audio.js` module exposes `window.JeopardyAudio` with `play(name)`, `startThinkMusic()`, `stopThinkMusic()`, `cueScoreUpdate(...)`. It is loaded **only on the TV** (`host.html`) — control.html and play.html do not include it, keeping phones silent.
 
-For each named cue, the module checks for a drop-in CC0 file at `audio/<name>.mp3` first; if missing or it 404s once, falls back to a WebAudio synthesis function. This means the repo ships with **zero audio files** but is fully playable; future curation can drop CC0 files in to upgrade the timbre without touching code.
+For each named cue, the module checks an explicit `KNOWN_FILES` array first. If the cue's name is in that array, it loads `audio/<name>.mp3` and plays it; otherwise it falls back to a WebAudio synthesis function. This means the repo ships with **zero audio files** but is fully playable; future curation can drop CC0 files in to upgrade the timbre.
+
+#### Why opt-in instead of "auto-detect with 404 fallback"
+
+The first iteration tried to be clever: just probe `audio/<name>.mp3` on first play, fall back to synthesis on 404, mark the name `fileMissing` so subsequent plays don't re-probe. In practice this pollutes the DevTools console with one error per cue per session — Chrome logs both `<audio>`-element load failures and `fetch`-HEAD probes as red console errors regardless of how the JS handles the rejection. For a static-site personal project that aims to ship with zero audio files, that's a permanent red badge in DevTools every time you open `host.html`. Not worth the convenience.
+
+The opt-in model is two steps to add a real file:
+
+1. Drop `audio/<name>.mp3`.
+2. Add `'<name>'` to the `KNOWN_FILES` array at the top of `audio.js`.
+
+`KNOWN_FILES` ships empty. No 404s, no console noise, and the trade-off (one line of JS per audio file added) is trivial. Documented in [`games/jeopardy/audio/ATTRIBUTION.md`](../../games/jeopardy/audio/ATTRIBUTION.md).
 
 #### Synthesis design — why this sounds Stardew-warm
 
