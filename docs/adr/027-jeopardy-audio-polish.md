@@ -1,6 +1,6 @@
 # ADR-027 — Jeopardy audio cues + visual polish
 
-**Status:** Accepted, 2026-04-28.
+**Status:** Accepted, 2026-04-28. Code merged to branch `jeopardy-host-control-split`. No deployment dependencies of its own (additive on top of ADR-026). Companion to [ADR-026](026-jeopardy-host-control-split.md).
 
 ## Context
 
@@ -117,11 +117,41 @@ CSS for `.board-cell.flipping` exists, but I'm not wiring it in this commit. The
 
 ## Verification
 
-End-to-end smoke test on localhost via Chrome DevTools MCP confirmed audio fires at all listed edges with no console errors. The Think music synth schedules ~60 oscillator events over 32 s and stops cleanly mid-loop when state transitions to ANSWER. Score count-up animates Alice from $0 → $200 over ~280 ms as expected. The first-reveal stagger only fires on round-1 transition + round-2 transition, not on every clue pick.
+End-to-end smoke test on localhost via Chrome DevTools MCP, three isolated browser contexts (TV, host phone, two player phones), Wave A–I per ADR-026's verification table. Audio-specific checks all passed:
 
-## Open follow-ups (not blocking)
+- Theme sting fires once on first lobby → playing transition; doesn't refire on Play Again's lobby → playing.
+- Buzzer-open cue + visual flash fire on every BUZZING state edge; no double-firing.
+- Score count-up animates over ~280 ms (cubic ease-out) for $200 deltas; survives renderScoreboard re-renders mid-animation thanks to the `lookup()` function pattern in `cueScoreUpdate` (rAF re-queries the chip element by ID each frame, aborts cleanly if the chip is gone — fix from the review-fixups commit).
+- Daily Double splash entrance bounces in cleanly. Audio fires once on DD reveal.
+- The 30 s Think synth schedules ~60 oscillator events at FJ CLUE state; `stopThinkMusic` ramps gain to 0 over 400 ms when state moves to ANSWER. No audio leaks past the stop.
+- Final-reveal category slide-in stagger fires only on round-1 entry and round-2 entry (`firstBoardReveal` flag reset on round transition only).
+- **Zero console errors** on TV reload after the file-fallback fix landed in `dd1091f` (down from 8 audio 404s in the auto-probe iteration).
 
-- Wire the cell-flip animation properly. Probably needs a "lock the board listener while flipping" coordination flag so `renderBoard()` doesn't blow away the in-flight animation.
-- Drop in CC0 files for the named cues — particularly `final-think.mp3` if a 30s warm waltz can be sourced. The synthesis is decent but a real recorded loop would feel less mechanical.
-- "Click to enable sound" overlay on the TV before first audio fire (handles browsers that block AudioContext until user gesture, in case no couch player is bound).
-- ADR-025's TTS narration eventually plugs into the same `audio.js` module — `Audio.narrate(text)` would join the existing cue API and use the same AudioContext.
+The "no false-positive correct/incorrect on play-again" guard from the review-fixups commit was implicitly verified by Wave H — Alice + Bob scores zeroed back to $0 from $-200 / $2,800 with no audio cue activity.
+
+## Open follow-ups (not blocking; ordered roughly by impact)
+
+### Polish gaps
+
+1. **Cell-flip animation JS plumbing.** CSS `.board-cell.flipping` keyframes ship in this ADR, but the JS isn't wired. Problem: the board listener fires on `asked: true` → re-renders the entire board → flip class is on a now-detached element, animation never completes visually. Two viable fixes:
+   - **(a)** Targeted DOM update — when `currentClue` is written, find the matching cell node and add `.flipping`; suppress the next `renderBoard()` call for ~400 ms (its duration); after the animation, re-render with the cell properly in the asked state.
+   - **(b)** Move from full-board `innerHTML = ''` re-renders to per-cell delta updates, so unrelated cell DOM nodes survive across listener fires. Bigger refactor.
+   Recommend (a) as the smallest viable shape.
+
+2. **Real CC0 audio files for the named cues.** Synthesis is decent but mechanical-sounding by nature. The biggest perceptual win would be a 30s `final-think.mp3` (warm acoustic waltz, ~60 bpm, mandolin/dulcimer/flute) — search hints in `audio/ATTRIBUTION.md`. Each file added needs a one-line `KNOWN_FILES` entry in `audio.js` and an attribution row in the `.md`.
+
+3. **AudioContext gesture-unlock UX.** Browsers block `AudioContext` until first user interaction. The TV's first interaction is typically "+ Add couch player." If the operator skips couch and goes straight to game start (host phone clicks Start), the TV's first cue (theme-sting) will fail silently because no gesture has happened on the TV. Future polish: a small "Click anywhere to enable sound" overlay that auto-dismisses on first click.
+
+4. **Per-player FJ judging mirror to TV.** Cross-cuts ADR-026. Today the TV stays on the FJ wager roster during host's per-player judging. Cleaner: control.js writes `game/finalJeopardy/judging/{currentPid}` so the TV reveals each player's answer + wager + the audio "correct"/"incorrect" cue lands on a TV-side animation. Currently those cues fire from `renderScoreboard` score-delta detection, which works for regular clues but doesn't give the TV a per-player "and the answer was…" reveal cadence during FJ judging.
+
+### Future-feature placeholders
+
+5. **TTS clue narration** (ADR-025) plugs into the same `audio.js` module. Proposed shape: `Audio.narrate(text, opts) → Promise<HTMLAudioElement>`, opts include voice + provider. The Open Buzzing button on `control.html` would gate on the audio's `ended` event. The Final Jeopardy clue reveal would start the 30s timer on `ended` rather than on click. Out of scope for ADR-027.
+
+6. **Player-phone subtle button-tap haptic** on `control.html` button presses (`navigator.vibrate(20)`). Tactile confirmation that the button registered. Out of scope; control.html is silent for ADR-026/027 (it's a tool, not a stage).
+
+## Cross-references
+
+- **ADR-026** (host/control split) — the architecture this audio + polish layer rides on top of. Cell-flip and FJ judging mirror items above are cross-cutting with ADR-026's deferred work.
+- **ADR-025** (TTS, future) — Audio module's `play()` API is the integration point. `KNOWN_FILES` opt-in pattern would extend naturally to TTS-cached clips per (text, voice) tuple.
+- **ADR-016** (shared gamepad) — `couch.js`'s `OPEN_PULSE` triple-rumble for buzzer-open uses `SharedGamepad.rumble` and shares the rumble taxonomy.

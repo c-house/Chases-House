@@ -1,6 +1,6 @@
 # ADR-026 — Jeopardy host / control split + dual-QR claim flow
 
-**Status:** Accepted, 2026-04-27.
+**Status:** Accepted, 2026-04-27. Code merged to branch `jeopardy-host-control-split`. **Pending two manual steps before production is live** — see [Deployment dependencies](#deployment-dependencies).
 
 ## Context
 
@@ -48,9 +48,33 @@ On TV `host.html` load, `J.createRoom` generates an 8-hex-char token via `crypto
 
 The token is **not** validated by Firebase rules — rules only enforce "who can write," not "what token." The token's job is to prevent enumeration attacks on the `control.html?room=ABCD` URL (since the room code is short). Combined: 4-letter room code × 16⁸ token ≈ 1.4 × 10¹⁵ combinations — effectively unguessable in a party-game threat model.
 
+**Known race condition (not fixed):** `claimControl` is read-then-write (`once('value')` → `update()`), not a `runTransaction`. If two devices scan the host QR within the same Firebase round-trip window (a few hundred ms), both can read `claimedBy: null`, both can pass the token check, and both write `claimedBy = <their uid>`. The second write wins and "owns" the room, but both clients believe they hold control. In a party setting the operator scans the QR alone seconds after the TV boots; the window doesn't realistically open. Documented as a known gap; switching to `runTransaction` is a small fix in `shared.js` if it ever surfaces in the wild.
+
 ### Anonymous UID persistence
 
 Firebase JS SDK persists anonymous UIDs in IndexedDB across page reloads. Reloading `control.html` re-mints the same UID and the existing claim is honored. Clearing site data or going incognito gets a new UID — at which point the host needs to reset (see below).
+
+### TV reconnect & PAUSED-status restore
+
+The TV's `setupHostDisconnect` registers an `onDisconnect().set(meta/status: PAUSED)` handler — players see "Host disconnected" overlay if the TV browser closes. On TV reload, `host.js init()` reads the current status; if it's PAUSED, the TV restores the appropriate status using a heuristic over `currentClue` and `finalJeopardy` presence:
+
+- `finalJeopardy.state` exists → restore to `FINAL`
+- otherwise `currentClue` exists → restore to `PLAYING`
+- otherwise → `LOBBY`
+
+`ENDED` is intentionally not restored — the game already finished, so falling through to LOBBY (which `play.html` interprets as "ready for next game") is appropriate. This was the cleanest heuristic without adding a separate `pre-pause-status` Firebase field.
+
+### What if the host phone disconnects mid-game? (known gap)
+
+`control.html` does **not** register an `onDisconnect` handler. If the host phone goes offline (lost wifi, browser closed, battery dead), `meta/status` stays at `PLAYING` and `claimedBy` keeps the dead phone's UID. Players on phones see no immediate signal; they're stuck waiting for the host to act.
+
+Recovery requires the operator to reset host control via `host.html?reset=1&room=ABCD` on the TV, then claim from a fresh phone. This is acceptable for a party game (the operator notices their phone is dead and physically walks to the TV) but not graceful — there's no in-app prompt that says "host phone offline, scan reset URL on TV."
+
+A clean future fix:
+- `control.html` registers `meta/control/claimedBy/onDisconnect → null` (or to a `claimDroppedAt: serverTimestamp()` marker).
+- `host.html` listens for that flag and, after some grace period (say 30s), automatically regenerates the token + shows a fresh QR. Players see a banner "Host disconnected, please wait."
+
+Out of scope for ADR-026 — flagged as deferred work below.
 
 ### Reset flow
 
@@ -102,6 +126,15 @@ Couch player binding (controller → synthetic player record) stays on the TV be
 
 This means a one-time accessory: a small stack of index cards + pens for couch players. ~$3 of paper goods preserves real-show simultaneity without adding hardware.
 
+### FJ auto-zero for ineligible players
+
+Real-show rule: only positive-score contestants play Final Jeopardy. `renderFinalWagerRoster` enforces this by auto-writing both `wagers/$pid: 0` AND `answers/$pid: ''` for any player who can't wager — i.e. score ≤ 0 OR couch-without-an-input-yet. Two reasons we write both fields:
+
+1. The chip flips straight to the "submitted" state visually, so the host doesn't get a stuck "pending" indicator.
+2. `updateBeginJudgingButton` waits for every connected player to have an answer; without the auto-empty answer, a Bob-positive + Alice-negative game would hang forever after the FJ clue (Alice's `player.js` short-circuits before showing the answer form, so she has no UI path to submit one). This was a real bug found in browser testing — see verification.
+
+The judging UI then shows "(no answer)" for those auto-empty players, host clicks Incorrect, score delta is `-0 = 0` (since wager is 0). Score stays put. Matches the real show's "you may put down your pencils" treatment for the contestants who couldn't wager.
+
 ### Pure helpers extracted to shared.js
 
 Three functions moved from `host.js` (and duplicated in `player.js`) to `shared.js`:
@@ -110,7 +143,7 @@ Three functions moved from `host.js` (and duplicated in `player.js`) to `shared.
 - `J.formatScore(n)` — was duplicated between host.js and player.js with slightly different rules. Unified to use `toLocaleString` everywhere.
 - `J.getDDWagerLimits(score, round)` — pure version (takes score + round directly), replacing two impure module-scoped versions.
 
-`player.js` should adopt these in a follow-up; not load-bearing for ADR-026.
+`player.js` adopted both `J.formatScore` and `J.getDDWagerLimits` in the review-fixups commit, deleting its local duplicates.
 
 ## Firebase rules diff (manual deploy via console)
 
@@ -172,27 +205,76 @@ The `kind` field allowlist fixes an existing latent bug: ADR-016 introduced a `k
 - `games/jeopardy/builder.html`: local-only board authoring tool, no Firebase, untouched.
 - Firebase project structure: same `chases-house` project, same anonymous-only auth, same RTDB instance. Only the rules block changes.
 
-## Verification (after manual rules deploy)
+## Verification
 
-End-to-end smoke test:
+Wave-by-wave end-to-end test on localhost via Chrome DevTools MCP, three isolated browser contexts (TV, host phone, two player phones). All passed:
 
-1. Open `host.html` on TV. Two QRs render. Claim status: "Unclaimed". Player list: empty.
-2. Scan host control QR on phone → `control.html` loads, claim succeeds, lobby appears with config panel.
-3. TV reflects: "Claimed" + control QR clears.
-4. Scan player QR on a second device → `play.html`, join with name. Player list updates on both TV and control.
-5. Plug in a controller on the TV's machine, click "+ Add couch player" on the TV, name it, press A → couch player appears in list with "couch" tag on control phone.
-6. On control phone: select board, toggle rules, click Start Game. TV transitions to board phase.
-7. Tap a cell on control phone → TV shows the clue, control phone shows clue + answer hint privately.
-8. Tap Open Buzzing → both surfaces enter buzzing state, timers animate. Phone player buzzes → TV highlights their score chip, control shows their name.
-9. Tap Correct → score updates on TV with no answer leakage during judging; state moves to REVEALED, TV shows the answer publicly.
-10. Hit a Daily Double on a couch picker → control's wager input appears, host types speaker's wager. Game continues.
-11. Complete Round 1, transition to Double Jeopardy, then Final Jeopardy. Phone players wager + answer. Couch player FJ wager and answer entered by host on control.
-12. Game ends, standings render on TV. Play Again resets.
-13. Refresh control phone → still claimed (UID persists via IndexedDB).
-14. Type `host.html?reset=1&room=ABCD` on TV → confirmation banner → click Reset → new QR appears. Old control phone session sees "claimed-by-other" error if it tries to act.
+| Wave | Verifies | Result |
+|---|---|---|
+| **A** | Two QRs render, host phone claim flow + UID separation, TV "Claimed" status, multi-player join shows in roster on both surfaces | ✓ |
+| **B** | Cell pick → clue → Open Buzzing → buzz → Correct → score, picker reassigned, REVEALED publishes answer on TV. Most importantly: **`htmlContainsNitrogen: false` on TV during ANSWERING** — the answer doesn't leak | ✓ |
+| **C** | Wrong answer → -$200, locked out, buzzing reopens, second player buzzes + correct → +$200, picker = winner | ✓ |
+| **D** | Daily Double on phone picker, wager form on phone shows $5–max range, control sees wager + private answer, judge correct adds wager | ✓ |
+| **F** | Round 1 complete → "Double Jeopardy is next" transition, Continue → currentRound = 2, picker = lowest scorer | ✓ |
+| **G** | Final Jeopardy with mixed-eligibility roster (Bob $900, Alice -$200): Bob wagers + answers from phone, Alice auto-zeroes both wager + answer (after fix), Begin Judging enables, per-player judging UI shows name + answer + wager + private correct-answer | ✓ |
+| **H** | Play Again clears scores → $0, status → lobby, board → all-unasked, returns to phase-lobby. No false-positive correct/incorrect audio cues during the score reset (the renderScoreboard guard fix from the review-fixups commit) | ✓ |
+| **I** | `host.html?reset=1&room=…` shows confirmation banner, click Reset → token regenerated (`3df66d6b → 52111dd4`), claim cleared. Old control phone with stale token now sees "This QR is no longer valid" on reload | ✓ |
 
-## Open follow-ups (not blocking)
+**Two real bugs found in browser, fixed in `dd1091f`:**
 
-- Tighten Firebase rules to enforce `auth.uid === claimedBy` on game-control paths after a few sessions confirm couch + control writes don't get caught in the cross-fire. Defense-in-depth, not currently load-bearing.
-- Mirror the currently-judged FJ player to `game/finalJeopardy/judging/$pid` so the TV can reveal each player's answer in sync with control's per-player judging UI. Today the TV stays on the wager roster during judging.
-- ADR-027 (audio + visual polish) lands in the same PR as a separate commit.
+1. `audio.js` was eagerly probing for CC0 files via `new Audio(missing-url)`, which logs 404s to the Chrome console. Switched to fetch-HEAD probe — Chrome **also** logs fetch 404s to console. Final fix: explicit two-step opt-in via `KNOWN_FILES` array (currently empty); zero probes, zero console pollution. See ADR-027 for rationale.
+2. Final Jeopardy was deadlocking when a phone player had ≤ $0. The auto-zero path wrote a 0 wager but no answer; `player.js` short-circuits before showing the answer form; `updateBeginJudgingButton` waited forever. Fixed by extending the auto-zero in `renderFinalWagerRoster` to also write an empty answer string.
+
+Waves J (config toggles) and K (audio edges) verified by code review:
+
+- `checkRoundComplete` and `onAllRoundsComplete` correctly branch on `config.enableDoubleJeopardy` / `config.enableFinalJeopardy`. With DJ off, round 1 complete jumps to FJ (or game-over if FJ is also off). With FJ off, all-rounds-done jumps to game-over.
+- Buzz window setting parses from the `<select>` value and `(config && config.buzzWindowMs) || 5000` consumes it in `startBuzzTimer`. Logic is straightforward.
+- Audio edges are guarded on `currentStatus === PLAYING || FINAL` in `renderScoreboard`, so the play-again score reset (LOBBY status) can't trigger correct/incorrect cues. Verified zero console activity during the Wave H reset.
+
+The test artifact "control.js's local `boardState` is stale when bypassing cell clicks via direct Firebase writes" is **a test plumbing issue, not a code bug** — real users clicking cells through the UI keep `boardState` synced via `onCellClick`. Hardening control.js to also listen for board updates is YAGNI.
+
+## Deployment dependencies
+
+These are the manual steps required to take the merged branch live; the code alone is not sufficient.
+
+| # | Step | Why |
+|---|---|---|
+| 1 | **Publish the Firebase rules diff above** via [Firebase console → Realtime Database → Rules](https://console.firebase.google.com/project/chases-house/database/chases-house-default-rtdb/rules) | The `kind` field allowlist is **load-bearing** — without it, `couch.js`'s `players/{synthId}/kind = 'couch'` write is silently rejected, so couch-player detection on `control.html` (DD wager UI, FJ couch flow) doesn't work in production. The `meta/control` rules are partially load-bearing (token regen on reset requires the TV's UID to write `meta/control/*`). |
+| 2 | **Cloudflare cache purge** after first deploy | Per the team memory `reference_cloudflare_cache.md` — up to 4 hours stale otherwise. The previous Jeopardy deploy hit this exact issue and required an explicit purge from the CF caching dashboard. |
+| 3 | (Optional, recommended) **Real-room hardware test** | All testing to date is localhost + multi-tab simulation. The 65" TV speakers + Xbox controllers + the actual phones the operator and players will use have not been exercised together. Audio synth volume, controller rumble feel, and TV speaker placement are best evaluated in situ. |
+
+## Open follow-ups (not blocking; ordered roughly by impact)
+
+### Functional gaps
+
+1. **Host-phone-disconnect recovery** *(documented above under "What if the host phone disconnects mid-game")*. Today: operator must walk to the TV and type `?reset=1&room=…` URL. Future: control.html registers `claimedBy.onDisconnect → null`, host.html shows a "host disconnected, regenerating QR" banner and auto-resets after a grace period.
+
+2. **`claimControl` write race** *(documented above under "Claim token model")*. Switch the read-then-write pair to `firebase.database().ref(...).transaction(...)` if simultaneous-claim ever surfaces. Low priority for party-game threat model.
+
+3. **Per-player FJ judging mirror to TV.** Today the TV stays on the wager roster during the host's per-player judging UI. Cleaner: control.js writes `game/finalJeopardy/judging/{currentPid}` so the TV can reveal each player's answer + wager in sync with control's UI. Crosses with ADR-027 (the in-sync animation would be visual polish).
+
+### Defense-in-depth
+
+4. **Tighten Firebase rules on game-control paths** to enforce `auth.uid === claimedBy` for writes to `game/currentClue`, `game/buzzer/{isOpen,openedAt,lockedOut}`, `game/finalJeopardy/state`, `game/pickingPlayer`, `meta/status`, `board/$round/.../asked`. Currently those paths inherit the room's `auth != null` write rule. Adding the claim check is defense-in-depth — anyone in the room with the room code could in principle write game-flow state today, though there's no UI path that does so. Done carefully (so couch.js's TV-UID writes for buzz/player records aren't caught), this would close the threat-model gap. Watch out for: couch.js writes via TV's UID, not control's — so the rule for `game/buzzer/buzzedPlayers/{pid}` must allow `auth.uid === pid OR auth.uid === meta/hostId`.
+
+5. **Multi-tab guard on control.html.** Two tabs of `control.html?room=…` open simultaneously by the same operator (browser back/forward, accidental new tab) both hold the same UID and both write game-flow state. Last write wins in Firebase but UI states diverge. Easy fix: control.html could write a `meta/control/claimedBy/sessionId` (random per-tab) and reject its own writes if `sessionId` doesn't match. Niche; not currently observed.
+
+### Cross-cutting with ADR-027
+
+6. **Cell-flip animation** — keyframes ship in ADR-027 but the JS plumbing is deferred. The board listener clobbers the in-flight `.flipping` class on re-render. Needs board-listener coordination. See ADR-027 for the proposed fix.
+
+7. **First-cue audio gesture-unlock** — browsers block AudioContext until user interaction. The TV's first user gesture is typically "+ Add couch player." If the operator skips couch and goes straight to the host phone for game start, the TV's first audio cue (theme-sting on game start) will fail silently. ADR-027 documents this as a known gap; a future "click to enable sound" overlay on the TV pre-game would close it.
+
+### Future-feature placeholders
+
+8. **TTS clue narration** (ADR-025) plugs into the same `audio.js` module via a future `Audio.narrate(text)` method. The Open Buzzing edge in `host.js` would gate on the TTS audio-end event before allowing buzz-open. Out of scope here; ADR-025 is the planning doc.
+
+9. **Builder.html DRY pass** — `builder.html` does its own validation of board JSON without using the new `J.formatScore` / `J.getDDWagerLimits` helpers because it doesn't render scores or wagers. No work needed today; flagged so future audits don't recommend a phantom refactor.
+
+## Cross-references
+
+- **ADR-011** (original Jeopardy) — referenced for the game model + Firebase schema.
+- **ADR-016** (shared gamepad) — couch.js binding stays on the TV per its synth-ID design; the `kind: 'couch'` rule fix in this ADR is the long-overdue followup to a latent bug ADR-016 introduced.
+- **ADR-017** (Firebase security) — rule pattern (manual deploy via console, ADR documents the diff). The `meta/control` subtree and the `kind` allowlist are additive, no other rules change.
+- **ADR-025** (TTS, future) — documents how clue narration would integrate with `audio.js` once implemented.
+- **ADR-027** (audio + visual polish) — companion ADR landing in the same PR, second commit.
