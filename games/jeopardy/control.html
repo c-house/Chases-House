@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Host Control — Jeopardy — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body {
+      background: var(--bg-deep);
+      min-height: 100dvh;
+    }
+
+    .control-wrap {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: clamp(0.75rem, 3vw, 1.5rem);
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .control-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .control-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.3rem;
+      font-weight: 400;
+      color: var(--text-heading);
+    }
+    .control-room-code {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      letter-spacing: 0.12em;
+    }
+
+    .phase { display: none; }
+    .phase.active { display: flex; flex-direction: column; gap: 1rem; }
+
+    /* ── Claim phase ──────────────────────────────────── */
+    .claim-status {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .claim-status.error {
+      color: var(--terracotta);
+      font-weight: 500;
+    }
+
+    /* ── Section blocks ──────────────────────────────── */
+    .section {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: 6px;
+      padding: 1rem 1.1rem;
+    }
+    .section h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 20, 'WONK' 1, 'SOFT' 40;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-bottom: 0.6rem;
+    }
+
+    /* ── Inputs ──────────────────────────────────────── */
+    .ctl-select, .ctl-input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .ctl-select { appearance: none; -webkit-appearance: none; padding-right: 2.2rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239a8e7a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.8rem center;
+    }
+    .ctl-input:focus, .ctl-select:focus { outline: none; border-color: var(--accent-gold); }
+
+    /* ── Toggles ─────────────────────────────────────── */
+    .rule-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.4rem 0;
+    }
+    .rule-toggle + .rule-toggle { border-top: 1px solid rgba(255,255,255,0.04); }
+    .rule-label { font-size: 0.92rem; color: var(--text-primary); }
+    .rule-sublabel { font-size: 0.74rem; color: var(--text-faint); }
+    .toggle-switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--bg-elevated); border: 1px solid var(--text-faint);
+      border-radius: 12px; cursor: pointer;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; background: var(--text-muted);
+      border-radius: 50%; transition: transform 0.25s, background 0.25s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: rgba(200, 148, 62, 0.2); border-color: var(--accent-gold);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(18px); background: var(--accent-gold);
+    }
+
+    /* ── Player list ─────────────────────────────────── */
+    .ctl-player-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .ctl-player {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.45rem 0.65rem;
+      background: var(--bg-elevated); border-radius: 3px;
+      font-size: 0.92rem;
+    }
+    .ctl-player-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--sage); flex-shrink: 0;
+    }
+    .ctl-player-dot.disconnected { background: var(--text-faint); }
+    .ctl-player-dot.couch { background: var(--accent-gold); }
+    .ctl-player-name { flex: 1; }
+    .ctl-player-tag {
+      font-size: 0.7rem; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .ctl-empty { font-size: 0.85rem; color: var(--text-faint); font-style: italic; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+      display: block; width: 100%;
+      padding: 0.85rem 1.2rem;
+      font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+      border: none; border-radius: 4px; cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .btn-primary { color: var(--bg-deep); background: var(--accent-gold); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-glow); }
+    .btn-secondary {
+      color: var(--text-primary); background: var(--bg-elevated);
+      border: 1px solid var(--text-faint);
+    }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--text-muted); }
+    .btn-correct { color: #fff; background: #2d7a3a; }
+    .btn-correct:hover:not(:disabled) { background: #359944; }
+    .btn-incorrect { color: #fff; background: var(--terracotta); }
+    .btn-incorrect:hover:not(:disabled) { background: #c4664a; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .btn-row.tight { gap: 0.4rem; }
+
+    /* ── Scoreboard ──────────────────────────────────── */
+    .ctl-scoreboard {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      padding: 0.5rem 0.65rem;
+      background: var(--bg-surface); border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+    }
+    .ctl-score {
+      display: flex; gap: 0.35rem; align-items: baseline;
+      font-size: 0.82rem;
+    }
+    .ctl-score-name { color: var(--text-muted); }
+    .ctl-score-name.picker { color: var(--accent-gold); font-weight: 600; }
+    .ctl-score-value { color: var(--accent-gold); font-family: var(--font-display); font-weight: 600; }
+    .ctl-score-value.negative { color: var(--terracotta); }
+
+    /* ── Board ───────────────────────────────────────── */
+    .ctl-board {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 3px;
+      background: #0d1a3a;
+      border-radius: 4px;
+      padding: 3px;
+    }
+    .ctl-cat-header {
+      background: #0d1a3a;
+      padding: 0.4rem 0.2rem;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      min-height: 2.5rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ctl-cell {
+      background: #0d1a3a;
+      padding: 0.5rem 0.2rem;
+      text-align: center;
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-gold);
+      cursor: pointer;
+      min-height: 2.6rem;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .ctl-cell:active { background: #142a52; }
+    .ctl-cell.asked { background: #080e1e; color: transparent; pointer-events: none; }
+
+    /* ── Clue display ────────────────────────────────── */
+    .clue-block {
+      padding: 1rem; border-radius: 6px;
+      background: rgba(13, 26, 58, 0.55);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .clue-value-pill {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 0.85rem; font-weight: 700;
+      color: var(--accent-gold);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+    .clue-text {
+      font-size: 1.05rem; line-height: 1.45;
+      color: #fff;
+    }
+
+    .answer-box {
+      padding: 0.85rem 1rem;
+      background: rgba(200, 148, 62, 0.08);
+      border: 1px solid rgba(200, 148, 62, 0.45);
+      border-radius: 5px;
+    }
+    .answer-box-label {
+      font-size: 0.7rem; font-weight: 700;
+      color: var(--accent-gold);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      display: block; margin-bottom: 0.3rem;
+    }
+    .answer-box-text {
+      font-size: 1rem; font-weight: 500;
+      color: #fff;
+    }
+
+    /* ── Buzz timer ──────────────────────────────────── */
+    .buzz-timer-bar {
+      width: 100%; height: 6px;
+      background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden;
+    }
+    .buzz-timer-fill {
+      height: 100%; background: var(--accent-gold);
+      border-radius: 3px; width: 100%;
+      transition: width 0.1s linear;
+    }
+    .buzzed-player-name {
+      font-family: var(--font-display);
+      font-size: 1.4rem; font-weight: 600;
+      color: var(--accent-gold);
+      text-align: center;
+    }
+
+    /* ── DD wager form ───────────────────────────────── */
+    .dd-wager-form { display: flex; flex-direction: column; gap: 0.6rem; }
+    .dd-wager-range {
+      font-size: 0.78rem; color: var(--text-muted); text-align: center;
+    }
+    .dd-wager-input {
+      font-family: var(--font-display);
+      font-size: 1.6rem; font-weight: 700;
+      text-align: center;
+      color: var(--accent-gold);
+    }
+
+    /* ── FJ wager/answer roster ──────────────────────── */
+    .fj-roster { display: flex; flex-direction: column; gap: 0.5rem; }
+    .fj-row {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      padding: 0.55rem 0.7rem;
+      background: var(--bg-elevated); border-radius: 4px;
+    }
+    .fj-row.submitted {
+      border: 1px solid rgba(200, 148, 62, 0.4);
+      background: rgba(200, 148, 62, 0.08);
+    }
+    .fj-row-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .fj-row-name { font-size: 0.92rem; font-weight: 500; color: var(--text-primary); }
+    .fj-row-status { font-size: 0.78rem; color: var(--accent-gold); }
+    .fj-row-status.pending { color: var(--text-faint); }
+    .fj-row-input-line { display: grid; grid-template-columns: 1fr auto; gap: 0.4rem; }
+
+    /* ── Standings ───────────────────────────────────── */
+    .standings { display: flex; flex-direction: column; gap: 0.4rem; }
+    .standing {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.6rem 0.8rem;
+      background: var(--bg-elevated); border-radius: 4px;
+    }
+    .standing.winner {
+      background: rgba(200, 148, 62, 0.1);
+      border: 1px solid var(--accent-gold);
+    }
+    .standing-rank {
+      font-family: var(--font-display);
+      font-size: 1.05rem; font-weight: 700;
+      color: var(--text-faint); min-width: 1.6rem;
+    }
+    .standing.winner .standing-rank { color: var(--accent-gold); }
+    .standing-name { flex: 1; font-size: 0.95rem; }
+    .standing-score {
+      font-family: var(--font-display);
+      font-weight: 700; color: var(--accent-gold);
+    }
+    .standing-score.negative { color: var(--terracotta); }
+
+    /* ── Footer status ───────────────────────────────── */
+    .ctl-footer {
+      margin-top: auto; padding: 0.6rem 0;
+      text-align: center; font-size: 0.72rem; color: var(--text-faint);
+    }
+  </style>
+</head>
+<body>
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <div class="control-wrap">
+    <header class="control-header">
+      <span class="control-title">Host Control</span>
+      <span id="ctl-room-code" class="control-room-code">----</span>
+    </header>
+
+    <!-- ═══ CLAIM ═════════════════════════════════════════ -->
+    <section id="phase-claim" class="phase active">
+      <div class="claim-status" id="claim-status">Connecting...</div>
+    </section>
+
+    <!-- ═══ LOBBY (config + start) ════════════════════════ -->
+    <section id="phase-lobby" class="phase">
+      <div class="section">
+        <h2>Board</h2>
+        <select id="board-selector" class="ctl-select" aria-label="Select a board">
+          <option value="sample">Loading...</option>
+        </select>
+      </div>
+
+      <div class="section">
+        <h2>Rules</h2>
+        <div class="rule-toggle">
+          <div>
+            <div class="rule-label">Double Jeopardy</div>
+            <div class="rule-sublabel">Second round at doubled values</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rule-double-jeopardy" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="rule-toggle">
+          <div>
+            <div class="rule-label">Daily Doubles</div>
+            <div class="rule-sublabel">Hidden wager clues</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rule-daily-doubles" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="rule-toggle">
+          <div>
+            <div class="rule-label">Final Jeopardy</div>
+            <div class="rule-sublabel">Final round, typed answers</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rule-final-jeopardy" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="rule-toggle">
+          <div>
+            <div class="rule-label">Buzz Window</div>
+            <div class="rule-sublabel">Time to buzz after clue</div>
+          </div>
+          <select id="rule-buzz-window" class="ctl-select" style="width:auto" aria-label="Buzz window">
+            <option value="3000">3s</option>
+            <option value="5000" selected>5s</option>
+            <option value="7000">7s</option>
+            <option value="10000">10s</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Players <span id="ctl-player-count" class="rule-sublabel"></span></h2>
+        <div id="ctl-player-list" class="ctl-player-list">
+          <span class="ctl-empty">Waiting for players to join...</span>
+        </div>
+      </div>
+
+      <button id="start-game-btn" class="btn btn-primary" disabled>Start Game</button>
+    </section>
+
+    <!-- ═══ BOARD ═════════════════════════════════════════ -->
+    <section id="phase-board" class="phase">
+      <div id="ctl-scoreboard" class="ctl-scoreboard"></div>
+      <div class="section">
+        <h2>
+          <span id="round-label">Round 1</span>
+          <span class="rule-sublabel"> · <span id="picking-player-name">...</span>'s pick</span>
+        </h2>
+        <div id="ctl-board" class="ctl-board"></div>
+      </div>
+    </section>
+
+    <!-- ═══ CLUE / JUDGING ════════════════════════════════ -->
+    <section id="phase-clue" class="phase">
+      <div class="clue-block">
+        <span class="clue-value-pill" id="clue-value">$0</span>
+        <p class="clue-text" id="clue-text"></p>
+      </div>
+      <div class="answer-box">
+        <span class="answer-box-label">Correct answer (private)</span>
+        <span class="answer-box-text" id="clue-answer-text"></span>
+      </div>
+
+      <!-- Reading state -->
+      <div id="clue-reading" style="display:none">
+        <div class="btn-row">
+          <button id="open-buzzing-btn" class="btn btn-primary">Open Buzzing</button>
+          <button id="skip-clue-btn" class="btn btn-secondary">Reveal & Skip</button>
+        </div>
+      </div>
+
+      <!-- Buzzing state -->
+      <div id="clue-buzzing" style="display:none">
+        <div style="text-align:center; font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em">Buzzers Open</div>
+        <div class="buzz-timer-bar"><div id="buzz-timer-fill" class="buzz-timer-fill"></div></div>
+      </div>
+
+      <!-- Answering state -->
+      <div id="clue-answering" style="display:none">
+        <div class="buzzed-player-name" id="buzzed-player"></div>
+        <div class="btn-row">
+          <button id="judge-correct-btn" class="btn btn-correct">Correct</button>
+          <button id="judge-incorrect-btn" class="btn btn-incorrect">Incorrect</button>
+        </div>
+      </div>
+
+      <!-- Revealed state -->
+      <div id="clue-revealed" style="display:none">
+        <button id="return-board-btn" class="btn btn-primary">Return to Board</button>
+      </div>
+    </section>
+
+    <!-- ═══ DAILY DOUBLE ══════════════════════════════════ -->
+    <section id="phase-daily-double" class="phase">
+      <div class="section">
+        <h2>Daily Double — <span id="dd-player-name">...</span></h2>
+        <div id="dd-wager-status" class="rule-sublabel">Waiting for wager...</div>
+      </div>
+
+      <!-- Host-side wager entry (couch picker) -->
+      <div id="dd-host-wager" class="section dd-wager-form" style="display:none">
+        <div class="dd-wager-range" id="dd-wager-range"></div>
+        <input id="dd-wager-input" type="number" inputmode="numeric" class="ctl-input dd-wager-input" placeholder="0">
+        <button id="dd-wager-submit" class="btn btn-primary" disabled>Submit Wager</button>
+      </div>
+
+      <!-- Post-wager: clue + answer + judging -->
+      <div id="dd-clue-block" class="clue-block" style="display:none">
+        <span class="clue-value-pill">Wagered <span id="dd-wager-amount">$0</span></span>
+        <p class="clue-text" id="dd-clue-text"></p>
+      </div>
+      <div id="dd-answer-box" class="answer-box" style="display:none">
+        <span class="answer-box-label">Correct answer (private)</span>
+        <span class="answer-box-text" id="dd-answer-text"></span>
+      </div>
+
+      <div id="dd-judging" class="btn-row" style="display:none">
+        <button id="dd-correct-btn" class="btn btn-correct">Correct</button>
+        <button id="dd-incorrect-btn" class="btn btn-incorrect">Incorrect</button>
+      </div>
+
+      <div id="dd-revealed" style="display:none">
+        <button id="dd-return-btn" class="btn btn-primary">Return to Board</button>
+      </div>
+    </section>
+
+    <!-- ═══ ROUND TRANSITION ══════════════════════════════ -->
+    <section id="phase-round-transition" class="phase">
+      <div class="section" style="text-align:center">
+        <h2 id="round-transition-title" style="margin-bottom:0.4rem">Round 1 Complete</h2>
+        <div class="rule-sublabel" id="round-transition-subtitle">Double Jeopardy is next...</div>
+      </div>
+      <button id="next-round-btn" class="btn btn-primary">Continue</button>
+    </section>
+
+    <!-- ═══ FINAL JEOPARDY ════════════════════════════════ -->
+    <section id="phase-final" class="phase">
+      <div class="section">
+        <h2>Final Jeopardy</h2>
+        <div class="rule-sublabel">Category</div>
+        <div style="font-family:var(--font-display); font-size:1.3rem; color:#fff; margin-top:0.2rem" id="final-category">...</div>
+      </div>
+
+      <!-- Wager phase: roster with couch wager inputs -->
+      <div id="final-wager-section" class="section" style="display:none">
+        <h2>Wagers</h2>
+        <div id="final-wager-roster" class="fj-roster"></div>
+        <button id="final-reveal-clue-btn" class="btn btn-primary" style="margin-top:0.7rem" disabled>Reveal Clue</button>
+      </div>
+
+      <!-- Clue + answer phase: clue text + couch answer inputs -->
+      <div id="final-clue-section" style="display:none">
+        <div class="clue-block">
+          <p class="clue-text" id="final-clue-text"></p>
+        </div>
+        <div class="answer-box">
+          <span class="answer-box-label">Correct answer (private)</span>
+          <span class="answer-box-text" id="final-answer-text"></span>
+        </div>
+        <div class="section">
+          <h2>Answers <span class="rule-sublabel" id="final-timer-label">30s timer running on TV</span></h2>
+          <div id="final-answer-roster" class="fj-roster"></div>
+        </div>
+        <button id="final-begin-judging-btn" class="btn btn-primary" disabled>Begin Judging</button>
+      </div>
+
+      <!-- Per-player judging -->
+      <div id="final-judging-section" style="display:none">
+        <div class="section">
+          <div style="text-align:center">
+            <div class="rule-sublabel">Now judging</div>
+            <div style="font-family:var(--font-display); font-size:1.4rem; color:var(--accent-gold); margin:0.2rem 0" id="final-judge-name"></div>
+            <div style="font-size:1.05rem; color:#fff" id="final-judge-answer"></div>
+            <div class="rule-sublabel" id="final-judge-wager"></div>
+          </div>
+        </div>
+        <div class="answer-box">
+          <span class="answer-box-label">Correct answer (private)</span>
+          <span class="answer-box-text" id="final-judge-correct"></span>
+        </div>
+        <div class="btn-row">
+          <button id="final-correct-btn" class="btn btn-correct">Correct</button>
+          <button id="final-incorrect-btn" class="btn btn-incorrect">Incorrect</button>
+        </div>
+      </div>
+
+      <!-- Done judging: show final scores button -->
+      <div id="final-end-section" style="display:none">
+        <button id="final-end-game-btn" class="btn btn-primary">Show Final Scores</button>
+      </div>
+    </section>
+
+    <!-- ═══ GAME OVER ═════════════════════════════════════ -->
+    <section id="phase-game-over" class="phase">
+      <div class="section">
+        <h2 style="text-align:center">Final Standings</h2>
+        <div id="standings" class="standings"></div>
+      </div>
+      <button id="play-again-btn" class="btn btn-primary">Play Again</button>
+    </section>
+
+    <div class="ctl-footer">Chase's House · Jeopardy · ADR-026</div>
+  </div>
+
+  <!-- Firebase v10 Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+  <!-- Game scripts (no couch.js, no audio.js — control surface is silent) -->
+  <script src="../shared/firebase.js"></script>
+  <script src="shared.js"></script>
+  <script src="control.js"></script>
+</body>
+</html>

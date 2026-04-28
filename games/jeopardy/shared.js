@@ -53,6 +53,51 @@
   const CATEGORIES_PER_ROUND = 6;
   const CLUES_PER_CATEGORY = 5;
   const ROOM_CODE_LENGTH = 4;
+  const CLAIM_TOKEN_BYTES = 4; // 8 hex chars
+
+  // ── Pure Helpers ─────────────────────────────────────────────
+  // Used by control.js and player.js — extracted from prior duplicates
+  // so the rules live in one place.
+
+  function isRoundComplete(boardState) {
+    if (!boardState || !boardState.categories) return false;
+    var cats = boardState.categories;
+    for (var c = 0; c < cats.length; c++) {
+      for (var r = 0; r < cats[c].clues.length; r++) {
+        if (!cats[c].clues[r].asked) return false;
+      }
+    }
+    return true;
+  }
+
+  function formatScore(n) {
+    n = n || 0;
+    if (n < 0) return '-$' + Math.abs(n).toLocaleString();
+    return '$' + n.toLocaleString();
+  }
+
+  /**
+   * Min/max wager for a Daily Double: min $5, max = greater of the player's
+   * current score or the highest clue value in the round (matches real show).
+   */
+  function getDDWagerLimits(score, round) {
+    var roundValues = ROUND_VALUES[round];
+    var maxClueValue = roundValues ? roundValues[roundValues.length - 1] : 1000;
+    return { min: 5, max: Math.max(score || 0, maxClueValue) };
+  }
+
+  // ── Claim Token ──────────────────────────────────────────────
+  // Random 8-hex token embedded in the host control QR. Anyone with the
+  // URL can claim, but a 4-letter room code × 16⁸ token = unguessable in a
+  // party-game threat model.
+
+  function generateClaimToken() {
+    var bytes = new Uint8Array(CLAIM_TOKEN_BYTES);
+    crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  }
 
   // ── Firebase Init ─────────────────────────────────────────────
   // Delegates to SharedFirebase (games/shared/firebase.js). Function
@@ -110,6 +155,12 @@
    * @param {object} [config] - Optional rule overrides (merged with DEFAULT_CONFIG)
    * @returns {Promise<string>} The 4-letter room code
    */
+  /**
+   * Create a room shell. With ADR-026 the host TV creates the room with
+   * empty board + default config; control.html (host phone) writes the
+   * real config + board after claim. boardData/config args remain for
+   * back-compat callers but may be omitted.
+   */
   async function createRoom(hostId, boardData, config) {
     initFirebase();
     const roomCode = await generateRoomCode();
@@ -120,9 +171,14 @@
         hostId: hostId,
         status: STATUS.LOBBY,
         createdAt: serverTimestamp(),
-        config: mergedConfig
+        config: mergedConfig,
+        control: {
+          claimToken: generateClaimToken(),
+          claimedBy: null,
+          claimedAt: null
+        }
       },
-      board: buildBoardData(boardData, mergedConfig),
+      board: boardData ? buildBoardData(boardData, mergedConfig) : null,
       game: {
         currentRound: 1,
         pickingPlayer: null,
@@ -132,6 +188,47 @@
 
     await ref('rooms/' + roomCode).set(roomData);
     return roomCode;
+  }
+
+  /**
+   * Control claim flow. Called from control.html after scanning the host QR.
+   * Returns a promise resolving to:
+   *   { ok: true, mine: true }   — claim is now ours (or was already)
+   *   { ok: false, reason: 'claimed-by-other' | 'invalid-token' | 'no-room' }
+   */
+  async function claimControl(roomCode, providedToken, myUid) {
+    initFirebase();
+    var snap = await ref('rooms/' + roomCode + '/meta/control').once('value');
+    var control = snap.val();
+    if (!control) return { ok: false, reason: 'no-room' };
+    if (control.claimedBy && control.claimedBy === myUid) {
+      return { ok: true, mine: true }; // re-entrant claim (page reload)
+    }
+    if (control.claimedBy && control.claimedBy !== myUid) {
+      return { ok: false, reason: 'claimed-by-other' };
+    }
+    if (!providedToken || providedToken !== control.claimToken) {
+      return { ok: false, reason: 'invalid-token' };
+    }
+    await ref('rooms/' + roomCode + '/meta/control').update({
+      claimedBy: myUid,
+      claimedAt: serverTimestamp()
+    });
+    return { ok: true, mine: true };
+  }
+
+  /**
+   * Reset host control. Called from host.html?reset=1 by the TV operator.
+   * Regenerates the claim token and clears claimedBy. Only the TV's UID
+   * (meta/hostId) can perform this write per Firebase rules.
+   */
+  async function resetControl(roomCode) {
+    initFirebase();
+    await ref('rooms/' + roomCode + '/meta/control').set({
+      claimToken: generateClaimToken(),
+      claimedBy: null,
+      claimedAt: null
+    });
   }
 
   /**
@@ -405,6 +502,16 @@
     leaveRoom: leaveRoom,
     writeBuzz: writeBuzz,
     probeWritePermission: probeWritePermission,
+
+    // Host control claim (ADR-026)
+    claimControl: claimControl,
+    resetControl: resetControl,
+    generateClaimToken: generateClaimToken,
+
+    // Pure helpers (used across host/control/player)
+    isRoundComplete: isRoundComplete,
+    formatScore: formatScore,
+    getDDWagerLimits: getDDWagerLimits,
 
     // Board utilities
     validateBoard: validateBoard,

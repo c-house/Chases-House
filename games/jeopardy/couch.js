@@ -156,6 +156,10 @@
     };
 
     J.joinRoomDirect(roomCode, synthId, name).then(function () {
+      // Mark this player as a couch (host-controlled) participant so host UIs
+      // can detect them — e.g. show host-side input for Daily Double wagers.
+      return J.ref('rooms/' + roomCode + '/players/' + synthId + '/kind').set('couch');
+    }).then(function () {
       // First-time permission probe — surface Firebase rules misconfig.
       if (!probedPermission) {
         probedPermission = true;
