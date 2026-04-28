@@ -807,9 +807,12 @@
         status.textContent = '✓ ' + J.formatScore(finalWagers[id]);
         status.classList.remove('pending');
       } else if (score <= 0) {
-        // Auto-zero ineligible players (positive-score-only rule, real show)
+        // Auto-zero ineligible players (positive-score-only rule, real show).
+        // Also auto-empty the answer so updateBeginJudgingButton sees them
+        // as fully done — they have no UI path to submit one.
         finalWagers[id] = 0;
         J.ref('rooms/' + roomCode + '/game/finalJeopardy/wagers/' + id).set(0);
+        J.ref('rooms/' + roomCode + '/game/finalJeopardy/answers/' + id).set('');
         row.classList.add('submitted');
         status.textContent = '$0 (no wager)';
         status.classList.remove('pending');

@@ -13,9 +13,14 @@
 
   var ctx = null;
   var masterGain = null;
-  var fileCache = {};      // name → HTMLAudioElement
-  var fileMissing = {};    // name → true after a file 404s, so we don't retry
-  var thinkMusicSource = null; // active 30s FJ loop, so we can stop it
+  var thinkMusicSource = null;
+
+  // File-fallback is explicit opt-in. To use a CC0 file for a cue, drop
+  // the file at audio/<name>.mp3 AND add the name to KNOWN_FILES below.
+  // This avoids 404 console pollution when no files are committed
+  // (Chrome logs both Audio-element and fetch HEAD 404s as errors).
+  var KNOWN_FILES = [];
+  var fileCache = {}; // name → HTMLAudioElement, populated lazily on first play
 
   // Lazy-init AudioContext on first user gesture (browsers require this).
   function getCtx() {
@@ -31,28 +36,19 @@
     return ctx;
   }
 
-  // Try a CC0 file first (drop-in upgrade path); fall back to synthesis.
-  function tryFile(name) {
-    if (fileMissing[name]) return null;
+  function playFile(name) {
+    if (KNOWN_FILES.indexOf(name) === -1) return false;
     if (!fileCache[name]) {
       var el = new Audio('audio/' + name + '.mp3');
       el.preload = 'auto';
-      el.addEventListener('error', function () { fileMissing[name] = true; });
       fileCache[name] = el;
     }
-    return fileCache[name];
-  }
-
-  function playFile(name) {
-    var el = tryFile(name);
-    if (!el || fileMissing[name]) return false;
     try {
-      el.currentTime = 0;
-      var p = el.play();
-      if (p && p.catch) p.catch(function () { fileMissing[name] = true; });
+      fileCache[name].currentTime = 0;
+      var p = fileCache[name].play();
+      if (p && p.catch) p.catch(function () {});
       return true;
     } catch (e) {
-      fileMissing[name] = true;
       return false;
     }
   }

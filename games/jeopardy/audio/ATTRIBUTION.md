@@ -4,9 +4,17 @@ ADR-027 ships with **synthesis-only** audio: every cue is generated at runtime
 in [`../audio.js`](../audio.js) using WebAudio (sine fundamentals + soft envelopes
 + gentle harmonics + lowpass — Stardew-warm timbre, Jeopardy-faithful structure).
 
-This directory exists so a CC0 file can be **dropped in** to upgrade any cue
-without code changes. `audio.js` checks `audio/<name>.mp3` before falling back
-to synthesis. If the file 404s once, the cue stays synth-only for the session.
+This directory exists so a CC0 file can be dropped in to upgrade any cue.
+
+**Two-step opt-in** (deliberate, to keep the console free of 404s when no
+files are committed — Chrome logs both Audio-element AND fetch-HEAD 404s
+as console errors, so blind probing is not viable):
+
+1. Drop the file at `audio/<name>.mp3`.
+2. Add the name to `KNOWN_FILES` in [`../audio.js`](../audio.js).
+
+`audio.js` will then prefer the file over synthesis for that cue. Names
+not in `KNOWN_FILES` always synthesize.
 
 ## Cue inventory
 
