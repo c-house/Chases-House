@@ -46,6 +46,15 @@
 
   var els = {};
   var currentStatus = null; // tracked for centralized phase resolution
+  var Audio = window.JeopardyAudio || null;
+
+  // Edge-detection state for one-shot audio/visual cues
+  var prevClueState = null;
+  var prevStatus = null;
+  var prevDDWager = null;
+  var prevFinalState = null;
+  var prevPlayerScores = {}; // pid → last rendered score (for count-up)
+  var firstBoardReveal = true;
 
   function cacheDom() {
     els.roomCode = document.getElementById('room-code');
@@ -338,7 +347,20 @@
       val.className = 'score-chip-value';
       var s = p.score || 0;
       if (s < 0) val.classList.add('negative');
-      val.textContent = J.formatScore(s);
+      var prev = prevPlayerScores[id];
+      // First render: snap; subsequent: animate count.
+      if (prev === undefined || !Audio || !Audio.cueScoreUpdate) {
+        val.textContent = J.formatScore(s);
+      } else if (prev !== s) {
+        val.textContent = J.formatScore(prev);
+        Audio.cueScoreUpdate(prev, s, val, J.formatScore);
+        // Audio cue based on direction (correct/incorrect)
+        if (s > prev) Audio.play('correct');
+        else if (s < prev) Audio.play('incorrect');
+      } else {
+        val.textContent = J.formatScore(s);
+      }
+      prevPlayerScores[id] = s;
       chip.appendChild(name);
       chip.appendChild(val);
       els.scoreboardBar.appendChild(chip);
@@ -350,7 +372,17 @@
   function listenForRoomStatus() {
     statusListenerRef = J.ref('rooms/' + roomCode + '/meta/status');
     statusListenerRef.on('value', function (snap) {
-      currentStatus = snap.val();
+      var newStatus = snap.val();
+      // Edge: lobby → playing fires a theme sting
+      if (Audio && prevStatus !== null && prevStatus !== J.STATUS.PLAYING && newStatus === J.STATUS.PLAYING) {
+        Audio.play('theme-sting');
+      }
+      // Edge: into game-over plays a warm cadence
+      if (Audio && prevStatus !== J.STATUS.ENDED && newStatus === J.STATUS.ENDED) {
+        Audio.play('game-over');
+      }
+      prevStatus = newStatus;
+      currentStatus = newStatus;
       if (currentStatus === J.STATUS.ENDED) renderStandings();
       resolvePhase();
     });
@@ -364,8 +396,14 @@
 
   function listenForCurrentRound() {
     roundListenerRef = J.ref('rooms/' + roomCode + '/game/currentRound');
+    var initialRoundLoad = true;
     roundListenerRef.on('value', function (snap) {
-      currentRound = snap.val() || 1;
+      var newRound = snap.val() || 1;
+      // Round transitions reset the first-reveal flag so Double Jeopardy
+      // also gets the staggered slide-in.
+      if (!initialRoundLoad && newRound !== currentRound) firstBoardReveal = true;
+      initialRoundLoad = false;
+      currentRound = newRound;
       els.roundLabel.textContent = currentRound === 1 ? 'Round 1' : 'Double Jeopardy';
       loadBoardForRender();
     });
@@ -391,16 +429,26 @@
       h.textContent = cats[c].name;
       els.board.appendChild(h);
     }
+    var cellIdx = 0;
     for (var r = 0; r < J.CLUES_PER_CATEGORY; r++) {
       for (var c2 = 0; c2 < J.CATEGORIES_PER_ROUND; c2++) {
         var clue = cats[c2].clues[r];
         var cell = document.createElement('div');
         cell.className = 'board-cell';
         cell.setAttribute('role', 'gridcell');
+        cell.style.setProperty('--cell-i', cellIdx++);
         if (clue.asked) cell.classList.add('asked');
         else cell.textContent = '$' + clue.value;
         els.board.appendChild(cell);
       }
+    }
+    // First reveal of the round: stagger categories + cells.
+    if (firstBoardReveal) {
+      els.board.classList.add('first-reveal');
+      // Remove the class after the staggered animation completes so subsequent
+      // re-renders (cell click → asked) snap without re-animating everything.
+      setTimeout(function () { els.board.classList.remove('first-reveal'); }, 1500);
+      firstBoardReveal = false;
     }
   }
 
@@ -430,18 +478,39 @@
     clueListenerRef = J.ref('rooms/' + roomCode + '/game/currentClue');
     clueListenerRef.on('value', function (snap) {
       var clue = snap.val();
+      var prevClue = currentClueData;
       currentClueData = clue;
       if (!clue) {
         if (Couch) Couch.resetForNewClue();
         currentBuzzerForRender = null;
+        prevClueState = null;
         resolvePhase();
         return;
       }
-      // Pre-render overlay contents; resolvePhase activates the section.
+      // Edge: new DD reveal — sparkly fanfare on first appearance only.
+      if (Audio && clue.dailyDouble && (!prevClue || !prevClue.dailyDouble || prevClue.categoryIndex !== clue.categoryIndex || prevClue.clueIndex !== clue.clueIndex)) {
+        Audio.play('daily-double');
+      }
+      // Edge: state → BUZZING fires the lectern-light cue.
+      if (Audio && prevClueState !== J.CLUE_STATE.BUZZING && clue.state === J.CLUE_STATE.BUZZING) {
+        triggerBuzzerFlash();
+        Audio.play('buzz-open');
+      }
+      prevClueState = clue.state;
+
       if (clue.dailyDouble) renderDailyDoubleOverlay(clue);
       else renderClueOverlay(clue);
       resolvePhase();
     });
+  }
+
+  function triggerBuzzerFlash() {
+    var el = document.getElementById('buzzer-flash');
+    if (!el) return;
+    el.classList.remove('fire');
+    el.offsetWidth; // force reflow so the animation re-runs
+    el.classList.add('fire');
+    setTimeout(function () { el.classList.remove('fire'); }, 750);
   }
 
   function renderClueOverlay(clue) {
@@ -573,7 +642,7 @@
       els.finalPlayerReveal.style.display = 'none';
       renderFinalWagerStatus(fj);
     } else if (state === J.FINAL_STATE.CLUE) {
-      // Reveal clue + start canonical 30s timer
+      // Reveal clue + start canonical 30s timer + Stardew-warm Think music
       J.ref('rooms/' + roomCode + '/board/final').once('value', function (snap) {
         var f = snap.val();
         if (f) {
@@ -582,19 +651,23 @@
         }
       });
       startFinalTimer();
+      if (Audio && prevFinalState !== J.FINAL_STATE.CLUE) Audio.startThinkMusic();
       renderFinalWagerStatus(fj);
     } else if (state === J.FINAL_STATE.ANSWER) {
       if (fjTimerId) { clearInterval(fjTimerId); fjTimerId = null; }
       els.finalTimer.style.display = 'none';
+      if (Audio) Audio.stopThinkMusic();
     } else if (state === J.FINAL_STATE.JUDGING) {
       if (fjTimerId) { clearInterval(fjTimerId); fjTimerId = null; }
       els.finalTimer.style.display = 'none';
+      if (Audio) Audio.stopThinkMusic();
       // Mirror per-player reveal — but the canonical info comes from
       // control.js writing one at a time isn't a thing today; control.js
       // shows judging UI privately. The TV stays on category + answers
       // count until the host reveals each. Future polish: write the
       // currently-judged pid to Firebase so the TV can reveal in sync.
     }
+    prevFinalState = state;
   }
 
   function renderFinalWagerStatus(fj) {

@@ -685,6 +685,95 @@
     }
     .back-link:hover { color: var(--accent-gold); }
 
+    /* ═══════════════════════════════════════════════════
+       VISUAL POLISH — ADR-027
+       ═══════════════════════════════════════════════════ */
+
+    /* Cell flip when picked: darken + rotateY 90° → snap to asked. */
+    @keyframes cell-flip {
+      0%   { transform: rotateY(0deg); background: #0d1a3a; color: var(--accent-gold); }
+      50%  { transform: rotateY(90deg); background: #050810; color: transparent; }
+      100% { transform: rotateY(0deg); background: #080e1e; color: transparent; }
+    }
+    .board-cell.flipping {
+      animation: cell-flip 380ms ease-in-out forwards;
+      z-index: 2;
+    }
+
+    /* Buzzer-open full-screen border flash (one-shot). */
+    .buzzer-flash {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 200;
+      opacity: 0;
+      box-shadow: inset 0 0 0 14px var(--accent-gold);
+      transition: none;
+    }
+    .buzzer-flash.fire { animation: buzzer-flash 700ms ease-out forwards; }
+    @keyframes buzzer-flash {
+      0%   { opacity: 0; }
+      18%  { opacity: 0.55; }
+      100% { opacity: 0; }
+    }
+
+    /* DD splash entrance — bouncy scale-in. */
+    .phase-daily-double.active {
+      animation: dd-splash-in 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes dd-splash-in {
+      0%   { opacity: 0; transform: scale(0.85); }
+      60%  { opacity: 1; transform: scale(1.03); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Category slide-in at game start (only on first board reveal). */
+    @keyframes cat-slide-in {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .jeopardy-board.first-reveal .category-header {
+      animation: cat-slide-in 320ms ease-out both;
+    }
+    .jeopardy-board.first-reveal .category-header:nth-child(1) { animation-delay:   0ms; }
+    .jeopardy-board.first-reveal .category-header:nth-child(2) { animation-delay: 110ms; }
+    .jeopardy-board.first-reveal .category-header:nth-child(3) { animation-delay: 220ms; }
+    .jeopardy-board.first-reveal .category-header:nth-child(4) { animation-delay: 330ms; }
+    .jeopardy-board.first-reveal .category-header:nth-child(5) { animation-delay: 440ms; }
+    .jeopardy-board.first-reveal .category-header:nth-child(6) { animation-delay: 550ms; }
+    /* Cells slide in afterward — delay until headers settle */
+    .jeopardy-board.first-reveal .board-cell {
+      animation: cat-slide-in 280ms ease-out both;
+      animation-delay: calc(700ms + 18ms * var(--cell-i, 0));
+    }
+
+    /* Round transition card — slight scale entrance for the title */
+    .phase-round-transition .round-transition-title {
+      animation: round-trans-in 600ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    @keyframes round-trans-in {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Game-over winner pop. */
+    @keyframes winner-pop {
+      0%   { transform: scale(0.95); opacity: 0; }
+      60%  { transform: scale(1.04); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .standing-row.winner {
+      animation: winner-pop 480ms 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    /* Buzzed-in lectern light: solid gold pulse on the score chip. */
+    @keyframes lectern-light {
+      0%   { box-shadow: 0 0 0 0 rgba(232, 176, 74, 0.6); }
+      50%  { box-shadow: 0 0 14px 4px rgba(232, 176, 74, 0.5); }
+      100% { box-shadow: 0 0 0 0 rgba(232, 176, 74, 0.6); }
+    }
+    .score-chip.buzzed-in { animation: lectern-light 1.2s ease-in-out infinite; }
+
     /* Reset confirmation banner */
     .reset-banner {
       display: none;
@@ -871,6 +960,7 @@
   </main>
 
   <div id="gp-toast" class="gp-toast" role="status" aria-live="polite"></div>
+  <div id="buzzer-flash" class="buzzer-flash" aria-hidden="true"></div>
 
   <footer class="site-footer">
     <p>&copy; 2026 Chase's House</p>
@@ -889,6 +979,7 @@
   <script src="../shared/firebase.js"></script>
   <script src="shared.js"></script>
   <script src="couch.js"></script>
+  <script src="audio.js"></script>
   <script src="host.js"></script>
 </body>
 </html>

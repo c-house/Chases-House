@@ -305,6 +305,14 @@
       return;
     }
 
+    // Edge-detect state → BUZZING for haptic feedback (TV-faithful: phones
+    // are silent for audio; we vibrate to mirror the lectern light cue).
+    if (currentClueState !== J.CLUE_STATE.BUZZING && clue.state === J.CLUE_STATE.BUZZING) {
+      try {
+        if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 60]);
+      } catch (e) { /* silent */ }
+    }
+
     currentClueState = clue.state;
 
     if (clue.dailyDouble) {

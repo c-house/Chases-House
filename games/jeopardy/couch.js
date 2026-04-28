@@ -16,6 +16,8 @@
 
   var BUZZ_RUMBLE = { duration: 80, strongMagnitude: 0.7, weakMagnitude: 0.3 };
   var LOCKOUT_RUMBLE = { duration: 220, strongMagnitude: 0, weakMagnitude: 0.5 };
+  // Buzzer-open: three short pulses mirroring the TV's "doot-doot-doot" cue.
+  var OPEN_PULSE = { duration: 60, strongMagnitude: 0.0, weakMagnitude: 0.6 };
 
   // ── Module state ──────────────────────────────────────────
   var roomCode = null;
@@ -33,6 +35,8 @@
   var buzzedThisClue = {};
   // synthId → bool prev lockout state (for rumble edge detection)
   var prevLockoutState = {};
+  // For edge-detecting clueState transitions to BUZZING.
+  var prevClueState = null;
 
   // pending bind: when user clicks "Add couch player", we wait for a button press
   // on an unassigned controller. { name } while pending; null otherwise.
@@ -195,6 +199,19 @@
         completeBind(bindIdx, match ? match.id : '');
       }
     }
+
+    // 2a) Buzzer-open edge: pulse all assigned pads three times so the
+    // controller cue matches the TV's "doot-doot-doot" lectern signal.
+    if (clueState === J.CLUE_STATE.BUZZING && prevClueState !== J.CLUE_STATE.BUZZING) {
+      Object.keys(assignments).forEach(function (idxKey) {
+        var rec = assignments[+idxKey];
+        if (!rec || rec.status !== 'connected') return;
+        SG.rumble(+idxKey, OPEN_PULSE);
+        setTimeout(function () { SG.rumble(+idxKey, OPEN_PULSE); }, 100);
+        setTimeout(function () { SG.rumble(+idxKey, OPEN_PULSE); }, 200);
+      });
+    }
+    prevClueState = clueState;
 
     // 2) Buzz polling for assigned pads
     if (clueState === J.CLUE_STATE.BUZZING) {
