@@ -162,8 +162,15 @@
     J.joinRoomDirect(roomCode, synthId, name).then(function () {
       // Mark this player as a couch (host-controlled) participant so host UIs
       // can detect them — e.g. show host-side input for Daily Double wagers.
-      return J.ref('rooms/' + roomCode + '/players/' + synthId + '/kind').set('couch');
-    }).then(function () {
+      // FIRE-AND-FORGET: if Firebase rules don't yet allow the `kind` field
+      // (ADR-026 deployment dep, not always shipped), this write rejects;
+      // do NOT tear down the bind on that failure — buzz polling still works
+      // without the kind tag, the host just loses the couch-detected DD UI.
+      J.ref('rooms/' + roomCode + '/players/' + synthId + '/kind').set('couch')
+        .catch(function () {
+          showToast('Couch bound; couch-DD UI needs Firebase rules update');
+        });
+
       // First-time permission probe — surface Firebase rules misconfig.
       if (!probedPermission) {
         probedPermission = true;
