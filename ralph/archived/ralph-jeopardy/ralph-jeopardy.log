@@ -1,0 +1,181 @@
+
+--- Iteration 1 — 2026-03-09 15:48:27 (exit: 0) ---
+
+**JP-001 complete.** Created `games/jeopardy/boards/sample.json` with:
+
+- **Round 1** (6 categories, $200–$1000, 1 Daily Double): Science, World Geography, American History, Pop Culture, Food & Drink, Literature
+- **Round 2** (6 categories, $400–$2000, 2 Daily Doubles): Space Exploration, Music, World Leaders, Technology, Sports, Mythology
+- **Final Jeopardy**: Ancient Wonders — "The Great Pyramid of Giza"
+
+All 60 regular clues + 1 Final Jeopardy clue contain accurate, real trivia content. Schema matches ADR-011 exactly.
+
+--- Iteration 1 — 2026-03-09 19:07:17 (exit: 0) ---
+
+Commit successful. **JP-005 is done.**
+
+**Summary:** `play.html` was already fully built with all 6 game phases, host-disconnected overlay, and comprehensive inline CSS. Validated in browser — zero console errors on both desktop and mobile (375px). All acceptance criteria met: phases present with join active by default, mobile-first portrait layout, 120px+ buzzer tap target. Committed as `e0f6884`.
+
+--- Iteration 2 — 2026-03-09 19:13:32 (exit: 0) ---
+
+Done. **JP-006** is complete.
+
+**What was built:**
+- `games/jeopardy/host.js` — Full lobby phase logic:
+  - Firebase anonymous auth + host ID on load
+  - Board loading: fetches `boards/sample.json` + localStorage custom boards, populates dropdown
+  - Config: reads rule toggles (Double Jeopardy, Daily Doubles, Final Jeopardy, Buzz Window) into config object
+  - Room creation: calls `Jeopardy.createRoom()`, displays 4-letter room code + QR code, sets join URL
+  - Host disconnect handler (`onDisconnect` → `paused` status)
+  - Player list: real-time Firebase listener, renders player items with connection status dots
+  - Start Game: validates ≥1 player, randomly places Daily Doubles (avoids top row), picks random first player, transitions to `playing` status
+  - Phase management via `showPhase()` toggling `.active` class
+
+--- Iteration 3 — 2026-03-09 19:19:45 (exit: 0) ---
+
+**JP-007 complete.** Built `player.js` with:
+
+- **Firebase auth** on load → player ID generation
+- **Join flow** — validates 4-letter room code + name, calls `J.joinRoom()`, error handling with user-facing messages
+- **URL parameter** — `?room=ABCD` pre-fills room code (from host QR/join link)
+- **Lobby** — Firebase listeners render player list with connected/disconnected dots, "(you)" highlight
+- **Status listener** — detects game start → transitions to playing phase; detects host disconnect → shows overlay
+- **Score listener** — live score updates with `$` formatting and negative handling
+- **UX polish** — auto-uppercase room code, Enter key submits, disabled button states
+
+--- Iteration 4 — 2026-03-09 19:23:46 (exit: 0) ---
+
+
+
+--- Iteration 5 — 2026-03-09 19:35:27 (exit: 0) ---
+
+JP-009 complete. Committed `fcaef41`.
+
+**Summary of what was built:**
+- 12 new functions in `host.js` for the buzzing → judging → score pipeline
+- `onOpenBuzzing` writes Firebase buzzer state, starts countdown timer, listens for player buzzes
+- `processBuzzes` finds earliest non-locked-out buzz by server timestamp (fair ordering)
+- `onJudgeCorrect` adds clue value to score, updates picking player
+- `onJudgeIncorrect` deducts value, locks out player, reopens buzzing with remaining time (or reveals answer if all locked out)
+- `onBuzzTimeout` handles no-buzz case — reveals answer
+- `cleanupBuzzer` is idempotent — clears timer, Firebase listener, buzzer node, and local state
+- Added `#clue-answering` CSS for proper centered layout of judging UI
+
+--- Iteration 6 — 2026-03-09 19:44:38 (exit: 0) ---
+
+**JP-010 complete.** Committed as `cfca03b`.
+
+**What was built:**
+- Extended `player.js` with full buzzer + live game state (grew from 239 → ~310 lines)
+- 4 Firebase listeners: clue state, score, picking player, lockout
+- Buzzer state machine with 4 visual states (active/disabled/buzzed/reset)
+- Server timestamp buzz writes for fair ordering
+- Lockout handling: disables buzzer, shows "Locked out" message, auto-resets on clue clear
+- Context-aware status messages for every game state
+- Fixed `host.js` `reopenBuzzing()` to write state back to Firebase (was only local)
+
+**Next up:** JP-011 (Daily Double handling)
+
+--- Iteration 7 — 2026-03-09 19:53:38 (exit: 0) ---
+
+**JP-011 complete.** Committed as `3feda43`.
+
+**Summary of changes:**
+- **host.html** — Added answer reveal section (`dd-revealed`) with answer text and Return to Board button to the Daily Double overlay
+- **host.js** — Added DD flow: `onCellClick` detects `dailyDouble` flag and routes to `showDailyDoubleOverlay()` instead of normal clue overlay. Listens for player wager via Firebase, shows wager amount + clue text + judging controls. Correct adds wager to score, incorrect deducts. Answer reveal + return to board. 3 new state vars, 10 new DOM refs, 3 event listeners.
+- **player.js** — Added DD wager handling: `handleClueChange` detects DD and routes to `handleDDAsPickingPlayer()` (wager form with min $5, max = max(score, round max)) or `handleDDAsSpectator()` (status messages). Wager submitted to `game/dailyDouble` in Firebase. Tracks `currentScore` and `currentRound` for wager limits. 3 new state vars, 6 DOM refs, 2 event listeners.
+
+--- Iteration 8 — 2026-03-09 20:04:44 (exit: 0) ---
+
+**JP-012 complete.** Committed `a629e73`.
+
+**Summary of changes:**
+- **`games/jeopardy/host.js`**: Added round transition logic — `isRoundComplete()` checks if all 30 clues in a round are asked, `checkRoundComplete()` routes to either the Double Jeopardy transition or end-of-game placeholder, `showRoundTransition()` displays the overlay, `onNextRound()` loads Round 2 with lowest-scoring player picking first via `getLowestScoringPlayer()`, and `onAllRoundsComplete()` is a placeholder for JP-013/JP-014. Modified `returnToBoard()` and `ddReturnToBoard()` to check round completion. Cached 3 new DOM elements, wired Continue button.
+- **`ralph/ralph-jeopardy/IMPLEMENTATION_PLAN.md`**: Moved JP-012 to Done with completion notes.
+
+--- Iteration 9 — 2026-03-09 20:14:04 (exit: 0) ---
+
+**JP-013 complete.** Committed `dd5f7f8`.
+
+**What was built:**
+
+- **host.js**: Full Final Jeopardy host flow — `onAllRoundsComplete()` now routes to FJ (if enabled) or Game Over. Category reveal → wager collection with per-player status chips → "Reveal Clue" button → 30-second timer → "Begin Judging" → per-player answer reveal with Correct/Incorrect buttons → score adjustment → Game Over with sorted standings.
+
+- **player.js**: Full Final Jeopardy player flow — handles `FINAL` and `ENDED` status transitions. Wager input (max = score, $0-or-less players auto-submit $0) → clue display with 30-second countdown timer → typed answer input (auto-submits on timeout) → "Host is judging..." waiting state → Game Over with personal score display and full standings.
+
+- **Key decisions**: Players with $0 or negative scores auto-submit a $0 wager. Timer auto-submits whatever is typed (or empty string) when it expires. Host judges players one at a time in order. Game Over shows sorted standings with winner highlight.
+
+--- Iteration 10 — 2026-03-09 20:26:54 (exit: 0) ---
+
+Commit successful. JP-014 is done.
+
+**Summary of JP-014 changes:**
+
+- **shared.js**: Modified `joinRoom()` to support player rejoin — if the player's UID already exists in the room, it updates `connected: true` instead of overwriting the node (preserving score). Exposed `buildBoardData()` on the public API.
+- **host.js**: Added `playAgain()` — cleans up all game listeners, resets local state, rebuilds fresh board in Firebase, resets all player scores to 0, re-places Daily Doubles, sets status back to `lobby`, returns to lobby phase. Wired `playAgainBtn` click handler.
+- **player.js**: Added `LOBBY` status handling → `returnToLobby()` which calls `cleanupGameListeners()` to detach all playing-phase Firebase listeners (score, clue, picking player, lockout, round, final state), resets local state, and shows lobby phase.
+
+--- Iteration 11 — 2026-03-09 20:38:42 (exit: 0) ---
+
+
+
+--- Iteration 12 — 2026-03-09 20:50:04 (exit: 0) ---
+
+**JP-016 complete.** Implemented full `builder.js` with:
+
+- **collectFormData()** — serializes all form inputs to ADR-011 board JSON
+- **populateForm()** — fills form from board JSON  
+- **validate()** — delegates to `J.validateBoard()`, highlights 136 individual fields with `.invalid` class
+- **Save** — validates then persists to `localStorage` as `jeopardy-board-{title}`
+- **Load** — enumerates saved boards, prompt-based picker, populates form
+- **Export** — downloads validated board as `.json` file
+- **Import** — FileReader parses uploaded `.json`, validates, populates form
+- **Clear** — confirmation dialog, resets all fields and validation state
+
+Browser validated: zero console errors, save/load round-trip works, validation highlighting works.
+
+--- Iteration 13 — 2026-03-09 20:59:18 (exit: 0) ---
+
+[2026-03-10 09:48:53] ITERATION 1 START
+[2026-03-10 09:50:58] ITERATION 1 START
+
+--- Iteration 1 — 2026-03-10 09:50:58 (exit: 0) ---
+
+All 17 tasks (JP-001 through JP-017) are marked as complete. The Todo section is empty and there are no In Progress items.
+
+<promise>COMPLETE</promise>
+[2026-03-10 09:50:58] ITERATION 1 END (exit: 0)
+---
+[2026-03-10 15:12:53] ITERATION 1 START
+[2026-03-10 15:15:32] ITERATION 1 START
+
+--- Iteration 1 — 2026-03-10 15:15:32 (exit: 0) ---
+
+The implementation plan shows all tasks (JP-001 through JP-017) are marked as done. The "In Progress" section is empty and there is no "Todo" section with remaining items.
+
+Per Ralph Loop Mode rules: nothing remains in Todo.
+
+<promise>COMPLETE</promise>
+[2026-03-10 15:15:32] ITERATION 1 END (exit: 0)
+---
+[2026-03-10 15:17:49] ITERATION 1 START
+
+--- Iteration 1 — 2026-03-10 15:17:49 (exit: 0) ---
+
+The implementation plan shows **no items in "In Progress"** and **no items in "Todo"** — all tasks JP-001 through JP-017 are marked as done.
+
+Per Ralph Loop Mode rules: if nothing remains in Todo, output the completion signal and exit.
+
+<promise>COMPLETE</promise>
+[2026-03-10 15:17:49] ITERATION 1 END (exit: 0)
+---
+[2026-03-10 15:18:39] ITERATION 1 START
+
+--- Iteration 1 — 2026-03-10 15:18:39 (exit: 0) ---
+
+The implementation plan shows **no Todo section** — all tasks (JP-001 through JP-017) are marked as done, and the In Progress section is empty.
+
+Per the Ralph Loop instructions: "If nothing remains in Todo, output `<promise>COMPLETE</promise>` and exit."
+
+<promise>COMPLETE</promise>
+[2026-03-10 15:18:39] ITERATION 1 END (exit: 0)
+---
