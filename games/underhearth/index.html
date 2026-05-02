@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="description" content="Underhearth — a roguelike below the floorboards. Turn-based dungeon crawl on chases.house.">
+  <title>Underhearth — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,200..900,0..100,0..1;1,9..144,200..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/styles.css">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNDERHEARTH — CSS CUSTOM-PROPERTY CONTRACT
+   ───────────────────────────────────────────────────────────────────────────
+   render.js mutates these tokens per-tile and per-frame.
+   Default values establish the candlelit palette anchored to chases.house's
+   warm-hearth tokens. Crimson (lethal) and indigo (magic) are the only two
+   colours that extend the site palette, justified per ADR-017 §8.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* TILE STATES — three-state visibility model (lit / remembered / unseen) */
+  --uh-tile-wall-lit: #a06828;          /* === var(--accent-ember) */
+  --uh-tile-wall-remembered: #3a2a1f;   /* dim ember, edge of memory  */
+  --uh-tile-wall-unseen: #0a0a0b;       /* === var(--bg-deep), pure unseen */
+  --uh-tile-floor: #1a1612;             /* deep parchment shadow */
+
+  /* GLYPH COLOURS — entity threat tiers + items + magic */
+  --uh-glyph-player:        #e8b04a;    /* === var(--accent-glow) — the candle */
+  --uh-glyph-friendly:      #6a7d5a;    /* === var(--sage) */
+  --uh-glyph-enemy-trivial: #9a8e7a;    /* === var(--text-muted) */
+  --uh-glyph-enemy-threat:  #b05a3a;    /* === var(--terracotta) */
+  --uh-glyph-enemy-lethal:  #c84a3e;    /* warm crimson — dried-blood, NEW */
+  --uh-glyph-item:          #c8943e;    /* === var(--accent-gold) */
+  --uh-glyph-magic:         #7768c4;    /* muted indigo — ancient, NEW */
+
+  /* GRID GEOMETRY — 60×20 chosen over 80×24 for mobile parity (see ADR §8) */
+  --uh-grid-cols: 60;
+  --uh-grid-rows: 20;
+  --uh-grid-cell-w: 18px;
+  --uh-grid-cell-h: 26px;
+  --uh-glyph-font-size: 18px;
+
+  /* FX — animated by render.js / by CSS keyframes */
+  --uh-flicker-amp: 1;        /* 0..1 multiplier on lit-tile saturation; candle keyframe drives this */
+  --uh-hp-low-pulse: 0;       /* 0..1; render.js sets to 1 when HP ≤ 25 % */
+
+  /* INTERNAL — design-only tokens (not part of the renderer contract) */
+  --uh-parchment:        #2a2218;
+  --uh-parchment-edge:   #1a130c;
+  --uh-parchment-light:  #3a2e20;
+  --uh-vellum-grain:     rgba(232, 176, 74, 0.025);
+  --uh-ink:              #f0e6d3;
+  --uh-ink-soft:         #d8c8a8;
+  --uh-ink-faint:        #9a8e7a;
+  --uh-ink-ghost:        #5c5347;
+  --uh-gold:             #c8943e;
+  --uh-gold-glow:        #e8b04a;
+  --uh-gold-deep:        #8a6320;
+  --uh-ember:            #a06828;
+  --uh-shadow:           rgba(0, 0, 0, 0.55);
+  --uh-shadow-deep:      rgba(0, 0, 0, 0.85);
+
+  --uh-font-display: 'Fraunces', Georgia, serif;
+  --uh-font-body:    'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+  --uh-font-mono:    'IBM Plex Mono', 'Consolas', monospace;
+}
+
+/* ─── Reset, scoped to the game page ─── */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-deep);
+  color: var(--uh-ink);
+  font-family: var(--uh-font-body);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+/* Active-play locks the viewport (no scroll); other screens can scroll. */
+body[data-screen="playing"],
+body[data-screen="inventory"],
+body[data-screen="death"],
+body[data-screen="targeting"],
+body[data-screen="how-to-play"] {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Single-candle radial — atmosphere, never moves */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 60% at 50% 42%,
+      rgba(232, 176, 74, 0.07) 0%,
+      rgba(160, 104, 40, 0.035) 35%,
+      transparent 75%),
+    radial-gradient(ellipse 100% 80% at 50% 100%,
+      rgba(176, 90, 58, 0.04) 0%,
+      transparent 60%);
+  z-index: 0;
+}
+
+/* Vellum grain over everything — independent of site grain filter */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  z-index: 9999;
+}
+
+/* ═══ Screen visibility system ═══════════════════════════════════════════ */
+section[data-screen],
+div[data-overlay] { display: none; }
+
+body[data-screen="title"] section[data-screen="title"]                                                        { display: flex; }
+body[data-screen="memorial"] section[data-screen="memorial"]                                                  { display: flex; }
+body[data-screen="settings"] section[data-screen="title"]                                                     { display: flex; }
+body[data-screen="settings"] div[data-overlay="settings"]                                                     { display: flex; }
+
+/* "playing" base layer is also visible under any in-game overlay */
+body[data-screen="playing"] section[data-screen="playing"],
+body[data-screen="inventory"] section[data-screen="playing"],
+body[data-screen="death"] section[data-screen="playing"],
+body[data-screen="how-to-play"] section[data-screen="playing"],
+body[data-screen="targeting"] section[data-screen="playing"]                                                  { display: grid; }
+
+body[data-screen="inventory"]   div[data-overlay="inventory"]                                                 { display: flex; }
+body[data-screen="death"]       div[data-overlay="death"]                                                     { display: flex; }
+body[data-screen="how-to-play"] div[data-overlay="how-to-play"]                                               { display: block; }
+body[data-screen="targeting"]   div[data-overlay="targeting"]                                                 { display: block; }
+
+
+/* ═══ TITLE SCREEN ═══════════════════════════════════════════════════════ */
+section[data-screen="title"] {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 6vh, 5rem) 1.5rem;
+  gap: clamp(1.5rem, 4vh, 3rem);
+}
+
+.title-mark {
+  position: relative;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.title-flame {
+  display: block;
+  width: 36px;
+  height: 56px;
+  margin: 0 auto 0.5rem;
+  filter: drop-shadow(0 0 18px rgba(232, 176, 74, 0.55));
+  animation: candle-bob 4.7s ease-in-out infinite;
+}
+.title-flame .flame-body { fill: var(--uh-gold-glow); }
+.title-flame .flame-core { fill: #fff5d8; }
+.title-flame .flame-wick { fill: #2a1808; }
+
+.title-wordmark {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 80, 'wght' 320;
+  font-size: clamp(3.4rem, 11vw, 7.8rem);
+  line-height: 0.9;
+  letter-spacing: -0.025em;
+  color: var(--uh-gold-glow);
+  text-shadow:
+    0 0 30px rgba(232, 176, 74, 0.18),
+    0 0 60px rgba(160, 104, 40, 0.12);
+  margin: 0;
+}
+.title-wordmark .drop {
+  font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 100, 'wght' 480;
+  display: inline-block;
+  transform: translateY(0.04em);
+}
+.title-wordmark .ital {
+  font-style: italic;
+  font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 100, 'wght' 280;
+}
+
+.title-tagline {
+  margin-top: 0.6rem;
+  font-family: var(--uh-font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 24, 'wght' 300;
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  color: var(--uh-ink-faint);
+  letter-spacing: 0.04em;
+}
+.title-tagline::before,
+.title-tagline::after {
+  content: ' ❦ ';
+  color: var(--uh-gold-deep);
+  margin: 0 0.6em;
+}
+
+/* Class cards row */
+.class-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(200px, 240px));
+  gap: clamp(0.8rem, 2vw, 1.6rem);
+  width: 100%;
+  max-width: 800px;
+  margin-top: 0.5rem;
+}
+
+.class-card {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 80%, var(--uh-parchment-edge) 100%);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 2px;
+  padding: 1.5rem 1.2rem 1.3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 176, 74, 0.08),
+    0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.class-card::before {
+  /* parchment grain inset */
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='1.1' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.08 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.4;
+}
+
+.class-card:hover,
+.class-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--uh-gold);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 176, 74, 0.16),
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 0 0 1px var(--uh-gold-glow);
+  outline: none;
+}
+
+.class-card[aria-pressed="true"] {
+  border-color: var(--uh-gold-glow);
+  box-shadow:
+    inset 0 0 0 1px var(--uh-gold-glow),
+    inset 0 1px 0 rgba(232, 176, 74, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(232, 176, 74, 0.15);
+}
+
+.class-glyph {
+  font-family: var(--uh-font-mono);
+  font-weight: 700;
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 0.8rem;
+  display: block;
+}
+.class-glyph[data-class="knight"] { color: var(--uh-glyph-item); }
+.class-glyph[data-class="archer"] { color: var(--uh-glyph-friendly); }
+.class-glyph[data-class="mage"]   { color: var(--uh-glyph-magic); }
+
+.class-name {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 36, 'wght' 400, 'SOFT' 30;
+  font-size: 1.5rem;
+  color: var(--uh-ink);
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.01em;
+}
+
+.class-stats {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0.8rem 0;
+  font-family: var(--uh-font-mono);
+  font-size: 0.78rem;
+  color: var(--uh-ink-faint);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.class-stats span strong { color: var(--uh-gold); font-weight: 600; margin-left: 0.25em; }
+
+.class-flavor {
+  font-family: var(--uh-font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 14, 'wght' 300;
+  font-size: 0.86rem;
+  color: var(--uh-ink-soft);
+  line-height: 1.4;
+  min-height: 2.4em;
+  margin: 0.6rem 0 0;
+}
+
+/* Seed input row */
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(560px, 100%);
+}
+
+.seed-row {
+  display: flex;
+  width: 100%;
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 2px;
+  background: rgba(20, 16, 12, 0.6);
+  overflow: hidden;
+}
+.seed-label {
+  display: flex;
+  align-items: center;
+  padding: 0 0.9rem;
+  font-family: var(--uh-font-mono);
+  font-size: 0.75rem;
+  color: var(--uh-ink-faint);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-right: 1px solid var(--uh-gold-deep);
+  background: rgba(0, 0, 0, 0.25);
+}
+.seed-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--uh-ink);
+  font-family: var(--uh-font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  padding: 0.85rem 0.9rem;
+}
+.seed-input::placeholder { color: var(--uh-ink-ghost); font-style: italic; }
+.seed-row:focus-within { border-color: var(--uh-gold-glow); box-shadow: 0 0 0 1px var(--uh-gold-glow); }
+
+.button-row {
+  display: flex;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+button.btn {
+  font-family: var(--uh-font-body);
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.95rem 1.5rem;
+  background: rgba(20, 16, 12, 0.55);
+  color: var(--uh-ink);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 180ms ease-out;
+  position: relative;
+}
+button.btn:hover {
+  background: rgba(40, 28, 16, 0.7);
+  border-color: var(--uh-gold);
+  color: var(--uh-gold-glow);
+}
+button.btn:focus-visible { outline: none; border-color: var(--uh-gold-glow); box-shadow: 0 0 0 2px rgba(232, 176, 74, 0.3); }
+
+button.btn-primary {
+  flex: 1;
+  background: linear-gradient(180deg, var(--uh-ember) 0%, #6a4218 100%);
+  border-color: var(--uh-gold);
+  color: var(--uh-ink);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.88rem;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 176, 74, 0.25),
+    0 4px 16px rgba(160, 104, 40, 0.25);
+}
+button.btn-primary:hover {
+  background: linear-gradient(180deg, var(--uh-gold) 0%, var(--uh-ember) 100%);
+  color: #1a1208;
+  border-color: var(--uh-gold-glow);
+}
+
+button.btn-secondary {
+  background: transparent;
+  border-color: var(--uh-ink-ghost);
+  color: var(--uh-ink-soft);
+}
+
+/* Audio gear corner */
+.gear-corner {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  z-index: 5;
+  display: flex;
+  gap: 0.6rem;
+}
+.gear-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--uh-gold-deep);
+  background: rgba(20, 16, 12, 0.6);
+  color: var(--uh-ink-faint);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 180ms;
+}
+.gear-btn:hover { color: var(--uh-gold-glow); border-color: var(--uh-gold); }
+.gear-btn svg { width: 16px; height: 16px; }
+
+
+/* ═══ ACTIVE-PLAY HUD ═══════════════════════════════════════════════════ */
+section[data-screen="playing"] {
+  position: relative;
+  z-index: 2;
+  height: 100vh;
+  width: 100vw;
+  grid-template:
+    "topbar topbar topbar"  44px
+    "leftrail dungeon rightrail"  1fr
+    "logbar  logbar  logbar"  86px
+    / 130px 1fr 150px;
+  gap: 0;
+  background: var(--bg-deep);
+}
+
+.hud-topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.2rem;
+  background: linear-gradient(180deg, rgba(40, 30, 20, 0.7) 0%, rgba(20, 16, 12, 0.4) 100%);
+  border-bottom: 1px solid var(--uh-gold-deep);
+  font-family: var(--uh-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--uh-ink-soft);
+}
+.hud-topbar .crest {
+  font-family: var(--uh-font-mono);
+  color: var(--uh-glyph-item);
+  font-weight: 700;
+  margin-right: 0.5em;
+}
+.hud-topbar .label {
+  color: var(--uh-ink-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  margin-right: 0.5em;
+}
+.hud-topbar .group { display: flex; gap: 1.4rem; align-items: baseline; }
+.hud-topbar .num { color: var(--uh-gold-glow); font-weight: 600; }
+
+.hud-leftrail {
+  grid-area: leftrail;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 0.9rem;
+  gap: 1rem;
+  background: linear-gradient(90deg, rgba(20, 16, 12, 0.5) 0%, rgba(20, 16, 12, 0.1) 100%);
+  border-right: 1px solid rgba(160, 104, 40, 0.25);
+}
+
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.gauge-label {
+  font-family: var(--uh-font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--uh-ink-ghost);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.gauge-label .gauge-value { color: var(--uh-ink); font-size: 0.78rem; letter-spacing: 0.04em; font-weight: 600; }
+.gauge-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(160, 104, 40, 0.35);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.gauge-fill {
+  height: 100%;
+  transition: width 280ms ease-out;
+  background: linear-gradient(90deg, var(--uh-ember) 0%, var(--uh-gold) 100%);
+}
+.gauge-bar[data-kind="hp"] .gauge-fill   { background: linear-gradient(90deg, #6a3220 0%, #c84a3e 60%, #e26340 100%); }
+.gauge-bar[data-kind="mp"] .gauge-fill   { background: linear-gradient(90deg, #2d2a55 0%, #5d54a8 60%, #7768c4 100%); }
+.gauge-bar[data-kind="hunger"] .gauge-fill { background: linear-gradient(90deg, #4a3a25 0%, #8a6320 60%, #c8943e 100%); }
+
+.gauge.gauge-hp.is-low { animation: hp-low-pulse 1.4s ease-in-out infinite; }
+
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+.status-chip {
+  font-family: var(--uh-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.45rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--uh-gold-deep);
+  color: var(--uh-ink-soft);
+  border-radius: 1px;
+}
+.status-chip[data-effect="blessed"] { color: var(--uh-glyph-item); border-color: var(--uh-gold); }
+.status-chip[data-effect="poisoned"] { color: var(--uh-glyph-friendly); border-color: var(--uh-glyph-friendly); }
+.status-chip[data-effect="burning"] { color: var(--uh-glyph-enemy-threat); border-color: var(--uh-glyph-enemy-threat); }
+
+.dungeon-frame {
+  grid-area: dungeon;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(160, 104, 40, 0.06) 0%,
+      transparent 60%),
+    var(--uh-tile-floor);
+}
+
+/* The actual dungeon grid — render.js owns the tiles. We render a mock here for the design pass. */
+.dungeon-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--uh-grid-cols), var(--uh-grid-cell-w));
+  grid-auto-rows: var(--uh-grid-cell-h);
+  font-family: var(--uh-font-mono);
+  font-size: var(--uh-glyph-font-size);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  user-select: none;
+  font-feature-settings: "calt" 0;
+  position: relative;
+}
+.dungeon-grid > span {
+  display: grid;
+  place-items: center;
+  width: var(--uh-grid-cell-w);
+  height: var(--uh-grid-cell-h);
+  color: var(--uh-glyph-enemy-trivial);
+}
+
+/* Tile classes — these are the contract render.js will emit */
+.t-wall-lit        { color: var(--uh-tile-wall-lit); }
+.t-wall-remembered { color: var(--uh-tile-wall-remembered); }
+.t-wall-unseen     { color: var(--uh-tile-wall-unseen); }
+.t-floor           { color: var(--uh-tile-floor); }
+.t-floor-lit       { color: rgba(160, 104, 40, 0.6); }
+.t-wall-lit        { text-shadow: 0 0 4px rgba(160, 104, 40, 0.35); }
+.g-player          { color: var(--uh-glyph-player); text-shadow: 0 0 14px rgba(232, 176, 74, 0.55), 0 0 4px rgba(255, 220, 140, 0.85); animation: candle-flicker 3.2s ease-in-out infinite; }
+.g-friendly        { color: var(--uh-glyph-friendly); }
+.g-enemy-trivial   { color: var(--uh-glyph-enemy-trivial); }
+.g-enemy-threat    { color: var(--uh-glyph-enemy-threat); }
+.g-enemy-lethal    { color: var(--uh-glyph-enemy-lethal); }
+.g-item            { color: var(--uh-glyph-item); }
+.g-magic           { color: var(--uh-glyph-magic); }
+.g-stairs-down     { color: var(--uh-gold); }
+.g-stairs-up       { color: var(--uh-gold); }
+.g-ghost           { color: #d8c4a8; text-shadow: 0 0 6px rgba(216, 196, 168, 0.4); opacity: 0.9; }
+
+.hud-rightrail {
+  grid-area: rightrail;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 0.7rem;
+  gap: 0.7rem;
+  background: linear-gradient(270deg, rgba(20, 16, 12, 0.5) 0%, rgba(20, 16, 12, 0.1) 100%);
+  border-left: 1px solid rgba(160, 104, 40, 0.25);
+}
+.slot {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(160, 104, 40, 0.2);
+  border-radius: 1px;
+}
+.slot-glyph {
+  font-family: var(--uh-font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--uh-glyph-item);
+}
+.slot-name {
+  font-family: var(--uh-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--uh-ink-soft);
+  line-height: 1.2;
+}
+.slot-name .key {
+  display: block;
+  font-size: 0.6rem;
+  color: var(--uh-ink-ghost);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  margin-top: 0.15em;
+}
+
+.slot[data-kind="weapon"] .slot-glyph { color: var(--uh-glyph-item); }
+.slot[data-kind="armor"]  .slot-glyph { color: var(--uh-ink-soft); }
+.slot[data-kind="potion"] .slot-glyph { color: var(--uh-glyph-magic); }
+.slot[data-kind="scroll"] .slot-glyph { color: var(--uh-glyph-item); }
+
+.hud-logbar {
+  grid-area: logbar;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0.6rem 1.2rem 0.8rem;
+  background: linear-gradient(0deg, rgba(20, 16, 12, 0.7) 0%, rgba(20, 16, 12, 0.15) 100%);
+  border-top: 1px solid rgba(160, 104, 40, 0.25);
+  font-family: var(--uh-font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--uh-ink-soft);
+  line-height: 1.45;
+  overflow: hidden;
+}
+.hud-logbar .log-line { opacity: 1; }
+.hud-logbar .log-line + .log-line { opacity: 0.7; margin-top: 0.05rem; }
+.hud-logbar .log-line + .log-line + .log-line { opacity: 0.42; }
+.hud-logbar .log-line em { font-style: italic; color: var(--uh-gold-glow); }
+.hud-logbar .log-line .threat { color: var(--uh-glyph-enemy-threat); }
+.hud-logbar .log-line .lethal { color: var(--uh-glyph-enemy-lethal); }
+.hud-logbar .log-line .magic { color: var(--uh-glyph-magic); }
+
+/* HP-low edge-pulse — sits over the play area */
+.hp-edge-pulse {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 50%,
+      transparent 50%,
+      rgba(200, 74, 62, calc(0.3 * var(--uh-hp-low-pulse))) 100%);
+  z-index: 1;
+  transition: background 400ms;
+}
+
+/* Mobile bottom action dock — hidden on desktop */
+.mobile-dock {
+  display: none;
+  grid-area: logbar;
+  align-self: end;
+}
+@media (max-width: 720px) {
+  .class-row {
+    grid-template-columns: 1fr;
+    max-width: 360px;
+  }
+  .class-card { padding: 1rem 1rem 0.9rem; }
+  .class-glyph { font-size: 2.4rem; margin-bottom: 0.4rem; }
+  .class-flavor { min-height: 0; }
+  .button-row { flex-wrap: wrap; }
+  .button-row .btn-secondary { flex: 1; }
+  .button-row .btn-primary { flex: 1 1 100%; order: 3; }
+  .dev-hint { display: none; }
+  .title-wordmark { font-size: clamp(2.8rem, 14vw, 4rem); }
+
+  section[data-screen="playing"] {
+    grid-template:
+      "topbar"      40px
+      "dungeon"     1fr
+      "logbar"      62px
+      "dock"        72px
+      / 1fr;
+  }
+  .hud-leftrail, .hud-rightrail { display: none; }
+  .hud-topbar { font-size: 0.74rem; padding: 0 0.7rem; }
+  .hud-logbar { padding: 0.4rem 0.7rem; font-size: 0.74rem; }
+  .mobile-dock {
+    grid-area: dock;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.3rem;
+    padding: 0.5rem 0.5rem 0.7rem;
+    background: linear-gradient(0deg, rgba(20, 16, 12, 0.92) 0%, rgba(20, 16, 12, 0.7) 100%);
+    border-top: 1px solid var(--uh-gold-deep);
+  }
+  .dock-btn {
+    background: rgba(40, 30, 20, 0.6);
+    border: 1px solid var(--uh-gold-deep);
+    color: var(--uh-ink-soft);
+    border-radius: 2px;
+    padding: 0.4rem 0.2rem;
+    font-family: var(--uh-font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.1;
+  }
+  .dock-btn .glyph {
+    display: block;
+    font-size: 1.2rem;
+    color: var(--uh-gold);
+    margin-bottom: 0.15rem;
+  }
+}
+
+
+/* ═══ INVENTORY MODAL ════════════════════════════════════════════════════ */
+div[data-overlay="inventory"] {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 5, 0.78);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 2vh 1.2rem;
+  animation: overlay-fade 220ms ease-out;
+}
+.inventory-card {
+  background: linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 100%);
+  border: 1px solid var(--uh-gold-deep);
+  width: min(640px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+  border-radius: 2px;
+  position: relative;
+}
+.inventory-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='1.05' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+.inventory-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 1rem 1.4rem 0.7rem;
+  border-bottom: 1px solid var(--uh-gold-deep);
+  position: relative;
+}
+.inventory-title {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 36, 'wght' 380, 'SOFT' 50;
+  font-size: 1.3rem;
+  margin: 0;
+  color: var(--uh-ink);
+}
+.inventory-title .count {
+  font-family: var(--uh-font-mono);
+  font-size: 0.85rem;
+  color: var(--uh-ink-faint);
+  margin-left: 0.5em;
+  font-weight: 400;
+}
+.inventory-tabs {
+  display: flex;
+  gap: 0.1rem;
+  padding: 0.6rem 1rem 0;
+  font-family: var(--uh-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--uh-ink-faint);
+  position: relative;
+}
+.inventory-tab {
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: color 160ms, border-color 160ms;
+}
+.inventory-tab:hover { color: var(--uh-ink-soft); }
+.inventory-tab[aria-selected="true"] {
+  color: var(--uh-gold-glow);
+  border-bottom-color: var(--uh-gold);
+}
+.inventory-list {
+  flex: 1;
+  overflow: auto;
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  position: relative;
+}
+.inv-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.7rem;
+  background: rgba(20, 14, 8, 0.42);
+  border: 1px solid transparent;
+  border-radius: 1px;
+  transition: all 140ms;
+}
+.inv-row:hover, .inv-row[aria-selected="true"] {
+  background: rgba(40, 28, 16, 0.6);
+  border-color: var(--uh-gold-deep);
+}
+.inv-glyph {
+  font-family: var(--uh-font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+}
+.inv-name {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 14, 'wght' 360;
+  font-size: 1rem;
+  color: var(--uh-ink);
+}
+.inv-name .unident {
+  font-style: italic;
+  color: var(--uh-glyph-magic);
+}
+.inv-name .descr {
+  display: block;
+  font-family: var(--uh-font-body);
+  font-size: 0.78rem;
+  color: var(--uh-ink-faint);
+  margin-top: 0.15em;
+  font-style: italic;
+}
+.inv-actions {
+  display: flex;
+  gap: 0.3rem;
+  font-family: var(--uh-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.inv-action {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--uh-gold-deep);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--uh-ink-soft);
+  cursor: pointer;
+  border-radius: 1px;
+  transition: all 140ms;
+}
+.inv-action:hover { border-color: var(--uh-gold); color: var(--uh-gold-glow); }
+.inv-action[data-kind="primary"] { border-color: var(--uh-gold); color: var(--uh-gold-glow); }
+.inventory-foot {
+  padding: 0.7rem 1.4rem;
+  border-top: 1px solid var(--uh-gold-deep);
+  font-family: var(--uh-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--uh-ink-ghost);
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+.inventory-foot kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--uh-gold-deep);
+  color: var(--uh-ink);
+  border-radius: 1px;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0 0.15em;
+}
+
+
+/* ═══ DEATH EPITAPH CARD ═════════════════════════════════════════════════ */
+div[data-overlay="death"] {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 6, 4, 0.88);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: overlay-fade 600ms ease-out;
+}
+.epitaph {
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 60%, var(--uh-parchment-edge) 100%);
+  border: 1px solid var(--uh-gold-deep);
+  position: relative;
+  text-align: center;
+  padding: 2.6rem 2rem 2rem;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 24px 80px rgba(0, 0, 0, 0.7),
+    0 0 80px rgba(160, 104, 40, 0.1);
+  animation: parchment-slide 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* torn edges via clip-path */
+  clip-path: polygon(
+    0% 1.5%, 5% 0%, 18% 1.2%, 32% 0.4%, 48% 1.6%, 62% 0.2%, 78% 1.4%, 92% 0.4%, 100% 1.6%,
+    99% 25%, 100% 50%, 99% 75%, 100% 98%,
+    92% 99.6%, 78% 98.4%, 62% 99.8%, 48% 98.4%, 32% 99.6%, 18% 98.6%, 5% 99.8%, 0% 98.4%,
+    1% 75%, 0% 50%, 1% 25%
+  );
+}
+.epitaph::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence baseFrequency='0.95' numOctaves='2' seed='9'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.epitaph-mark {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 12, 'wght' 320;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  color: var(--uh-gold-deep);
+  margin-bottom: 1.4rem;
+}
+.epitaph-mark::before, .epitaph-mark::after {
+  content: '⚜';
+  display: inline-block;
+  margin: 0 0.6em;
+  letter-spacing: 0;
+  color: var(--uh-gold-deep);
+}
+.epitaph-headline {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 60, 'wght' 320, 'SOFT' 70, 'WONK' 1;
+  font-size: clamp(1.6rem, 4.5vw, 2.4rem);
+  font-style: italic;
+  color: var(--uh-ink);
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  margin: 0 0 0.3rem;
+}
+.epitaph-headline strong {
+  color: var(--uh-glyph-enemy-threat);
+  font-weight: 480;
+  font-style: normal;
+}
+.epitaph-floor {
+  font-family: var(--uh-font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 18, 'wght' 280;
+  font-size: 1.1rem;
+  color: var(--uh-ink-soft);
+  margin: 0 0 1.5rem;
+}
+.epitaph-floor strong { color: var(--uh-gold-glow); font-weight: 500; font-style: normal; }
+.epitaph-carrying {
+  font-family: var(--uh-font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 14, 'wght' 300;
+  font-size: 0.95rem;
+  color: var(--uh-ink-soft);
+  line-height: 1.55;
+  margin: 0 0 1.6rem;
+  padding: 0 0.4rem;
+}
+.epitaph-carrying .ident {
+  font-style: normal;
+  color: var(--uh-gold);
+}
+.epitaph-carrying .unident {
+  color: var(--uh-glyph-magic);
+}
+.epitaph-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.9rem 0.5rem;
+  border-top: 1px solid var(--uh-gold-deep);
+  border-bottom: 1px solid var(--uh-gold-deep);
+  margin-bottom: 1.6rem;
+  font-family: var(--uh-font-mono);
+}
+.estat-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--uh-ink-ghost);
+  margin-bottom: 0.15rem;
+}
+.estat-value {
+  font-size: 1rem;
+  color: var(--uh-ink);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.estat-value.seed {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--uh-gold-glow);
+}
+.epitaph-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.epitaph-actions .btn-primary {
+  flex: 1;
+  max-width: 260px;
+}
+
+/* the wax seal — bottom-right marginalia, optional flourish */
+.epitaph-seal {
+  position: absolute;
+  bottom: -22px;
+  right: 18px;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 35% 30%, #c84a3e 0%, #82301f 60%, #4a1a10 100%);
+  border-radius: 50%;
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 24, 'wght' 700;
+  font-size: 1.6rem;
+  color: rgba(244, 220, 180, 0.85);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5),
+              inset 0 -4px 8px rgba(0, 0, 0, 0.4),
+              inset 0 4px 6px rgba(255, 200, 160, 0.35);
+  transform: rotate(-12deg);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  z-index: 2;
+}
+
+
+/* ═══ MEMORIAL ═══════════════════════════════════════════════════════════ */
+section[data-screen="memorial"] {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(2.5rem, 6vh, 5rem) 1rem 4rem;
+}
+.memorial-head {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  width: min(900px, 100%);
+}
+.memorial-title {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 96, 'wght' 320, 'SOFT' 80, 'WONK' 1;
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  font-style: italic;
+  color: var(--uh-ink);
+  margin: 0;
+  letter-spacing: -0.005em;
+}
+.memorial-sub {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 14, 'wght' 280;
+  font-style: italic;
+  color: var(--uh-ink-faint);
+  font-size: 1rem;
+  margin: 0.2rem 0 0;
+}
+.memorial-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 1.4rem 0 1rem;
+  font-family: var(--uh-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.memorial-tab {
+  padding: 0.55rem 1.4rem;
+  background: rgba(20, 14, 8, 0.4);
+  border: 1px solid var(--uh-gold-deep);
+  color: var(--uh-ink-faint);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 160ms;
+}
+.memorial-tab:hover { color: var(--uh-ink); }
+.memorial-tab[aria-selected="true"] {
+  background: linear-gradient(180deg, var(--uh-ember) 0%, #6a4218 100%);
+  color: var(--uh-ink);
+  border-color: var(--uh-gold);
+}
+.memorial-list {
+  width: min(900px, 100%);
+  background: linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 100%);
+  border: 1px solid var(--uh-gold-deep);
+  position: relative;
+  padding: 0.4rem 0;
+}
+.memorial-list::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+.mem-row {
+  display: grid;
+  grid-template-columns: 38px 50px 32px 1fr 70px 100px 100px;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.55rem 1.4rem;
+  font-family: var(--uh-font-mono);
+  font-size: 0.84rem;
+  border-bottom: 1px solid rgba(160, 104, 40, 0.12);
+  color: var(--uh-ink-soft);
+  position: relative;
+  transition: background 160ms;
+}
+.mem-row:last-child { border-bottom: 0; }
+.mem-row[data-act="memorial-load"] { cursor: pointer; }
+.mem-row:hover {
+  background: rgba(40, 28, 16, 0.55);
+  box-shadow: inset 3px 0 0 var(--uh-gold);
+}
+.mem-row.is-win {
+  background: linear-gradient(90deg, rgba(232, 176, 74, 0.16) 0%, rgba(160, 104, 40, 0.08) 100%);
+  box-shadow: inset 3px 0 0 var(--uh-gold-glow);
+}
+.mem-row.is-win:hover {
+  background: linear-gradient(90deg, rgba(232, 176, 74, 0.22) 0%, rgba(160, 104, 40, 0.12) 100%);
+}
+.mem-rank { color: var(--uh-ink-ghost); letter-spacing: 0.04em; font-weight: 500; }
+.mem-rank.gold { color: var(--uh-gold-glow); font-weight: 700; }
+.mem-init { color: var(--uh-ink); font-weight: 600; letter-spacing: 0.18em; }
+.mem-class { font-weight: 700; font-size: 1.05rem; text-align: center; }
+.mem-class[data-class="knight"] { color: var(--uh-glyph-item); }
+.mem-class[data-class="archer"] { color: var(--uh-glyph-friendly); }
+.mem-class[data-class="mage"]   { color: var(--uh-glyph-magic); }
+.mem-cause {
+  font-family: var(--uh-font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 14, 'wght' 320;
+  font-size: 0.9rem;
+  color: var(--uh-ink-faint);
+}
+.mem-cause.win {
+  color: var(--uh-gold-glow);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: var(--uh-font-mono);
+  font-size: 0.78rem;
+}
+.mem-depth { color: var(--uh-ink); text-align: right; font-weight: 600; }
+.mem-depth small { color: var(--uh-ink-ghost); margin-left: 0.2em; font-weight: 400; }
+.mem-date { color: var(--uh-ink-ghost); font-size: 0.78rem; }
+.mem-seed { color: var(--uh-gold); font-size: 0.76rem; opacity: 0.78; cursor: copy; transition: opacity 140ms; }
+.mem-seed:hover { opacity: 1; }
+
+
+/* ═══ HOW-TO-PLAY POPUPS ═════════════════════════════════════════════════ */
+div[data-overlay="how-to-play"] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  pointer-events: none;
+}
+div[data-overlay="how-to-play"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 6, 4, 0.45);
+  pointer-events: auto;
+}
+
+.htp-card {
+  position: absolute;
+  width: min(360px, calc(100vw - 2rem));
+  background: linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 100%);
+  border: 1px solid var(--uh-gold);
+  padding: 1.1rem 1.2rem 1rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+.htp-card { display: none; }
+body[data-htp-step="1"] .htp-card[data-step="1"],
+body[data-htp-step="2"] .htp-card[data-step="2"],
+body[data-htp-step="3"] .htp-card[data-step="3"] { display: block; }
+.htp-card[data-step="1"] { top: 38%; left: 50%; transform: translate(-50%, -50%); }
+.htp-card[data-step="2"] { top: 50%; right: 18%; }
+.htp-card[data-step="3"] { bottom: 22%; left: 50%; transform: translateX(-50%); }
+.htp-step {
+  font-family: var(--uh-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  color: var(--uh-gold);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+.htp-title {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 24, 'wght' 380, 'SOFT' 60;
+  font-size: 1.2rem;
+  color: var(--uh-ink);
+  margin: 0 0 0.4rem;
+}
+.htp-body {
+  font-family: var(--uh-font-body);
+  font-size: 0.92rem;
+  color: var(--uh-ink-soft);
+  line-height: 1.5;
+  margin: 0 0 0.9rem;
+}
+.htp-body kbd {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 1px;
+  font-family: var(--uh-font-mono);
+  font-size: 0.85em;
+  color: var(--uh-ink);
+  margin: 0 0.1em;
+}
+.htp-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--uh-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.htp-skip { color: var(--uh-ink-ghost); cursor: pointer; background: none; border: none; padding: 0; }
+.htp-skip:hover { color: var(--uh-ink-soft); }
+
+
+/* ═══ TARGETING OVERLAY ══════════════════════════════════════════════════ */
+div[data-overlay="targeting"] {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.32);
+}
+.targeting-bar {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 14, 8, 0.88);
+  border: 1px solid var(--uh-gold);
+  padding: 0.6rem 1.1rem;
+  font-family: var(--uh-font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--uh-ink);
+  border-radius: 2px;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  pointer-events: auto;
+}
+.targeting-bar .target-name { color: var(--uh-glyph-enemy-threat); font-weight: 600; }
+.targeting-bar kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 1px;
+  font-family: inherit;
+}
+.targeting-line {
+  position: absolute;
+  top: 50%;
+  left: 32%;
+  width: 28%;
+  height: 2px;
+  background: repeating-linear-gradient(90deg,
+    var(--uh-gold-glow) 0 6px,
+    transparent 6px 12px);
+  opacity: 0.7;
+  transform-origin: left center;
+  transform: rotate(-8deg);
+}
+.targeting-crosshair {
+  position: absolute;
+  top: calc(50% - 14px);
+  left: calc(60% - 14px);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--uh-gold-glow);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(232, 176, 74, 0.35),
+              0 0 18px rgba(232, 176, 74, 0.45);
+  animation: target-pulse 1.4s ease-in-out infinite;
+}
+
+
+/* ═══ SETTINGS OVERLAY (audio + a11y) ════════════════════════════════════ */
+div[data-overlay="settings"] {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.78);
+  backdrop-filter: blur(2px);
+  animation: overlay-fade 220ms ease-out;
+}
+.settings-card {
+  width: min(420px, 100%);
+  background: linear-gradient(180deg, var(--uh-parchment-light) 0%, var(--uh-parchment) 100%);
+  border: 1px solid var(--uh-gold-deep);
+  padding: 1.4rem 1.5rem 1.2rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+.settings-title {
+  font-family: var(--uh-font-display);
+  font-variation-settings: 'opsz' 36, 'wght' 380, 'SOFT' 60;
+  font-size: 1.4rem;
+  margin: 0 0 1rem;
+  color: var(--uh-ink);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(160, 104, 40, 0.18);
+}
+.setting-row:last-of-type { border-bottom: 0; }
+.setting-label {
+  font-family: var(--uh-font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--uh-ink-soft);
+}
+.setting-control input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 160px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 2px;
+  outline: none;
+}
+.setting-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px; height: 14px;
+  background: var(--uh-gold);
+  border: 1px solid var(--uh-gold-glow);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(232, 176, 74, 0.4);
+}
+.setting-toggle {
+  width: 38px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--uh-gold-deep);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  transition: all 180ms;
+}
+.setting-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: var(--uh-ink-faint);
+  border-radius: 50%;
+  transition: all 180ms ease-out;
+}
+.setting-toggle[aria-pressed="true"] {
+  background: linear-gradient(90deg, var(--uh-ember) 0%, var(--uh-gold-deep) 100%);
+  border-color: var(--uh-gold);
+}
+.setting-toggle[aria-pressed="true"]::after {
+  left: 18px;
+  background: var(--uh-gold-glow);
+  box-shadow: 0 0 8px rgba(232, 176, 74, 0.5);
+}
+.settings-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+
+/* ═══ ANIMATIONS ═════════════════════════════════════════════════════════ */
+@keyframes overlay-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes parchment-slide {
+  from { opacity: 0; transform: translateY(28px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes candle-bob {
+  0%, 100% { transform: translateY(0) scaleY(1); filter: drop-shadow(0 0 18px rgba(232, 176, 74, 0.55)); }
+  25%      { transform: translateY(-1px) scaleY(1.04); filter: drop-shadow(0 0 22px rgba(232, 176, 74, 0.65)); }
+  55%      { transform: translateY(0.5px) scaleY(0.97); filter: drop-shadow(0 0 14px rgba(232, 176, 74, 0.5)); }
+  80%      { transform: translateY(-0.4px) scaleY(1.01); filter: drop-shadow(0 0 20px rgba(232, 176, 74, 0.6)); }
+}
+/* THE SIGNATURE FLOURISH — candle flicker on the player glyph and (in real game) on lit tiles */
+@keyframes candle-flicker {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  18%      { filter: brightness(1.08) saturate(1.06); }
+  37%      { filter: brightness(0.95) saturate(0.94); }
+  61%      { filter: brightness(1.04) saturate(1.02); }
+  82%      { filter: brightness(0.97) saturate(0.97); }
+}
+@keyframes hp-low-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(200, 74, 62, 0); }
+  50%      { box-shadow: inset 0 0 14px 2px rgba(200, 74, 62, 0.45); }
+}
+@keyframes target-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.18); opacity: 0.7; }
+}
+
+/* Hit-flash on a glyph (single frame) and screen-shake (kept tiny). */
+.uh-hit-flash {
+  filter: brightness(1.6) saturate(1.4);
+  text-shadow: 0 0 8px currentColor;
+}
+.uh-shake { animation: uh-shake 80ms ease-out; }
+@keyframes uh-shake {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-2px, 1px); }
+  50%  { transform: translate(2px, -1px); }
+  75%  { transform: translate(-1px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* prefers-reduced-motion: kill non-essential motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* dev shortcut hint — only visible in design pass via ?dev=1 */
+.dev-hint {
+  position: fixed;
+  bottom: 0.4rem;
+  right: 0.6rem;
+  z-index: 9998;
+  font-family: var(--uh-font-mono);
+  font-size: 0.62rem;
+  color: rgba(232, 176, 74, 0.45);
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+.dev-hint kbd {
+  display: inline-block;
+  padding: 0 0.25rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(160, 104, 40, 0.4);
+  border-radius: 1px;
+  margin: 0 0.05em;
+}
+</style>
+</head>
+<body data-screen="title">
+
+<!-- ───── audio gear, persistent across screens ───── -->
+<div class="gear-corner">
+  <button class="gear-btn" data-act="open-settings" aria-label="Open settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/><path d="M19 12c0-.6-.1-1.1-.2-1.7l2-1.5-2-3.5-2.4.9c-.9-.7-1.9-1.3-3-1.6L13 2h-2l-.4 2.6c-1.1.3-2.1.9-3 1.6L5.2 5.3l-2 3.5 2 1.5c-.1.6-.2 1.1-.2 1.7s.1 1.1.2 1.7l-2 1.5 2 3.5 2.4-.9c.9.7 1.9 1.3 3 1.6L11 22h2l.4-2.6c1.1-.3 2.1-.9 3-1.6l2.4.9 2-3.5-2-1.5c.1-.6.2-1.1.2-1.7z"/></svg>
+  </button>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     1. TITLE SCREEN
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section data-screen="title">
+
+  <header class="title-mark">
+    <svg class="title-flame" viewBox="0 0 36 56" aria-hidden="true">
+      <path class="flame-body" d="M18 6 C 6 22, 6 36, 18 50 C 30 36, 30 22, 18 6 Z"/>
+      <path class="flame-core" d="M18 16 C 13 26, 13 38, 18 46 C 23 38, 23 26, 18 16 Z" opacity="0.85"/>
+      <rect class="flame-wick" x="17" y="48" width="2" height="6"/>
+    </svg>
+    <h1 class="title-wordmark">
+      <span class="drop">U</span>nder<span class="ital">h</span>earth
+    </h1>
+    <p class="title-tagline">a roguelike below the floorboards</p>
+  </header>
+
+  <div class="class-row" role="radiogroup" aria-label="Choose your class">
+    <button class="class-card" role="radio" aria-pressed="false" data-class="knight">
+      <span class="class-glyph" data-class="knight">K</span>
+      <h3 class="class-name">Knight</h3>
+      <div class="class-stats">
+        <span>HP <strong>22</strong></span><span>MP <strong>4</strong></span><span>STR <strong>8</strong></span>
+      </div>
+      <p class="class-flavor">Heavy iron. Forgiving. Walks into trouble and lives.</p>
+    </button>
+    <button class="class-card" role="radio" aria-pressed="true" data-class="archer">
+      <span class="class-glyph" data-class="archer">A</span>
+      <h3 class="class-name">Archer</h3>
+      <div class="class-stats">
+        <span>HP <strong>16</strong></span><span>MP <strong>6</strong></span><span>STR <strong>5</strong></span>
+      </div>
+      <p class="class-flavor">Distance is wisdom. Open shots, tight corridors.</p>
+    </button>
+    <button class="class-card" role="radio" aria-pressed="false" data-class="mage">
+      <span class="class-glyph" data-class="mage">M</span>
+      <h3 class="class-name">Mage</h3>
+      <div class="class-stats">
+        <span>HP <strong>11</strong></span><span>MP <strong>14</strong></span><span>STR <strong>3</strong></span>
+      </div>
+      <p class="class-flavor">A wand, a scroll, and the cold shock of a misread word.</p>
+    </button>
+  </div>
+
+  <div class="title-actions">
+    <label class="seed-row">
+      <span class="seed-label">Seed</span>
+      <input class="seed-input" type="text" placeholder="leave empty for random — or type a word, or press Daily" value="WARMHEARTH-042">
+    </label>
+    <div class="button-row">
+      <button class="btn btn-secondary" data-act="daily">Daily Run</button>
+      <button class="btn btn-secondary" data-act="memorial">Memorial</button>
+      <button class="btn btn-primary" data-act="begin">Begin Descent</button>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     2. ACTIVE-PLAY (HUD + dungeon placeholder)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section data-screen="playing">
+
+  <header class="hud-topbar">
+    <div class="group">
+      <span class="crest" data-uh="hud-crest">A</span><span class="label" data-uh="hud-class">Archer</span>
+      <span><span class="label">Depth</span><span class="num" data-uh="hud-depth">04</span></span>
+    </div>
+    <div class="group">
+      <span><span class="label">Turn</span><span class="num" data-uh="hud-turn">1247</span></span>
+      <span><span class="label">Gold</span><span class="num" data-uh="hud-gold">47</span></span>
+      <span><span class="label">Seed</span><span class="num" data-uh="hud-seed" style="font-size: 0.74rem;">WARMHEARTH-042</span></span>
+    </div>
+  </header>
+
+  <aside class="hud-leftrail">
+
+    <div class="gauge gauge-hp">
+      <div class="gauge-label"><span>HP</span><span class="gauge-value">5 / 22</span></div>
+      <div class="gauge-bar" data-kind="hp"><div class="gauge-fill" style="width: 22%"></div></div>
+    </div>
+
+    <div class="gauge gauge-mp">
+      <div class="gauge-label"><span>MP</span><span class="gauge-value">3 / 6</span></div>
+      <div class="gauge-bar" data-kind="mp"><div class="gauge-fill" style="width: 50%"></div></div>
+    </div>
+
+    <div class="gauge gauge-hunger">
+      <div class="gauge-label"><span>Hunger</span><span class="gauge-value">Fed</span></div>
+      <div class="gauge-bar" data-kind="hunger"><div class="gauge-fill" style="width: 70%"></div></div>
+    </div>
+
+    <div class="statuses" aria-label="Status effects">
+      <span class="status-chip" data-effect="blessed">Blessed</span>
+      <span class="status-chip" data-effect="burning">Burning</span>
+    </div>
+
+  </aside>
+
+  <div class="dungeon-frame">
+    <div class="hp-edge-pulse" style="--uh-hp-low-pulse: 0.6"></div>
+    <!-- DEMO grid: 60×20 of mock glyphs to show the palette in situ.
+         In the real game, render.js creates and updates these spans. -->
+    <div class="dungeon-grid" id="mock-grid"></div>
+  </div>
+
+  <aside class="hud-rightrail">
+    <div class="slot" data-kind="weapon">
+      <div class="slot-glyph">)</div>
+      <div class="slot-name">short bow<span class="key">[w]</span></div>
+    </div>
+    <div class="slot" data-kind="armor">
+      <div class="slot-glyph">[</div>
+      <div class="slot-name">leather jerkin<span class="key">[W]</span></div>
+    </div>
+    <div class="slot" data-kind="potion">
+      <div class="slot-glyph">!</div>
+      <div class="slot-name"><em style="color:var(--uh-glyph-magic)">blue potion</em><span class="key">[q] x3</span></div>
+    </div>
+    <div class="slot" data-kind="scroll">
+      <div class="slot-glyph">?</div>
+      <div class="slot-name">scroll of mapping<span class="key">[r] x1</span></div>
+    </div>
+  </aside>
+
+  <footer class="hud-logbar">
+    <div class="log-line"><em>You descend to the 4th floor.</em></div>
+    <div class="log-line">You shoot the <span class="threat">goblin</span> for 4 damage.</div>
+    <div class="log-line">A <span class="lethal">troll</span> emerges from the shadows.</div>
+  </footer>
+
+  <!-- mobile-only -->
+  <div class="mobile-dock">
+    <button class="dock-btn"><span class="glyph">,</span>Pickup</button>
+    <button class="dock-btn"><span class="glyph">i</span>Items</button>
+    <button class="dock-btn"><span class="glyph">!</span>Quaff</button>
+    <button class="dock-btn"><span class="glyph">?</span>Read</button>
+    <button class="dock-btn"><span class="glyph">&gt;</span>Stairs</button>
+    <button class="dock-btn"><span class="glyph">.</span>Wait</button>
+  </div>
+
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     3. INVENTORY OVERLAY
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div data-overlay="inventory">
+  <div class="inventory-card">
+    <div class="inventory-head">
+      <h2 class="inventory-title">Inventory<span class="count">7 / 26</span></h2>
+      <span style="font-family:var(--uh-font-mono);font-size:0.72rem;color:var(--uh-ink-faint);letter-spacing:0.1em;">DEPTH 04 · ARCHER</span>
+    </div>
+    <nav class="inventory-tabs" role="tablist">
+      <span class="inventory-tab" aria-selected="true">All</span>
+      <span class="inventory-tab">Weapons</span>
+      <span class="inventory-tab">Armor</span>
+      <span class="inventory-tab">Potions</span>
+      <span class="inventory-tab">Scrolls</span>
+      <span class="inventory-tab">Wands</span>
+    </nav>
+    <div class="inventory-list">
+
+      <div class="inv-row" aria-selected="true">
+        <span class="inv-glyph g-item">)</span>
+        <span class="inv-name">short bow <small style="color:var(--uh-ink-faint);font-style:italic">(equipped)</small>
+          <span class="descr">+1d6 ranged damage. fires arrows from your stack.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action">Drop</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-item">[</span>
+        <span class="inv-name">leather jerkin <small style="color:var(--uh-ink-faint);font-style:italic">(worn)</small>
+          <span class="descr">light armor, +2 defense, no encumbrance.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action">Drop</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-magic">!</span>
+        <span class="inv-name"><span class="unident">a blue potion</span> ×3
+          <span class="descr">unidentified. quaff it and find out.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action" data-kind="primary">Quaff</button>
+          <button class="inv-action">Throw</button>
+          <button class="inv-action">Drop</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-item">?</span>
+        <span class="inv-name">scroll of mapping ×1
+          <span class="descr">reveals the layout of the current floor.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action" data-kind="primary">Read</button>
+          <button class="inv-action">Drop</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-magic">?</span>
+        <span class="inv-name"><span class="unident">a scroll labeled SNORK ULBO</span>
+          <span class="descr">unidentified. read it carefully.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action" data-kind="primary">Read</button>
+          <button class="inv-action">Drop</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-magic">/</span>
+        <span class="inv-name"><span class="unident">a flickering wand</span> <small style="color:var(--uh-ink-faint);font-style:italic">(2 charges remembered)</small>
+          <span class="descr">unidentified. zap it at something.</span>
+        </span>
+        <span class="inv-actions">
+          <button class="inv-action" data-kind="primary">Zap</button>
+          <button class="inv-action">Throw</button>
+        </span>
+      </div>
+
+      <div class="inv-row">
+        <span class="inv-glyph g-item">$</span>
+        <span class="inv-name">47 gold pieces
+          <span class="descr">currency. spend it at shops, or count it on your tombstone.</span>
+        </span>
+        <span class="inv-actions"></span>
+      </div>
+
+    </div>
+    <div class="inventory-foot">
+      <span><kbd>↑↓</kbd> select · <kbd>Enter</kbd> primary action</span>
+      <span><kbd>i</kbd> or <kbd>Esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     4. DEATH EPITAPH CARD
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div data-overlay="death">
+  <div class="epitaph">
+    <div class="epitaph-mark">Here lies</div>
+    <h2 class="epitaph-headline">
+      Killed by a <strong data-uh="death-cause">Troll</strong>,
+    </h2>
+    <p class="epitaph-floor">on the <strong data-uh="death-floor">7th</strong> floor of the underhearth.</p>
+    <p class="epitaph-carrying">
+      carrying <span class="ident">a worn short bow</span>,
+      <span class="ident">a leather jerkin</span>,
+      <span class="unident">an unidentified scroll</span>,
+      <span class="ident">47 gold</span>,
+      and <span class="unident">a flickering wand</span>.
+    </p>
+    <div class="epitaph-stats">
+      <div>
+        <div class="estat-label">Depth</div>
+        <div class="estat-value" data-uh="death-depth">7</div>
+      </div>
+      <div>
+        <div class="estat-label">Turns</div>
+        <div class="estat-value" data-uh="death-turns">1,438</div>
+      </div>
+      <div>
+        <div class="estat-label">Gold</div>
+        <div class="estat-value" data-uh="death-gold">47</div>
+      </div>
+      <div>
+        <div class="estat-label">Seed</div>
+        <div class="estat-value seed" data-uh="death-seed">W·H·042</div>
+      </div>
+    </div>
+    <div class="epitaph-actions">
+      <button class="btn btn-primary" data-act="restart">Try again</button>
+      <button class="btn btn-secondary" data-act="memorial">Memorial</button>
+    </div>
+    <div class="epitaph-seal" aria-hidden="true">U</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     5. MEMORIAL
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section data-screen="memorial">
+  <header class="memorial-head">
+    <h2 class="memorial-title">The Underhearth Memorial</h2>
+    <p class="memorial-sub">Twenty most-remembered descents.</p>
+    <div class="memorial-tabs" role="tablist">
+      <span class="memorial-tab" aria-selected="true">Free Runs</span>
+      <span class="memorial-tab">Daily</span>
+    </div>
+  </header>
+
+  <div class="memorial-list">
+
+    <div class="mem-row is-win">
+      <span class="mem-rank gold">01</span>
+      <span class="mem-init">CJH</span>
+      <span class="mem-class" data-class="knight">K</span>
+      <span class="mem-cause win">Recovered the amulet</span>
+      <span class="mem-depth">15<small>↓</small></span>
+      <span class="mem-date">2026·04·17</span>
+      <span class="mem-seed" title="Click to copy">CANDLEWAX</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank gold">02</span>
+      <span class="mem-init">CJH</span>
+      <span class="mem-class" data-class="archer">A</span>
+      <span class="mem-cause">to a dragon's breath</span>
+      <span class="mem-depth">14<small>↓</small></span>
+      <span class="mem-date">2026·04·22</span>
+      <span class="mem-seed">DEEPROOT</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank gold">03</span>
+      <span class="mem-init">JAN</span>
+      <span class="mem-class" data-class="mage">M</span>
+      <span class="mem-cause">to a misread scroll of teleport</span>
+      <span class="mem-depth">12<small>↓</small></span>
+      <span class="mem-date">2026·04·24</span>
+      <span class="mem-seed">SCRIBE-19</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank">04</span>
+      <span class="mem-init">CJH</span>
+      <span class="mem-class" data-class="archer">A</span>
+      <span class="mem-cause">crushed by a troll</span>
+      <span class="mem-depth">7<small>↓</small></span>
+      <span class="mem-date">2026·04·24</span>
+      <span class="mem-seed">WARMHEARTH-042</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank">05</span>
+      <span class="mem-init">SAM</span>
+      <span class="mem-class" data-class="knight">K</span>
+      <span class="mem-cause">starved in a dead-end corridor</span>
+      <span class="mem-depth">9<small>↓</small></span>
+      <span class="mem-date">2026·04·21</span>
+      <span class="mem-seed">CINDERFEN</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank">06</span>
+      <span class="mem-init">CJH</span>
+      <span class="mem-class" data-class="mage">M</span>
+      <span class="mem-cause">to her own paralysis potion</span>
+      <span class="mem-depth">6<small>↓</small></span>
+      <span class="mem-date">2026·04·19</span>
+      <span class="mem-seed">RIVERSTONE</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank">07</span>
+      <span class="mem-init">DLB</span>
+      <span class="mem-class" data-class="knight">K</span>
+      <span class="mem-cause">in single combat with a goblin king</span>
+      <span class="mem-depth">8<small>↓</small></span>
+      <span class="mem-date">2026·04·18</span>
+      <span class="mem-seed">LANTERNFISH</span>
+    </div>
+
+    <div class="mem-row">
+      <span class="mem-rank">08</span>
+      <span class="mem-init">CJH</span>
+      <span class="mem-class" data-class="archer">A</span>
+      <span class="mem-cause">to her own ricochet</span>
+      <span class="mem-depth">5<small>↓</small></span>
+      <span class="mem-date">2026·04·16</span>
+      <span class="mem-seed">QUIETSPRING</span>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 1.4rem; display: flex; gap: 0.8rem;">
+    <button class="btn btn-secondary" data-act="back-to-title">Back to title</button>
+  </div>
+
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     6. HOW-TO-PLAY OVERLAY (3 floor-1 popups)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div data-overlay="how-to-play">
+
+  <div class="htp-card" data-step="1">
+    <div class="htp-step">step 1 of 3</div>
+    <h4 class="htp-title">Walk and bump</h4>
+    <p class="htp-body">
+      Move with the arrow keys, <kbd>WASD</kbd>, <kbd>hjkl</kbd>, or click any tile.
+      Bump into a monster to attack. Hold a key to keep walking.
+    </p>
+    <div class="htp-actions">
+      <button class="htp-skip" data-act="htp-skip">don't show again</button>
+      <button class="btn" data-act="htp-next" style="padding: 0.5rem 1rem; font-size: 0.78rem;">Got it</button>
+    </div>
+  </div>
+
+  <div class="htp-card" data-step="2">
+    <div class="htp-step">step 2 of 3</div>
+    <h4 class="htp-title">Pick up, quaff, read</h4>
+    <p class="htp-body">
+      Walk over <span style="color:var(--uh-glyph-magic)">!</span> potions and <span style="color:var(--uh-glyph-magic)">?</span> scrolls and press <kbd>g</kbd> to pick them up.
+      Press <kbd>i</kbd> to open inventory and use them. Most are unidentified — drink to find out.
+    </p>
+    <div class="htp-actions">
+      <button class="htp-skip" data-act="htp-skip">don't show again</button>
+      <button class="btn" data-act="htp-next" style="padding: 0.5rem 1rem; font-size: 0.78rem;">Got it</button>
+    </div>
+  </div>
+
+  <div class="htp-card" data-step="3">
+    <div class="htp-step">step 3 of 3</div>
+    <h4 class="htp-title">Descend, deeper</h4>
+    <p class="htp-body">
+      Find the <span style="color:var(--uh-gold)">&gt;</span> and press <kbd>&gt;</kbd> to go down.
+      The amulet is on floor 15 — but the way back up is the real test.
+      Death is permanent. Your previous self may help.
+    </p>
+    <div class="htp-actions">
+      <button class="htp-skip" data-act="htp-skip">don't show again</button>
+      <button class="btn" data-act="htp-next" style="padding: 0.5rem 1rem; font-size: 0.78rem;">Begin</button>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     7. TARGETING OVERLAY
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div data-overlay="targeting">
+  <div class="targeting-line"></div>
+  <div class="targeting-crosshair"></div>
+  <div class="targeting-bar">
+    <span>Aiming at</span>
+    <span class="target-name">a goblin</span>
+    <span style="color: var(--uh-ink-ghost);">·</span>
+    <span><kbd>Enter</kbd> fire</span>
+    <span><kbd>Esc</kbd> cancel</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     8. SETTINGS OVERLAY (audio + a11y)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div data-overlay="settings">
+  <div class="settings-card">
+    <h3 class="settings-title">Settings</h3>
+
+    <div class="setting-row">
+      <span class="setting-label">Mute audio</span>
+      <span class="setting-control">
+        <button class="setting-toggle" aria-pressed="false" aria-label="Toggle mute"></button>
+      </span>
+    </div>
+
+    <div class="setting-row">
+      <span class="setting-label">SFX volume</span>
+      <span class="setting-control"><input type="range" min="0" max="100" value="55"></span>
+    </div>
+
+    <div class="setting-row">
+      <span class="setting-label">Music volume</span>
+      <span class="setting-control"><input type="range" min="0" max="100" value="0"></span>
+    </div>
+
+    <div class="setting-row">
+      <span class="setting-label">Reduced motion</span>
+      <span class="setting-control">
+        <button class="setting-toggle" aria-pressed="false" aria-label="Toggle reduced motion"></button>
+      </span>
+    </div>
+
+    <div class="setting-row">
+      <span class="setting-label">High-contrast glyphs</span>
+      <span class="setting-control">
+        <button class="setting-toggle" aria-pressed="false" aria-label="Toggle high-contrast"></button>
+      </span>
+    </div>
+
+    <div class="settings-foot">
+      <button class="btn btn-secondary" data-act="close-overlay">Close</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- dev shortcut hint, design-pass only -->
+<div class="dev-hint">
+  <kbd>1</kbd>title <kbd>2</kbd>play <kbd>3</kbd>inv <kbd>4</kbd>death <kbd>5</kbd>memorial <kbd>6</kbd>htp <kbd>7</kbd>targeting <kbd>8</kbd>settings
+</div>
+
+
+<!-- ARIA-live region for screen-reader log narration; visually hidden. -->
+<div id="uh-aria-log" role="log" aria-live="polite" aria-atomic="false"
+     style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"></div>
+
+<!-- Game modules (load order = dependency order; SharedGamepad first per ADR-016). -->
+<script src="../shared/gamepad.js"></script>
+<script src="entities.js"></script>
+<script src="dungeon.js"></script>
+<script src="engine.js"></script>
+<script src="render.js"></script>
+<script src="input.js"></script>
+<script src="audio.js"></script>
+<script src="storage.js"></script>
+<script src="game.js"></script>
+
+<script>
+/* Dev navigation + design-pass mock dungeon.
+   Number keys swap screens for the design pass / debugging.
+   The mock dungeon-grid IIFE self-disables when render.js is present
+   (real game replaces the spans on init). */
+(function () {
+  'use strict';
+  if (window.UnderhearthRender) {
+    // Real renderer is loaded; keyboard screen-swap dev shortcuts still useful.
+  }
+  const SCREENS = {
+    '1': 'title',
+    '2': 'playing',
+    '3': 'inventory',
+    '4': 'death',
+    '5': 'memorial',
+    '6': 'how-to-play',
+    '7': 'targeting',
+    '8': 'settings'
+  };
+
+  function setScreen(name) {
+    document.body.dataset.screen = name;
+    if (history.replaceState) history.replaceState(null, '', '#' + name);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.target && typeof e.target.matches === 'function' && e.target.matches('input, textarea')) return;
+    if (e.key in SCREENS) setScreen(SCREENS[e.key]);
+    if (e.key === 'Escape') setScreen('title');
+  });
+
+  // Hash sync on load + on hash change
+  function syncFromHash() {
+    const name = (location.hash || '').replace('#', '');
+    if (name && Object.values(SCREENS).includes(name)) {
+      document.body.dataset.screen = name;
+    }
+  }
+  syncFromHash();
+  window.addEventListener('hashchange', syncFromHash);
+
+  // Dev-only fallback click router. Real handlers live in game.js once it's loaded.
+  if (!window.Underhearth) {
+    document.addEventListener('click', function (e) {
+      const t = e.target.closest('[data-act]');
+      if (!t) return;
+      const act = t.dataset.act;
+      if (act === 'open-settings')  setScreen('settings');
+      if (act === 'close-overlay')  setScreen('title');
+      if (act === 'memorial')       setScreen('memorial');
+      if (act === 'begin')          setScreen('playing');
+      if (act === 'restart')        setScreen('playing');
+      if (act === 'back-to-title')  setScreen('title');
+      if (act === 'daily') {
+        const i = document.querySelector('.seed-input');
+        if (i) i.value = 'DAILY-' + new Date().toISOString().slice(0, 10);
+      }
+    });
+  }
+
+  // class card pressed-state
+  document.querySelectorAll('.class-card').forEach(function (card) {
+    card.addEventListener('click', function () {
+      document.querySelectorAll('.class-card').forEach(function (c) {
+        c.setAttribute('aria-pressed', c === card ? 'true' : 'false');
+      });
+    });
+  });
+
+  // Mock dungeon grid — render a small representative scene so the palette
+  // can be evaluated in situ standalone. Skipped when the real renderer
+  // (render.js) is loaded; it owns the spans from then on.
+  const grid = document.getElementById('mock-grid');
+  if (grid && !window.UnderhearthRender) {
+    const COLS = 60, ROWS = 20;
+    const cells = new Array(COLS * ROWS).fill(null).map(function () { return ['·', 't-floor']; });
+
+    function set(x, y, glyph, cls) {
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
+      cells[y * COLS + x] = [glyph, cls];
+    }
+
+    // walls bordering a few rooms
+    function room(x0, y0, w, h, lit) {
+      for (let x = x0; x < x0 + w; x++) {
+        set(x, y0, '─', lit ? 't-wall-lit' : 't-wall-remembered');
+        set(x, y0 + h - 1, '─', lit ? 't-wall-lit' : 't-wall-remembered');
+      }
+      for (let y = y0; y < y0 + h; y++) {
+        set(x0, y, '│', lit ? 't-wall-lit' : 't-wall-remembered');
+        set(x0 + w - 1, y, '│', lit ? 't-wall-lit' : 't-wall-remembered');
+      }
+      set(x0, y0, '┌', lit ? 't-wall-lit' : 't-wall-remembered');
+      set(x0 + w - 1, y0, '┐', lit ? 't-wall-lit' : 't-wall-remembered');
+      set(x0, y0 + h - 1, '└', lit ? 't-wall-lit' : 't-wall-remembered');
+      set(x0 + w - 1, y0 + h - 1, '┘', lit ? 't-wall-lit' : 't-wall-remembered');
+      // floor inside
+      for (let x = x0 + 1; x < x0 + w - 1; x++)
+        for (let y = y0 + 1; y < y0 + h - 1; y++)
+          set(x, y, '·', lit ? 't-floor-lit' : 't-floor');
+    }
+
+    room(8, 4, 14, 8, true);
+    room(28, 6, 12, 6, true);
+    room(44, 9, 12, 8, false);
+
+    // corridor
+    for (let x = 22; x <= 28; x++) set(x, 7, '·', 't-floor-lit');
+    for (let x = 40; x <= 44; x++) set(x, 12, '·', 't-floor');
+
+    // entities
+    set(14, 7, '@', 'g-player');           // player
+    set(16, 8, 'g', 'g-enemy-trivial');    // a goblin
+    set(19, 9, 'g', 'g-enemy-trivial');    // another goblin
+    set(33, 8, 'T', 'g-enemy-threat');     // a troll, threatening
+    set(50, 12, 'D', 'g-enemy-lethal');    // a dragon, lethal
+    set(36, 9, '!', 'g-magic');            // a potion (unidentified)
+    set(13, 9, '$', 'g-item');             // gold
+    set(20, 7, '?', 'g-item');             // a scroll (identified)
+    set(54, 14, '>', 'g-stairs-down');     // stairs down
+
+    const frag = document.createDocumentFragment();
+    cells.forEach(function (c) {
+      const span = document.createElement('span');
+      span.textContent = c[0];
+      span.className = c[1];
+      frag.appendChild(span);
+    });
+    grid.appendChild(frag);
+  }
+})();
+</script>
+</body>
+</html>
