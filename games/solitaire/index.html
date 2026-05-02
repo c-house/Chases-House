@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Solitaire — Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ──────────────────────────────────────────────────────────────
+       Solitaire — game-local tokens & layout
+       ──────────────────────────────────────────────────────────── */
+
+    :root {
+      /* Game-only tokens (oxblood/walnut felt — kin to terracotta) */
+      --felt:        #2a1a14;
+      --felt-shade:  #1c100b;
+      --felt-edge:   #3a2419;
+      --felt-warm:   #4a2a1c;
+
+      /* Suit colors — two-color mode */
+      --suit-black:  #171210;
+      --suit-red:    #9b2a2e;
+
+      /* Suit colors — four-color mode */
+      --suit-spade:  #171210;
+      --suit-heart:  #9b2a2e;
+      --suit-club:   #2f5d3b;
+      --suit-diamond:#3a5a78;
+
+      /* Card surface */
+      --card-cream:    #f6ecd6;
+      --card-cream-2:  #ecdfc1;
+      --card-shadow:   rgba(8, 4, 2, 0.55);
+
+      /* Sizing — desktop default */
+      --card-w: clamp(54px, 6.5vw, 86px);
+      --card-h: calc(var(--card-w) * 1.4);
+      --card-radius: calc(var(--card-w) * 0.082);
+
+      /* Stagger between cards in a tableau column */
+      --stack-face-up:   calc(var(--card-h) * 0.28);
+      --stack-face-down: calc(var(--card-h) * 0.16);
+
+      /* Motion */
+      --pick-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* ── Page shell ─────────────────────────────────────────────── */
+    body {
+      overflow-x: hidden;
+    }
+
+    /* Override the global ambient — Solitaire wants the room dark
+       around the table so the lamp halo reads. */
+    body::before {
+      background:
+        radial-gradient(ellipse 140% 90% at 50% 0%,
+          rgba(200, 148, 62, 0.045) 0%,
+          rgba(160, 104, 40, 0.025) 18%,
+          transparent 55%),
+        radial-gradient(ellipse 60% 60% at 50% 130%,
+          rgba(0, 0, 0, 0.5) 0%, transparent 60%);
+    }
+
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1rem, 3vh, 2rem) clamp(0.5rem, 2vw, 2rem) clamp(1.5rem, 4vh, 3rem);
+      min-height: calc(100vh - 4rem);
+    }
+
+    /* ── Title bar ──────────────────────────────────────────────── */
+    .game-bar {
+      width: min(100%, 1080px);
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 0.4rem 0.6rem 0.8rem;
+      gap: 0.6rem;
+      animation: fadeSlideUp 600ms ease-out backwards;
+    }
+
+    .bar-cluster {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+    .bar-cluster.right { justify-content: flex-end; }
+
+    .bar-btn {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      padding: 0.42rem 0.85rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      line-height: 1;
+    }
+    .bar-btn:hover { color: var(--text-primary); border-color: var(--accent-gold); }
+    .bar-btn:focus-visible {
+      outline: none;
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 0 3px rgba(200, 148, 62, 0.18);
+    }
+    .bar-btn .icn { width: 0.92rem; height: 0.92rem; flex: none; }
+
+    .game-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 60;
+      font-style: italic;
+      font-size: clamp(1.4rem, 3vw + 0.5rem, 2.4rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      letter-spacing: -0.005em;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── HUD row ────────────────────────────────────────────────── */
+    .hud {
+      width: min(100%, 1080px);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: end;
+      padding: 0 0.4rem 0.6rem;
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 80ms;
+    }
+    .hud-stat {
+      font-family: var(--font-body);
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      line-height: 1;
+    }
+    .hud-stat.center { align-items: center; }
+    .hud-stat.right  { align-items: flex-end; }
+    .hud-label {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .hud-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 24;
+      font-size: clamp(1.05rem, 2vw, 1.45rem);
+      font-weight: 500;
+      color: var(--text-primary);
+      font-feature-settings: 'tnum' 1;
+    }
+    .hud-value.timer { color: var(--accent-gold); }
+
+    /* ── The table (the felt) ──────────────────────────────────── */
+    .table {
+      position: relative;
+      width: min(100%, 1080px);
+      flex: 1;
+      min-height: calc(7.4 * var(--card-h));
+      padding: clamp(1.2rem, 3vw, 2rem) clamp(0.8rem, 2.5vw, 1.6rem) clamp(1rem, 2.5vw, 1.6rem);
+      background:
+        radial-gradient(ellipse 48% 32% at 50% 6%,
+          rgba(232, 176, 74, 0.24) 0%,
+          rgba(200, 148, 62, 0.10) 22%,
+          transparent 60%),
+        radial-gradient(ellipse 100% 70% at 50% 50%,
+          var(--felt) 0%,
+          var(--felt-shade) 70%,
+          var(--felt-shade) 100%);
+      border-radius: 14px;
+      box-shadow:
+        0 0 0 1px var(--felt-edge),
+        0 1px 0 rgba(255, 240, 200, 0.04) inset,
+        0 -2px 0 rgba(0, 0, 0, 0.45) inset,
+        0 18px 60px rgba(0, 0, 0, 0.55),
+        0 2px 12px rgba(0, 0, 0, 0.4);
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 160ms;
+      overflow: hidden;
+    }
+
+    /* Felt grain — a faint scratch noise overlay; sits under the cards */
+    .table::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.18;
+      mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.10  0 0 0 0 0.06  0 0 0 0.45 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+
+    /* The lamp halo — a brighter pool over the foundations row */
+    .lamp-halo {
+      position: absolute;
+      top: -8%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      height: 38%;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 50% 90% at 50% 0%,
+          rgba(255, 220, 150, 0.20) 0%,
+          rgba(232, 176, 74, 0.10) 28%,
+          transparent 65%);
+      filter: blur(2px);
+    }
+
+    /* ── Pile rows ──────────────────────────────────────────────── */
+    .top-row {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: clamp(0.4rem, 1.5vw, 1rem);
+      margin-bottom: clamp(0.8rem, 2vw, 1.4rem);
+    }
+
+    .stock-waste, .foundations {
+      display: flex;
+      gap: clamp(0.35rem, 1vw, 0.7rem);
+    }
+
+    .tableau {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: clamp(0.35rem, 1vw, 0.7rem);
+    }
+
+    /* ── Pile (slot) ────────────────────────────────────────────── */
+    .pile {
+      position: relative;
+      width: var(--card-w);
+      min-height: var(--card-h);
+      border-radius: var(--card-radius);
+    }
+    .pile-slot {
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: var(--card-radius);
+      border: 1px dashed rgba(200, 148, 62, 0.2);
+      background: rgba(0, 0, 0, 0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.25) inset;
+    }
+    .pile-slot .slot-glyph {
+      width: 38%;
+      height: 38%;
+      opacity: 0.22;
+      color: var(--accent-gold);
+    }
+    .pile-foundation .pile-slot .slot-glyph { opacity: 0.32; }
+
+    /* The drop-target highlight ring — gold pulse on legal hover */
+    .pile.is-drop-target .pile-slot,
+    .pile.is-drop-target > .card.top {
+      box-shadow:
+        0 0 0 2px var(--accent-glow),
+        0 0 28px rgba(232, 176, 74, 0.35);
+    }
+    .pile.is-drop-target { z-index: 2; }
+
+    /* Tableau column — cards stagger downward */
+    .pile-column { min-height: calc(6 * var(--card-h)); }
+    .pile-column .card {
+      position: absolute;
+      left: 0;
+      right: 0;
+    }
+
+    /* Stagger offsets are computed from the index-from-top.
+       JS will set --i on each card; static demo uses inline style. */
+    .pile-column .card { top: calc(var(--i, 0) * var(--stack-face-down)); }
+    .pile-column .card.face-up { top: calc(var(--i, 0) * var(--stack-face-up) + var(--down-stack, 0px)); }
+    .pile-column .card[style*="--down-stack"] { /* per-card override allowed */ }
+
+    /* Waste pile — fan three cards horizontally */
+    .pile-waste { width: calc(var(--card-w) + 2 * var(--card-w) * 0.28); }
+    .pile-waste .card {
+      position: absolute;
+      top: 0;
+      left: calc(var(--i, 0) * var(--card-w) * 0.28);
+    }
+
+    /* ── Card ───────────────────────────────────────────────────── */
+    .card {
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: var(--card-radius);
+      background: linear-gradient(160deg, var(--card-cream) 0%, var(--card-cream-2) 100%);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.7) inset,
+        0 0 0 1px rgba(36, 22, 14, 0.55),
+        0 1px 1px rgba(0, 0, 0, 0.25),
+        0 4px 10px rgba(0, 0, 0, 0.35);
+      transition:
+        transform 220ms var(--pick-ease),
+        box-shadow 220ms var(--pick-ease),
+        top 280ms var(--pick-ease),
+        left 280ms var(--pick-ease);
+      will-change: transform;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: grab;
+    }
+    .card.face-down { cursor: pointer; }
+    .card.unplayable { cursor: default; }
+
+    /* Hover-lift on a graspable card */
+    .card.face-up:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.7) inset,
+        0 0 0 1px rgba(36, 22, 14, 0.6),
+        0 2px 2px rgba(0, 0, 0, 0.25),
+        0 8px 18px rgba(0, 0, 0, 0.42);
+    }
+
+    /* Card-tilt-on-grab — the signature flourish.
+       The shadow lags via a slower box-shadow transition. */
+    .card.dragging {
+      cursor: grabbing;
+      transform: translateY(-6px) rotate(var(--tilt, 3deg)) scale(1.03);
+      transition:
+        transform 60ms var(--pick-ease),
+        box-shadow 280ms var(--pick-ease);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.7) inset,
+        0 0 0 1px rgba(36, 22, 14, 0.65),
+        0 4px 4px rgba(0, 0, 0, 0.25),
+        0 22px 44px rgba(0, 0, 0, 0.55);
+      z-index: 10;
+    }
+    .card.dragging-trail {
+      transform: translateY(-3px) rotate(calc(var(--tilt, 3deg) * 0.6));
+      z-index: 9;
+    }
+
+    /* Illegal-drop flash */
+    .card.illegal {
+      animation: illegalFlash 360ms ease both;
+    }
+    @keyframes illegalFlash {
+      0%   { box-shadow: 0 0 0 0 rgba(176, 90, 58, 0); }
+      35%  { box-shadow: 0 0 0 3px rgba(176, 90, 58, 0.65), 0 0 28px rgba(176, 90, 58, 0.35); }
+      100% { box-shadow: 0 0 0 0 rgba(176, 90, 58, 0); }
+    }
+
+    /* Hint pulse */
+    .card.hint {
+      animation: hintPulse 1400ms ease-in-out 2;
+    }
+    @keyframes hintPulse {
+      0%, 100% { box-shadow:
+        0 1px 0 rgba(255,255,255,0.7) inset,
+        0 0 0 1px rgba(36,22,14,0.55),
+        0 1px 1px rgba(0,0,0,0.25),
+        0 4px 10px rgba(0,0,0,0.35); }
+      50% { box-shadow:
+        0 1px 0 rgba(255,255,255,0.7) inset,
+        0 0 0 2px var(--accent-glow),
+        0 0 32px rgba(232, 176, 74, 0.4),
+        0 4px 10px rgba(0,0,0,0.35); }
+    }
+
+    /* ── Card faces ─────────────────────────────────────────────── */
+    .card-corner {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      line-height: 0.92;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: calc(var(--card-w) * 0.22);
+      letter-spacing: -0.02em;
+    }
+    .card-corner.tl { top: 6%; left: 7%; }
+    .card-corner.br { right: 7%; bottom: 6%; transform: rotate(180deg); }
+    .card-corner .suit-tiny {
+      width: calc(var(--card-w) * 0.20);
+      height: calc(var(--card-w) * 0.20);
+    }
+
+    /* Center pip area for number cards (2-10) — JS positions pips */
+    .card-pips {
+      position: absolute;
+      inset: calc(var(--card-h) * 0.20) calc(var(--card-w) * 0.18);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: repeat(7, 1fr);
+      pointer-events: none;
+    }
+    .card-pips .pip {
+      grid-column: var(--c, 2);
+      grid-row: var(--r, 4);
+      width: calc(var(--card-w) * 0.20);
+      height: calc(var(--card-w) * 0.20);
+      align-self: center;
+      justify-self: center;
+    }
+    .card-pips .pip.invert { transform: rotate(180deg); }
+
+    /* Center suit "monogram" for face cards (J, Q, K, A) */
+    .card-mono {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+    }
+    .card-mono .mono-letter {
+      position: absolute;
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 80;
+      font-style: italic;
+      font-weight: 600;
+      font-size: calc(var(--card-w) * 0.78);
+      color: var(--accent-ember);
+      opacity: 0.16;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      user-select: none;
+    }
+    .card-mono .mono-suit {
+      width: calc(var(--card-w) * 0.46);
+      height: calc(var(--card-w) * 0.46);
+      filter: drop-shadow(0 1px 0 rgba(255,255,255,0.5));
+    }
+    .card.rank-A .card-mono .mono-suit { width: calc(var(--card-w) * 0.62); height: calc(var(--card-w) * 0.62); }
+    .card.rank-A .card-mono .mono-letter { display: none; }
+
+    /* Suit colorization (two-color default) */
+    .card[data-suit="spade"]   .suit-tiny,
+    .card[data-suit="club"]    .suit-tiny,
+    .card[data-suit="spade"]   .pip,
+    .card[data-suit="club"]    .pip,
+    .card[data-suit="spade"]   .mono-suit,
+    .card[data-suit="club"]    .mono-suit { color: var(--suit-black); }
+    .card[data-suit="heart"]   .suit-tiny,
+    .card[data-suit="diamond"] .suit-tiny,
+    .card[data-suit="heart"]   .pip,
+    .card[data-suit="diamond"] .pip,
+    .card[data-suit="heart"]   .mono-suit,
+    .card[data-suit="diamond"] .mono-suit { color: var(--suit-red); }
+    .card .suit-tiny, .card .pip, .card .mono-suit { fill: currentColor; }
+    .card-corner { color: inherit; }
+    .card[data-suit="spade"]   .card-corner,
+    .card[data-suit="club"]    .card-corner { color: var(--suit-black); }
+    .card[data-suit="heart"]   .card-corner,
+    .card[data-suit="diamond"] .card-corner { color: var(--suit-red); }
+
+    /* Four-color mode override */
+    body.four-color .card[data-suit="spade"]   .suit-tiny,
+    body.four-color .card[data-suit="spade"]   .pip,
+    body.four-color .card[data-suit="spade"]   .mono-suit,
+    body.four-color .card[data-suit="spade"]   .card-corner { color: var(--suit-spade); }
+    body.four-color .card[data-suit="heart"]   .suit-tiny,
+    body.four-color .card[data-suit="heart"]   .pip,
+    body.four-color .card[data-suit="heart"]   .mono-suit,
+    body.four-color .card[data-suit="heart"]   .card-corner { color: var(--suit-heart); }
+    body.four-color .card[data-suit="club"]    .suit-tiny,
+    body.four-color .card[data-suit="club"]    .pip,
+    body.four-color .card[data-suit="club"]    .mono-suit,
+    body.four-color .card[data-suit="club"]    .card-corner { color: var(--suit-club); }
+    body.four-color .card[data-suit="diamond"] .suit-tiny,
+    body.four-color .card[data-suit="diamond"] .pip,
+    body.four-color .card[data-suit="diamond"] .mono-suit,
+    body.four-color .card[data-suit="diamond"] .card-corner { color: var(--suit-diamond); }
+
+    /* ── Card backs — Fraunces & tessellation ──────────────────── */
+    .card.face-down {
+      background:
+        /* a faint center vignette so the pattern feels lit */
+        radial-gradient(ellipse 80% 100% at 50% 50%,
+          rgba(255, 220, 150, 0.10) 0%, transparent 65%),
+        /* the tessellation — two ampersands per tile, brick offset */
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'><g fill='none' font-family='Fraunces, Georgia, serif' font-style='italic' font-weight='600' text-anchor='middle' dominant-baseline='central'><text x='11' y='16' font-size='22' fill='%23c8943e' fill-opacity='0.72'>%26</text><text x='33' y='46' font-size='22' fill='%23c8943e' fill-opacity='0.55' transform='rotate(180 33 46)'>%26</text></g></svg>"),
+        linear-gradient(155deg, #3d1f15 0%, #2a1812 60%, #1f110b 100%);
+      background-size: auto, 44px 62px, auto;
+      background-repeat: no-repeat, repeat, no-repeat;
+      box-shadow:
+        0 1px 0 rgba(232, 176, 74, 0.18) inset,
+        0 0 0 1px rgba(200, 148, 62, 0.45),
+        0 1px 1px rgba(0, 0, 0, 0.25),
+        0 4px 10px rgba(0, 0, 0, 0.35);
+    }
+    /* Decorative inner border on backs — picks up the gold */
+    .card.face-down::before {
+      content: '';
+      position: absolute;
+      inset: 6%;
+      border: 1px solid rgba(200, 148, 62, 0.32);
+      border-radius: calc(var(--card-radius) * 0.65);
+      pointer-events: none;
+    }
+    .card.face-down::after {
+      content: '';
+      position: absolute;
+      inset: 9%;
+      border: 1px solid rgba(200, 148, 62, 0.18);
+      border-radius: calc(var(--card-radius) * 0.55);
+      pointer-events: none;
+    }
+
+    /* Stock empty state — show recycle ring */
+    .pile-stock.empty .pile-slot .slot-glyph {
+      animation: spin 6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Waste empty state — hide the dashed placeholder so the corner
+       reads quietly until cards arrive */
+    .pile-waste.empty .pile-slot {
+      border-color: transparent;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    /* ── Bottom action bar ──────────────────────────────────────── */
+    .actions {
+      width: min(100%, 1080px);
+      display: flex;
+      justify-content: space-between;
+      padding: clamp(0.6rem, 1.5vw, 1rem) 0.4rem 0;
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 280ms;
+    }
+    .actions-cluster { display: flex; gap: 0.4rem; }
+
+    .action-btn {
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      padding: 0.5rem 0.95rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: color 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      line-height: 1;
+    }
+    .action-btn:hover { color: var(--text-primary); border-color: var(--accent-gold); }
+    .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .action-btn .icn { width: 0.95rem; height: 0.95rem; flex: none; }
+    .action-btn .label { display: inline; }
+    .action-btn[data-action="hint"] { color: var(--accent-gold); border-color: var(--accent-gold); }
+    .action-btn[data-action="hint"]:hover { background: rgba(200, 148, 62, 0.10); color: var(--accent-glow); }
+
+    /* ── Auto-complete prompt ──────────────────────────────────── */
+    .auto-complete-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 1rem 1.5rem;
+      background: rgba(20, 14, 10, 0.92);
+      border: 1px solid var(--accent-gold);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.05rem;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 60px rgba(232, 176, 74, 0.18);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      animation: bannerIn 360ms var(--pick-ease) backwards;
+    }
+    @keyframes bannerIn {
+      from { opacity: 0; transform: translate(-50%, -40%); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
+    /* ── Drawer (Settings) ─────────────────────────────────────── */
+    .drawer-scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0);
+      z-index: 30;
+      pointer-events: none;
+      transition: background 220ms ease;
+    }
+    body.drawer-open .drawer-scrim {
+      background: rgba(0, 0, 0, 0.55);
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: min(420px, 92vw);
+      height: 100vh;
+      background:
+        linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-main) 100%);
+      box-shadow: -2px 0 40px rgba(0, 0, 0, 0.5);
+      transform: translateX(100%);
+      transition: transform 280ms var(--pick-ease);
+      z-index: 40;
+      overflow-y: auto;
+      padding: clamp(1.5rem, 3vw, 2.4rem) clamp(1.2rem, 2.5vw, 1.8rem) 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-ember), transparent);
+      opacity: 0.45;
+    }
+
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .drawer-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 60;
+      font-style: italic;
+      font-size: 1.6rem;
+      font-weight: 400;
+      color: var(--text-heading);
+    }
+    .drawer-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 0.2rem 0.5rem;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    .drawer-close:hover { color: var(--accent-gold); }
+
+    .drawer-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .drawer-section-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+
+    /* Difficulty radio (single source for combined preset) */
+    .diff-radio {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.4rem;
+    }
+    .diff-radio input { position: absolute; opacity: 0; pointer-events: none; }
+    .diff-radio label {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.55rem 0.4rem;
+      text-align: center;
+      color: var(--text-muted);
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+    .diff-radio label:hover { color: var(--text-primary); border-color: var(--accent-gold); }
+    .diff-radio input:checked + label {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.10);
+      box-shadow: 0 0 0 1px var(--accent-gold) inset;
+    }
+    .diff-radio input:focus-visible + label {
+      box-shadow: 0 0 0 3px rgba(200, 148, 62, 0.22);
+    }
+
+    /* Custom-only raw toggle group */
+    .raw-toggles {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 280ms ease, opacity 220ms ease;
+    }
+    body.diff-custom .raw-toggles {
+      max-height: 400px;
+      opacity: 1;
+    }
+    .toggle-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0;
+      border-top: 1px solid rgba(160, 104, 40, 0.22);
+    }
+    .toggle-row:first-child { border-top: none; }
+    .toggle-row .toggle-label {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+    .toggle-row .toggle-sub {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      margin-top: 0.1rem;
+    }
+
+    /* Segmented control (for draw size, redeal limit, scoring) */
+    .segmented {
+      display: inline-flex;
+      gap: 0;
+      border: 1px solid var(--accent-ember);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+    .segmented label {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.4rem 0.7rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-right: 1px solid rgba(160, 104, 40, 0.45);
+      transition: all 0.2s ease;
+      background: transparent;
+    }
+    .segmented label:last-of-type { border-right: none; }
+    .segmented label:hover { color: var(--text-primary); }
+    .segmented input:checked + label {
+      color: var(--accent-gold);
+      background: rgba(200, 148, 62, 0.12);
+    }
+
+    /* Switch toggle (four-color, mute) */
+    .switch {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      display: inline-block;
+    }
+    .switch input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch .track {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent-ember);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.22s ease, border-color 0.22s ease;
+    }
+    .switch .track::before {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: transform 0.22s var(--pick-ease), background 0.22s ease;
+    }
+    .switch input:checked + .track {
+      background: rgba(200, 148, 62, 0.20);
+      border-color: var(--accent-gold);
+    }
+    .switch input:checked + .track::before {
+      transform: translateX(16px);
+      background: var(--accent-glow);
+    }
+    .switch input:focus-visible + .track {
+      box-shadow: 0 0 0 3px rgba(200, 148, 62, 0.22);
+    }
+
+    /* Daily-deal seed display */
+    .seed-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.7rem 0.85rem;
+      background: rgba(0, 0, 0, 0.32);
+      border: 1px dashed rgba(200, 148, 62, 0.28);
+      border-radius: 4px;
+    }
+    .seed-row .seed-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .seed-row .seed-value {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--accent-gold);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Modals (Pause, Win, Stats, Tutorial) ──────────────────── */
+    .modal-scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 4, 2, 0.78);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      animation: fadeIn 220ms ease both;
+    }
+    .modal {
+      width: min(540px, 100%);
+      background:
+        radial-gradient(ellipse 100% 60% at 50% 0%,
+          rgba(232, 176, 74, 0.10) 0%, transparent 70%),
+        linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-main) 100%);
+      border: 1px solid rgba(200, 148, 62, 0.35);
+      border-radius: 8px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0,0,0,0.4);
+      padding: clamp(1.6rem, 3vw, 2.4rem);
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      animation: modalIn 320ms var(--pick-ease) backwards;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.985); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-eyebrow {
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin: 0;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 60, 'WONK' 1, 'SOFT' 70;
+      font-style: italic;
+      font-size: clamp(1.6rem, 3.5vw + 0.4rem, 2.4rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      line-height: 1;
+      margin: 0;
+    }
+    .modal-body {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    /* Pause menu list */
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .menu-item {
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-align: left;
+      padding: 0.85rem 1.1rem;
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid rgba(160, 104, 40, 0.45);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .menu-item:hover {
+      background: rgba(200, 148, 62, 0.08);
+      border-color: var(--accent-gold);
+      color: var(--accent-glow);
+    }
+    .menu-item .menu-key {
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: var(--text-faint);
+      font-feature-settings: 'tnum' 1;
+    }
+    .menu-item.danger:hover {
+      border-color: var(--terracotta);
+      color: var(--terracotta);
+      background: rgba(176, 90, 58, 0.08);
+    }
+
+    /* Win modal — score grid */
+    .win-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem;
+    }
+    .win-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.85rem 0.7rem;
+      border: 1px solid rgba(160, 104, 40, 0.45);
+      border-radius: 4px;
+      text-align: center;
+    }
+    .win-stat-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .win-stat-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36;
+      font-size: 1.6rem;
+      font-weight: 500;
+      color: var(--accent-gold);
+      font-feature-settings: 'tnum' 1;
+      line-height: 1;
+    }
+    .modal-cta-row {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .cta-primary, .cta-secondary {
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.7rem 1.4rem;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      flex: 1 0 auto;
+    }
+    .cta-primary {
+      background: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+      color: var(--bg-deep);
+    }
+    .cta-primary:hover { background: var(--accent-glow); border-color: var(--accent-glow); }
+    .cta-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(232, 176, 74, 0.35);
+    }
+    .cta-secondary {
+      background: transparent;
+      border: 1px solid var(--accent-ember);
+      color: var(--text-primary);
+    }
+    .cta-secondary:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+    /* Ghost modifier — used as the third visual tier in CTA rows */
+    .cta-secondary.ghost { border-color: transparent; color: var(--text-muted); }
+    .cta-secondary.ghost:hover { border-color: var(--accent-ember); color: var(--text-primary); background: transparent; }
+
+    /* ── Stats screen ──────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+    .stat-cell {
+      padding: 0.85rem 0.9rem;
+      border: 1px solid rgba(160, 104, 40, 0.4);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .stat-cell-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .stat-cell-value {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 36;
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      font-feature-settings: 'tnum' 1;
+      line-height: 1;
+    }
+    .stat-cell .stat-cell-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.15rem;
+    }
+
+    /* Daily calendar grid — current month */
+    .calendar {
+      margin-top: 0.4rem;
+    }
+    .calendar-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.5rem;
+    }
+    .calendar-month {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--text-primary);
+    }
+    .calendar-streak {
+      font-size: 0.75rem;
+      color: var(--accent-gold);
+      letter-spacing: 0.04em;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-dow {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      text-align: center;
+      padding-bottom: 0.2rem;
+    }
+    .cal-day {
+      aspect-ratio: 1;
+      border: 1px solid rgba(160, 104, 40, 0.22);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-feature-settings: 'tnum' 1;
+      position: relative;
+    }
+    .cal-day.empty { border-color: transparent; }
+    .cal-day.played { color: var(--text-primary); border-color: var(--accent-ember); }
+    .cal-day.won {
+      color: var(--bg-deep);
+      background: var(--accent-gold);
+      border-color: var(--accent-gold);
+      font-weight: 700;
+    }
+    .cal-day.today {
+      box-shadow: 0 0 0 1px var(--accent-glow);
+    }
+
+    /* ── Tutorial overlay ─────────────────────────────────────── */
+    .tutorial {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 25;
+    }
+    .tutorial-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      pointer-events: auto;
+    }
+    .tutorial-bubble {
+      position: absolute;
+      max-width: 280px;
+      padding: 0.95rem 1.1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-gold);
+      border-radius: 6px;
+      box-shadow: 0 14px 36px rgba(0,0,0,0.55), 0 0 32px rgba(232,176,74,0.18);
+      pointer-events: auto;
+      animation: bubbleIn 360ms var(--pick-ease) backwards;
+    }
+    @keyframes bubbleIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .tutorial-bubble-title {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--accent-glow);
+      margin-bottom: 0.3rem;
+    }
+    .tutorial-bubble-body {
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      line-height: 1.45;
+    }
+    .tutorial-bubble-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.7rem;
+      gap: 0.6rem;
+    }
+    .tutorial-step-dots {
+      display: flex;
+      gap: 0.3rem;
+    }
+    .tutorial-step-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-faint);
+    }
+    .tutorial-step-dots span.active { background: var(--accent-gold); }
+    .tutorial-skip, .tutorial-next {
+      font-family: var(--font-body);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.3rem 0.4rem;
+    }
+    .tutorial-skip { color: var(--text-faint); }
+    .tutorial-skip:hover { color: var(--text-muted); }
+    .tutorial-next { color: var(--accent-gold); }
+    .tutorial-next:hover { color: var(--accent-glow); }
+
+    .tutorial-arrow {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      pointer-events: none;
+      color: var(--accent-glow);
+      filter: drop-shadow(0 0 18px rgba(232, 176, 74, 0.55));
+      animation: bob 1.4s ease-in-out infinite;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+
+    /* ── Win cascade ────────────────────────────────────────────── */
+    .cascade-stage {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 45;
+      overflow: hidden;
+    }
+    .cascade-card {
+      position: absolute;
+      width: var(--card-w);
+      height: var(--card-h);
+      border-radius: var(--card-radius);
+      will-change: transform;
+    }
+    /* Reduced-motion fallback — a brief gold wash instead of physics. */
+    .cascade-stage.cascade-reduced {
+      background: rgba(232, 176, 74, 0.15);
+      transition: background 600ms ease;
+    }
+
+    /* ── Mute / hidden / utility ──────────────────────────────── */
+    .hidden { display: none !important; }
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* SVG defs sit hidden but referenced by use[href] */
+    svg.defs { position: absolute; width: 0; height: 0; }
+
+    /* ── Back link ─────────────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: 1.2rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .back-link:hover { color: var(--accent-gold); }
+    .back-link::before { content: '← '; }
+
+    /* ── Mobile responsive ─────────────────────────────────────── */
+    @media (max-width: 760px) {
+      :root {
+        --card-w: clamp(38px, 11vw, 60px);
+        --stack-face-up: calc(var(--card-h) * 0.24);
+        --stack-face-down: calc(var(--card-h) * 0.13);
+      }
+      .game-bar { padding: 0.3rem 0.4rem 0.6rem; }
+      .game-title { font-size: clamp(1.2rem, 5vw, 1.8rem); }
+      .bar-btn .label, .action-btn .label { display: none; }
+      .bar-btn { padding: 0.42rem 0.6rem; }
+      .action-btn { padding: 0.5rem 0.7rem; }
+      .table {
+        padding: 1rem 0.55rem 0.7rem;
+        border-radius: 8px;
+        min-height: calc(7.6 * var(--card-h));
+      }
+      .top-row { gap: 0.3rem; margin-bottom: 0.7rem; }
+      .stock-waste, .foundations { gap: 0.25rem; }
+      .tableau { gap: 0.25rem; }
+      .pile-waste { width: calc(var(--card-w) + 2 * var(--card-w) * 0.32); }
+      .pile-waste .card { left: calc(var(--i, 0) * var(--card-w) * 0.32); }
+      .hud-value { font-size: 1rem; }
+      .win-stats { grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    @media (max-width: 460px) {
+      :root { --card-w: clamp(34px, 12vw, 52px); }
+      .top-row { flex-wrap: nowrap; }
+      .stock-waste, .foundations { gap: 0.18rem; }
+    }
+
+    /* ── Reduced motion — kill cascade physics, dampen tilt ───── */
+    @media (prefers-reduced-motion: reduce) {
+      .card.dragging { transform: translateY(-3px); transition: none; }
+      .cascade-card { animation-duration: 0.01ms !important; }
+      .lamp-halo, .table::before { animation: none !important; }
+    }
+
+  </style>
+</head>
+<body class="four-color">
+  <!-- SVG noise filter (used by the global ::after grain) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <!-- ═══ SVG DEFS — suit symbols, monogram letters, icons ═══ -->
+  <svg class="defs" aria-hidden="true">
+    <defs>
+      <!-- Custom suit shapes — drawn for clarity at small sizes -->
+      <symbol id="suit-spade" viewBox="0 0 24 24">
+        <path d="M12 2 C 12 2, 4 9, 4 14.5 C 4 17.5, 6.4 19.5, 9 19.5 C 10.3 19.5, 11.3 19, 12 18.2 C 12.7 19, 13.7 19.5, 15 19.5 C 17.6 19.5, 20 17.5, 20 14.5 C 20 9, 12 2, 12 2 Z M 10.4 22 L 13.6 22 Q 12 17 12 17 Q 12 17 10.4 22 Z" fill="currentColor"/>
+      </symbol>
+      <symbol id="suit-heart" viewBox="0 0 24 24">
+        <path d="M12 21 C 12 21, 3 14.4, 3 8.7 C 3 5.6, 5.4 3.5, 8.1 3.5 C 9.8 3.5, 11.2 4.4, 12 5.7 C 12.8 4.4, 14.2 3.5, 15.9 3.5 C 18.6 3.5, 21 5.6, 21 8.7 C 21 14.4, 12 21, 12 21 Z" fill="currentColor"/>
+      </symbol>
+      <symbol id="suit-diamond" viewBox="0 0 24 24">
+        <path d="M12 2 L 21 12 L 12 22 L 3 12 Z" fill="currentColor"/>
+      </symbol>
+      <symbol id="suit-club" viewBox="0 0 24 24">
+        <path d="M12 2.5 A 4 4 0 0 1 15.4 9 A 4 4 0 1 1 13.5 14.4 L 14 22 L 10 22 L 10.5 14.4 A 4 4 0 1 1 8.6 9 A 4 4 0 0 1 12 2.5 Z" fill="currentColor"/>
+      </symbol>
+
+      <!-- Action icons — line glyphs in line-icon style -->
+      <symbol id="ic-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 8 L 8 3 M 3 8 L 8 13 M 3 8 H 14 a 6 6 0 0 1 0 12 H 8"/>
+      </symbol>
+      <symbol id="ic-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 8 L 16 3 M 21 8 L 16 13 M 21 8 H 10 a 6 6 0 0 0 0 12 H 16"/>
+      </symbol>
+      <symbol id="ic-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 18 h 6 M 10 21 h 4 M 12 3 a 6 6 0 0 1 4 10.5 c -1 1 -1.5 1.5 -1.5 3 h -5 c 0 -1.5 -.5 -2 -1.5 -3 A 6 6 0 0 1 12 3 Z"/>
+      </symbol>
+      <symbol id="ic-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 L 6 9 H 3 V 15 H 6 L 11 19 Z M 16 9 a 4 4 0 0 1 0 6 M 19 6 a 8 8 0 0 1 0 12"/>
+      </symbol>
+      <symbol id="ic-mute-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 L 6 9 H 3 V 15 H 6 L 11 19 Z M 16 9 L 22 15 M 22 9 L 16 15"/>
+      </symbol>
+      <symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 7 H 20 M 4 12 H 20 M 4 17 H 20"/>
+      </symbol>
+      <symbol id="ic-cog" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15 a 1.7 1.7 0 0 0 .3 1.8 l 0 0 a 2 2 0 0 1 -2.8 2.8 l 0 0 a 1.7 1.7 0 0 0 -1.8 -.3 a 1.7 1.7 0 0 0 -1 1.5 V 21 a 2 2 0 0 1 -4 0 v -.1 a 1.7 1.7 0 0 0 -1.1 -1.5 a 1.7 1.7 0 0 0 -1.8 .3 l 0 0 a 2 2 0 0 1 -2.8 -2.8 l 0 0 a 1.7 1.7 0 0 0 .3 -1.8 a 1.7 1.7 0 0 0 -1.5 -1 H 3 a 2 2 0 0 1 0 -4 h .1 a 1.7 1.7 0 0 0 1.5 -1.1 a 1.7 1.7 0 0 0 -.3 -1.8 l 0 0 a 2 2 0 0 1 2.8 -2.8 l 0 0 a 1.7 1.7 0 0 0 1.8 .3 H 9 a 1.7 1.7 0 0 0 1 -1.5 V 3 a 2 2 0 0 1 4 0 v .1 a 1.7 1.7 0 0 0 1 1.5 a 1.7 1.7 0 0 0 1.8 -.3 l 0 0 a 2 2 0 0 1 2.8 2.8 l 0 0 a 1.7 1.7 0 0 0 -.3 1.8 V 9 a 1.7 1.7 0 0 0 1.5 1 H 21 a 2 2 0 0 1 0 4 h -.1 a 1.7 1.7 0 0 0 -1.5 1 Z"/>
+      </symbol>
+      <symbol id="ic-recycle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 4 l 3 -2 v 4 Z" fill="currentColor"/>
+        <path d="M5 6 a 9 9 0 0 0 -1 11 M 17 20 l -3 2 v -4 Z M 19 18 a 9 9 0 0 0 1 -11"/>
+      </symbol>
+      <symbol id="ic-arrow-down" viewBox="0 0 100 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M50 10 v 92 M 22 76 l 28 28 l 28 -28"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link" style="--i:1" href="/games/">Games</a>
+      <a class="nav-link" style="--i:2" href="/cookbook/">Cookbook</a>
+      <span id="music-nav" class="nav-link coming-soon" style="--i:3">Music<span class="coming-soon-tag">soon</span></span>
+      <span id="lookout-nav" class="nav-link coming-soon" style="--i:4">Lookout<span class="coming-soon-tag">soon</span></span>
+      <a class="nav-link" style="--i:5" href="/files/">Files</a>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <!-- ═══ Title bar ═══ -->
+    <div class="game-bar">
+      <div class="bar-cluster">
+        <button class="bar-btn" data-action="open-menu" type="button" aria-label="Open menu">
+          <svg class="icn"><use href="#ic-menu"/></svg>
+          <span class="label">Menu</span>
+        </button>
+      </div>
+      <h1 class="game-title">Solitaire</h1>
+      <div class="bar-cluster right">
+        <button class="bar-btn" data-action="open-settings" type="button" aria-label="Open settings">
+          <svg class="icn"><use href="#ic-cog"/></svg>
+          <span class="label">Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ HUD ═══ -->
+    <div class="hud" role="status" aria-live="polite">
+      <div class="hud-stat">
+        <span class="hud-label">Score</span>
+        <span class="hud-value" data-bind="score">120</span>
+      </div>
+      <div class="hud-stat center">
+        <span class="hud-label">Time</span>
+        <span class="hud-value timer" data-bind="timer">02:48</span>
+      </div>
+      <div class="hud-stat right">
+        <span class="hud-label">Moves</span>
+        <span class="hud-value" data-bind="moves">37</span>
+      </div>
+    </div>
+
+    <!-- ═══ The table ═══ -->
+    <section class="table" id="table" aria-label="Solitaire table">
+      <span class="lamp-halo" aria-hidden="true"></span>
+
+      <!-- ── Top row: stock + waste (left), foundations (right) ── -->
+      <div class="top-row">
+        <div class="stock-waste">
+          <div class="pile pile-stock" data-pile="stock" aria-label="Stock — 14 cards left, click to draw">
+            <div class="card face-down" aria-hidden="true"></div>
+            <div class="card face-down" aria-hidden="true" style="position:absolute;top:1px;left:1px"></div>
+            <div class="card face-down" aria-hidden="true" style="position:absolute;top:2px;left:2px"></div>
+          </div>
+          <div class="pile pile-waste" data-pile="waste" aria-label="Waste pile">
+            <!-- 3 fanned cards; topmost is the playable one -->
+            <div class="card face-up" data-suit="club" data-rank="8" style="--i:0">
+              <span class="card-corner tl"><span class="rank">8</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+              <div class="card-pips">
+                <svg class="pip" style="--c:1;--r:1"><use href="#suit-club"/></svg>
+                <svg class="pip" style="--c:3;--r:1"><use href="#suit-club"/></svg>
+                <svg class="pip" style="--c:2;--r:2"><use href="#suit-club"/></svg>
+                <svg class="pip" style="--c:1;--r:3"><use href="#suit-club"/></svg>
+                <svg class="pip" style="--c:3;--r:3"><use href="#suit-club"/></svg>
+                <svg class="pip invert" style="--c:1;--r:5"><use href="#suit-club"/></svg>
+                <svg class="pip invert" style="--c:3;--r:5"><use href="#suit-club"/></svg>
+                <svg class="pip invert" style="--c:2;--r:6"><use href="#suit-club"/></svg>
+              </div>
+              <span class="card-corner br"><span class="rank">8</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+            </div>
+            <div class="card face-up" data-suit="diamond" data-rank="K" style="--i:1">
+              <span class="card-corner tl"><span class="rank">K</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+              <div class="card-mono">
+                <span class="mono-letter">K</span>
+                <svg class="mono-suit"><use href="#suit-diamond"/></svg>
+              </div>
+              <span class="card-corner br"><span class="rank">K</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+            </div>
+            <div class="card face-up top" data-suit="heart" data-rank="Q" style="--i:2">
+              <span class="card-corner tl"><span class="rank">Q</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+              <div class="card-mono">
+                <span class="mono-letter">Q</span>
+                <svg class="mono-suit"><use href="#suit-heart"/></svg>
+              </div>
+              <span class="card-corner br"><span class="rank">Q</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="foundations" role="list" aria-label="Foundations">
+          <!-- ♠ — built up to 5 -->
+          <div class="pile pile-foundation" data-suit="spade" role="listitem" aria-label="Spade foundation, top card 5 of spades">
+            <div class="card face-up rank-5" data-suit="spade" data-rank="5">
+              <span class="card-corner tl"><span class="rank">5</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+              <div class="card-pips">
+                <svg class="pip" style="--c:1;--r:1"><use href="#suit-spade"/></svg>
+                <svg class="pip" style="--c:3;--r:1"><use href="#suit-spade"/></svg>
+                <svg class="pip" style="--c:2;--r:4"><use href="#suit-spade"/></svg>
+                <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-spade"/></svg>
+                <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-spade"/></svg>
+              </div>
+              <span class="card-corner br"><span class="rank">5</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+            </div>
+          </div>
+
+          <!-- ♥ — built up to 3 -->
+          <div class="pile pile-foundation" data-suit="heart" role="listitem" aria-label="Heart foundation, top card 3 of hearts">
+            <div class="card face-up rank-3" data-suit="heart" data-rank="3">
+              <span class="card-corner tl"><span class="rank">3</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+              <div class="card-pips">
+                <svg class="pip" style="--c:2;--r:1"><use href="#suit-heart"/></svg>
+                <svg class="pip" style="--c:2;--r:4"><use href="#suit-heart"/></svg>
+                <svg class="pip invert" style="--c:2;--r:7"><use href="#suit-heart"/></svg>
+              </div>
+              <span class="card-corner br"><span class="rank">3</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            </div>
+          </div>
+
+          <!-- ♦ — empty -->
+          <div class="pile pile-foundation" data-suit="diamond" role="listitem" aria-label="Diamond foundation, empty">
+            <div class="pile-slot"><svg class="slot-glyph"><use href="#suit-diamond"/></svg></div>
+          </div>
+
+          <!-- ♣ — empty -->
+          <div class="pile pile-foundation" data-suit="club" role="listitem" aria-label="Club foundation, empty">
+            <div class="pile-slot"><svg class="slot-glyph"><use href="#suit-club"/></svg></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Tableau columns ─────────────────────────────────── -->
+      <div class="tableau" role="list" aria-label="Tableau columns">
+
+        <!-- Column 0 — single face-up K♥ on a King-only empty column scenario -->
+        <div class="pile pile-column" data-col="0" role="listitem">
+          <div class="card face-up" data-suit="heart" data-rank="K" style="--i:0">
+            <span class="card-corner tl"><span class="rank">K</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            <div class="card-mono"><span class="mono-letter">K</span><svg class="mono-suit"><use href="#suit-heart"/></svg></div>
+            <span class="card-corner br"><span class="rank">K</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 1 — 1 down, 1 up (Q♣) -->
+        <div class="pile pile-column" data-col="1" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-up" data-suit="club" data-rank="Q" style="--i:1; --down-stack: var(--stack-face-down)">
+            <span class="card-corner tl"><span class="rank">Q</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+            <div class="card-mono"><span class="mono-letter">Q</span><svg class="mono-suit"><use href="#suit-club"/></svg></div>
+            <span class="card-corner br"><span class="rank">Q</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 2 — 2 down, 1 up (J♥) -->
+        <div class="pile pile-column" data-col="2" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:1" aria-hidden="true"></div>
+          <div class="card face-up" data-suit="heart" data-rank="J" style="--i:2; --down-stack: calc(2 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">J</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            <div class="card-mono"><span class="mono-letter">J</span><svg class="mono-suit"><use href="#suit-heart"/></svg></div>
+            <span class="card-corner br"><span class="rank">J</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 3 — 3 down, 2 up (10♠, 9♥) — and a hint pulse on the 9♥ -->
+        <div class="pile pile-column" data-col="3" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:1" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:2" aria-hidden="true"></div>
+          <div class="card face-up rank-10" data-suit="spade" data-rank="10" style="--i:3; --down-stack: calc(3 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">10</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:2;--r:2"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:1;--r:3"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:3;--r:3"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:1;--r:5"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:3;--r:5"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:2;--r:6"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-spade"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">10</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+          </div>
+          <div class="card face-up rank-9 hint" data-suit="heart" data-rank="9" style="--i:4; --down-stack: calc(3 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">9</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-heart"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-heart"/></svg>
+              <svg class="pip" style="--c:1;--r:2"><use href="#suit-heart"/></svg>
+              <svg class="pip" style="--c:3;--r:2"><use href="#suit-heart"/></svg>
+              <svg class="pip" style="--c:2;--r:4"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:1;--r:6"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:3;--r:6"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-heart"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">9</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 4 — 4 down, 3 up: 8♦, 7♠, 6♦ — drop-target highlight (legal) -->
+        <div class="pile pile-column is-drop-target" data-col="4" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:1" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:2" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:3" aria-hidden="true"></div>
+          <div class="card face-up rank-8" data-suit="diamond" data-rank="8" style="--i:4; --down-stack: calc(4 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">8</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:2;--r:2"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:1;--r:3"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:3;--r:3"><use href="#suit-diamond"/></svg>
+              <svg class="pip invert" style="--c:1;--r:5"><use href="#suit-diamond"/></svg>
+              <svg class="pip invert" style="--c:3;--r:5"><use href="#suit-diamond"/></svg>
+              <svg class="pip invert" style="--c:2;--r:6"><use href="#suit-diamond"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">8</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+          </div>
+          <div class="card face-up rank-7" data-suit="spade" data-rank="7" style="--i:5; --down-stack: calc(4 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">7</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:2;--r:2"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:1;--r:3"><use href="#suit-spade"/></svg>
+              <svg class="pip" style="--c:3;--r:3"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-spade"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-spade"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">7</span><svg class="suit-tiny"><use href="#suit-spade"/></svg></span>
+          </div>
+          <div class="card face-up top rank-6" data-suit="diamond" data-rank="6" style="--i:6; --down-stack: calc(4 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">6</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:1;--r:4"><use href="#suit-diamond"/></svg>
+              <svg class="pip" style="--c:3;--r:4"><use href="#suit-diamond"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-diamond"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-diamond"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">6</span><svg class="suit-tiny"><use href="#suit-diamond"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 5 — 5 down, 1 up (5♣) -->
+        <div class="pile pile-column" data-col="5" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:1" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:2" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:3" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:4" aria-hidden="true"></div>
+          <div class="card face-up rank-5" data-suit="club" data-rank="5" style="--i:5; --down-stack: calc(5 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">5</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-club"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-club"/></svg>
+              <svg class="pip" style="--c:2;--r:4"><use href="#suit-club"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-club"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-club"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">5</span><svg class="suit-tiny"><use href="#suit-club"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Column 6 — 6 down, 1 up (4♥) -->
+        <div class="pile pile-column" data-col="6" role="listitem">
+          <div class="card face-down" style="--i:0" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:1" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:2" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:3" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:4" aria-hidden="true"></div>
+          <div class="card face-down" style="--i:5" aria-hidden="true"></div>
+          <div class="card face-up rank-4" data-suit="heart" data-rank="4" style="--i:6; --down-stack: calc(6 * var(--stack-face-down))">
+            <span class="card-corner tl"><span class="rank">4</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+            <div class="card-pips">
+              <svg class="pip" style="--c:1;--r:1"><use href="#suit-heart"/></svg>
+              <svg class="pip" style="--c:3;--r:1"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:1;--r:7"><use href="#suit-heart"/></svg>
+              <svg class="pip invert" style="--c:3;--r:7"><use href="#suit-heart"/></svg>
+            </div>
+            <span class="card-corner br"><span class="rank">4</span><svg class="suit-tiny"><use href="#suit-heart"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Bottom action bar ═══ -->
+    <div class="actions">
+      <div class="actions-cluster">
+        <button class="action-btn" data-action="undo" type="button" aria-label="Undo (U)">
+          <svg class="icn"><use href="#ic-undo"/></svg>
+          <span class="label">Undo</span>
+        </button>
+        <button class="action-btn" data-action="redo" type="button" aria-label="Redo (Ctrl+Y)" disabled>
+          <svg class="icn"><use href="#ic-redo"/></svg>
+          <span class="label">Redo</span>
+        </button>
+      </div>
+      <div class="actions-cluster">
+        <button class="action-btn" data-action="hint" type="button" aria-label="Hint (H)">
+          <svg class="icn"><use href="#ic-hint"/></svg>
+          <span class="label">Hint</span>
+        </button>
+        <button class="action-btn" data-action="mute" type="button" aria-label="Toggle audio">
+          <svg class="icn"><use href="#ic-mute"/></svg>
+          <span class="label">Sound</span>
+        </button>
+      </div>
+    </div>
+
+    <a href="/games/" class="back-link">All games</a>
+  </main>
+
+  <!-- ═══ Settings drawer ═══ -->
+  <div class="drawer-scrim" data-action="close-drawer" aria-hidden="true"></div>
+  <aside class="drawer" id="settings-drawer" role="dialog" aria-labelledby="settings-title" aria-hidden="true">
+    <div class="drawer-head">
+      <h2 class="drawer-title" id="settings-title">Settings</h2>
+      <button class="drawer-close" data-action="close-drawer" type="button" aria-label="Close">×</button>
+    </div>
+
+    <section class="drawer-section">
+      <span class="drawer-section-label">Difficulty</span>
+      <div class="diff-radio" role="radiogroup" aria-label="Difficulty preset">
+        <input type="radio" name="diff" id="diff-easy" value="easy">
+        <label for="diff-easy">Easy</label>
+        <input type="radio" name="diff" id="diff-medium" value="medium" checked>
+        <label for="diff-medium">Medium</label>
+        <input type="radio" name="diff" id="diff-hard" value="hard">
+        <label for="diff-hard">Hard</label>
+        <input type="radio" name="diff" id="diff-custom" value="custom">
+        <label for="diff-custom">Custom</label>
+      </div>
+
+      <div class="raw-toggles" aria-hidden="true">
+        <div class="toggle-row">
+          <span>
+            <span class="toggle-label">Draw size</span>
+            <span class="toggle-sub">Cards turned per stock click</span>
+          </span>
+          <div class="segmented" role="radiogroup" aria-label="Draw size">
+            <input type="radio" name="draw" id="draw-1" value="1" checked>
+            <label for="draw-1">One</label>
+            <input type="radio" name="draw" id="draw-3" value="3">
+            <label for="draw-3">Three</label>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span>
+            <span class="toggle-label">Redeals</span>
+            <span class="toggle-sub">Times you can cycle the stock</span>
+          </span>
+          <div class="segmented" role="radiogroup" aria-label="Redeal limit">
+            <input type="radio" name="redeal" id="redeal-1" value="1">
+            <label for="redeal-1">×1</label>
+            <input type="radio" name="redeal" id="redeal-3" value="3">
+            <label for="redeal-3">×3</label>
+            <input type="radio" name="redeal" id="redeal-inf" value="inf" checked>
+            <label for="redeal-inf">∞</label>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span>
+            <span class="toggle-label">Scoring</span>
+            <span class="toggle-sub">How wins are tallied</span>
+          </span>
+          <div class="segmented" role="radiogroup" aria-label="Scoring mode">
+            <input type="radio" name="score" id="score-std" value="standard" checked>
+            <label for="score-std">Standard</label>
+            <input type="radio" name="score" id="score-vegas" value="vegas">
+            <label for="score-vegas">Vegas</label>
+            <input type="radio" name="score" id="score-untimed" value="untimed">
+            <label for="score-untimed">Untimed</label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="drawer-section">
+      <span class="drawer-section-label">Display</span>
+      <div class="toggle-row">
+        <span>
+          <span class="toggle-label">Four-color deck</span>
+          <span class="toggle-sub">Distinct colors for each suit</span>
+        </span>
+        <label class="switch">
+          <input type="checkbox" id="opt-four-color" checked>
+          <span class="track" aria-hidden="true"></span>
+          <span class="visually-hidden">Toggle four-color deck</span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span>
+          <span class="toggle-label">Sound</span>
+          <span class="toggle-sub">Card and menu effects</span>
+        </span>
+        <label class="switch">
+          <input type="checkbox" id="opt-sound" checked>
+          <span class="track" aria-hidden="true"></span>
+          <span class="visually-hidden">Toggle sound</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="drawer-section">
+      <span class="drawer-section-label">Daily deal</span>
+      <div class="seed-row">
+        <span class="seed-label">Seed</span>
+        <span class="seed-value" data-bind="seed">2026-04-25 · #14 472</span>
+      </div>
+      <p class="toggle-sub" style="margin-top:0.4rem">
+        Random — not all daily deals are winnable. Streak counts days played, not wins.
+      </p>
+    </section>
+  </aside>
+
+  <!-- ═══ Pause / menu modal ═══ -->
+  <div class="modal-scrim hidden" id="menu-overlay" role="dialog" aria-labelledby="menu-title">
+    <div class="modal">
+      <p class="modal-eyebrow">Paused</p>
+      <h2 class="modal-title" id="menu-title">Take a moment</h2>
+      <div class="menu-list">
+        <button class="menu-item" data-action="resume" type="button">
+          <span>Resume</span><span class="menu-key">ESC</span>
+        </button>
+        <button class="menu-item" data-action="restart" type="button">
+          <span>Restart this deal</span><span class="menu-key">R</span>
+        </button>
+        <button class="menu-item" data-action="new-game" type="button">
+          <span>New deal</span><span class="menu-key">N</span>
+        </button>
+        <button class="menu-item" data-action="open-stats" type="button">
+          <span>Stats</span><span class="menu-key">S</span>
+        </button>
+        <button class="menu-item" data-action="open-settings-from-menu" type="button">
+          <span>Settings</span><span class="menu-key">,</span>
+        </button>
+        <a class="menu-item danger" href="/games/">
+          <span>Quit to gallery</span><span class="menu-key">Q</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Win modal ═══ -->
+  <div class="modal-scrim hidden" id="win-overlay" role="dialog" aria-labelledby="win-title">
+    <div class="modal">
+      <p class="modal-eyebrow">House cleared</p>
+      <h2 class="modal-title" id="win-title">A perfect cascade.</h2>
+      <p class="modal-body">
+        Daily deal — <strong style="color:var(--text-primary)">streak now 8 days</strong>.
+        Same seed available to anyone who plays today.
+      </p>
+      <div class="win-stats">
+        <div class="win-stat">
+          <span class="win-stat-label">Time</span>
+          <span class="win-stat-value">02:48</span>
+        </div>
+        <div class="win-stat">
+          <span class="win-stat-label">Moves</span>
+          <span class="win-stat-value">112</span>
+        </div>
+        <div class="win-stat">
+          <span class="win-stat-label">Score</span>
+          <span class="win-stat-value">1 240</span>
+        </div>
+      </div>
+      <div class="modal-cta-row">
+        <button class="cta-primary" data-action="new-game" type="button" autofocus>New deal</button>
+        <button class="cta-secondary" data-action="replay-seed" type="button">Replay seed</button>
+        <button class="cta-secondary ghost" data-action="open-stats" type="button">Stats</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Stats modal ═══ -->
+  <div class="modal-scrim hidden" id="stats-overlay" role="dialog" aria-labelledby="stats-title">
+    <div class="modal">
+      <p class="modal-eyebrow">Your record</p>
+      <h2 class="modal-title" id="stats-title">Stats</h2>
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <span class="stat-cell-label">Plays</span>
+          <span class="stat-cell-value">142</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">Wins</span>
+          <span class="stat-cell-value">63</span>
+          <span class="stat-cell-sub">44%</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">Best time</span>
+          <span class="stat-cell-value">01:54</span>
+          <span class="stat-cell-sub">Standard</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">Best Vegas</span>
+          <span class="stat-cell-value">+$215</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">Streak</span>
+          <span class="stat-cell-value">8</span>
+          <span class="stat-cell-sub">Daily, current</span>
+        </div>
+        <div class="stat-cell">
+          <span class="stat-cell-label">Longest</span>
+          <span class="stat-cell-value">21</span>
+          <span class="stat-cell-sub">Daily</span>
+        </div>
+      </div>
+
+      <div class="calendar">
+        <div class="calendar-head">
+          <span class="calendar-month">April 2026</span>
+          <span class="calendar-streak">● 8-day streak</span>
+        </div>
+        <div class="calendar-grid">
+          <span class="cal-dow">M</span><span class="cal-dow">T</span><span class="cal-dow">W</span><span class="cal-dow">T</span><span class="cal-dow">F</span><span class="cal-dow">S</span><span class="cal-dow">S</span>
+          <!-- April 1 2026 = Wednesday -->
+          <span class="cal-day empty"></span><span class="cal-day empty"></span>
+          <span class="cal-day won">1</span><span class="cal-day played">2</span><span class="cal-day won">3</span><span class="cal-day played">4</span><span class="cal-day won">5</span>
+          <span class="cal-day won">6</span><span class="cal-day played">7</span><span class="cal-day won">8</span><span class="cal-day won">9</span><span class="cal-day played">10</span><span class="cal-day won">11</span><span class="cal-day won">12</span>
+          <span class="cal-day played">13</span><span class="cal-day won">14</span><span class="cal-day won">15</span><span class="cal-day won">16</span><span class="cal-day played">17</span><span class="cal-day won">18</span><span class="cal-day won">19</span>
+          <span class="cal-day played">20</span><span class="cal-day won">21</span><span class="cal-day won">22</span><span class="cal-day won">23</span><span class="cal-day won">24</span><span class="cal-day won today">25</span><span class="cal-day">26</span>
+          <span class="cal-day">27</span><span class="cal-day">28</span><span class="cal-day">29</span><span class="cal-day">30</span><span class="cal-day empty"></span><span class="cal-day empty"></span><span class="cal-day empty"></span>
+        </div>
+      </div>
+
+      <div class="modal-cta-row">
+        <button class="cta-primary" data-action="close-stats" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Tutorial overlay (first-run only) ═══ -->
+  <div class="tutorial hidden" id="tutorial" aria-hidden="true">
+    <div class="tutorial-backdrop" data-action="skip-tutorial"></div>
+
+    <!-- Step 1 — Stock -->
+    <div class="tutorial-step" data-step="1" style="position:absolute; top: 18%; left: 12%;">
+      <svg class="tutorial-arrow" style="top: -68px; left: 18px; transform: rotate(-12deg)"><use href="#ic-arrow-down"/></svg>
+      <div class="tutorial-bubble">
+        <div class="tutorial-bubble-title">Click here to draw</div>
+        <div class="tutorial-bubble-body">
+          The stock pile turns over fresh cards. Tap or press <strong>Space</strong>.
+        </div>
+        <div class="tutorial-bubble-actions">
+          <button class="tutorial-skip" type="button" data-action="skip-tutorial">Skip</button>
+          <div class="tutorial-step-dots"><span class="active"></span><span></span><span></span></div>
+          <button class="tutorial-next" type="button" data-action="tutorial-next">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav-link health probe — see /nav-health.js + docs/adr/024 -->
+  <script src="/nav-health.js" defer></script>
+
+  <!-- Solitaire modules (load order: shared → engine → deal → render → audio → input → game) -->
+  <script src="../shared/gamepad.js"></script>
+  <script src="engine.js"></script>
+  <script src="deal.js"></script>
+  <script src="render.js"></script>
+  <script src="audio.js"></script>
+  <script src="input.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
