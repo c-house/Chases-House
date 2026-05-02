@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Uno — Design Preview · Chase's House</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   UNO — DESIGN PREVIEW
+   Aesthetic: NBC-Sports-1978 ✕ Saul-Bass-poster ✕ chases.house felt frame.
+   This file is ILLUSTRATIVE. Game logic lives elsewhere.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens ─────────────────────────────────────── */
+:root {
+  /* Card colors — refined off Material defaults toward authentic Uno */
+  --uno-red:    #D8312C;
+  --uno-red-shadow:   #8E1A18;
+  --uno-yellow: #F4C419;
+  --uno-yellow-shadow:#9A7702;
+  --uno-green:  #2EA749;
+  --uno-green-shadow: #155E27;
+  --uno-blue:   #1E72C7;
+  --uno-blue-shadow:  #0D3F76;
+  --uno-black:  #0E0E10;
+  --uno-cream:  #FFF6E6;
+
+  /* Felt + frame — bridges site palette to card palette */
+  --felt-deep: #0B1F15;
+  --felt-mid:  #15301F;
+  --felt-edge: #08130D;
+  --brass:     #c8943e;            /* matches site --accent-gold */
+  --brass-dim: #8a6322;
+
+  /* Easings */
+  --ease-snap:  cubic-bezier(0.2, 0.9, 0.3, 1.3);   /* card lift, play-to-pile */
+  --ease-thunk: cubic-bezier(0.65, 0, 0.35, 1);     /* skip jolt, draw lands  */
+  --ease-glide: cubic-bezier(0.2, 0, 0, 1);         /* ui transitions         */
+  --ease-pop:   cubic-bezier(0.7, -0.2, 0.2, 1.6);  /* uno callout            */
+
+  /* Card geometry */
+  --card-w: 120px;
+  --card-h: 168px;          /* 5:7 ratio */
+  --card-radius: 12px;
+  --card-numeral-size: 76px;
+  --card-corner-size:  18px;
+}
+
+/* ── Page chrome ───────────────────────────────────────── */
+body {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 40%, var(--felt-mid) 0%, var(--felt-deep) 55%, var(--felt-edge) 100%),
+    var(--bg-deep);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* Felt grain — superimposed on the SVG noise layer the site already has */
+body::after {
+  opacity: 0.06;
+}
+
+.preview-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  display: grid;
+  gap: clamp(2rem, 5vw, 4rem);
+}
+
+.preview-section {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.preview-label {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brass);
+  font-weight: 600;
+}
+
+.preview-h2 {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 60, 'WONK' 1, 'SOFT' 50;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 400;
+  color: var(--text-heading);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.preview-note {
+  color: var(--text-muted);
+  max-width: 56ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE WORDMARK
+   "UNO" as a custom-stacked Bungee glyph. Not a font glyph alone:
+   we add an italic skew, paint outline + drop shadow, and frame it.
+   ═══════════════════════════════════════════════════════════════════ */
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0.4rem 1.1rem 0.5rem;
+  background: var(--uno-red);
+  border-radius: 999px;
+  border: 4px solid var(--uno-cream);
+  box-shadow:
+    0 0 0 4px var(--uno-red-shadow),
+    0 12px 28px rgba(0,0,0,0.55);
+  transform: rotate(-6deg);
+}
+.wordmark-text {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: clamp(2.6rem, 5vw, 4.4rem);
+  color: var(--uno-cream);
+  letter-spacing: -0.03em;
+  line-height: 0.85;
+  transform: skewX(-10deg);
+  text-shadow:
+    -2px 0 0 var(--uno-cream),
+    2px 0 0 var(--uno-cream),
+    0 4px 0 var(--uno-yellow-shadow),
+    0 6px 12px rgba(0,0,0,0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARD COMPONENT
+   Anatomy:
+     .card               outer (white border, drop shadow, hover lift)
+       .card-face          colored field, rounded-inset
+         .card-oval         tilted cream ellipse holding numeral/symbol
+           .card-numeral     Bungee italic, color-of-field
+         .card-corner       small numeral top-left + bottom-right (rotated)
+   Wild cards override .card-face with a 4-quadrant gradient.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.card {
+  position: relative;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--card-radius);
+  background: var(--uno-cream);
+  padding: 6px;
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.4),
+    0 14px 28px -8px rgba(0,0,0,0.55),
+    inset 0 0 0 0.5px rgba(0,0,0,0.15);
+  transition: transform 220ms var(--ease-snap), box-shadow 220ms var(--ease-snap);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-12px) rotate(var(--hover-tilt, 0deg));
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.4),
+    0 24px 40px -10px rgba(0,0,0,0.7),
+    0 0 0 2px var(--brass);
+  outline: none;
+  z-index: 5;
+}
+
+.card-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.red    .card-face { background: var(--uno-red); }
+.card.yellow .card-face { background: var(--uno-yellow); }
+.card.green  .card-face { background: var(--uno-green); }
+.card.blue   .card-face { background: var(--uno-blue); }
+
+.card.red    .card-numeral { color: var(--uno-red); }
+.card.yellow .card-numeral { color: var(--uno-yellow-shadow); }
+.card.green  .card-numeral { color: var(--uno-green); }
+.card.blue   .card-numeral { color: var(--uno-blue); }
+
+.card-oval {
+  position: absolute;
+  inset: 12% 8%;
+  background: var(--uno-cream);
+  border-radius: 50%;
+  transform: rotate(-22deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.06);
+}
+
+.card-numeral {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: var(--card-numeral-size);
+  line-height: 1;
+  transform: skewX(-12deg) rotate(22deg);
+  text-shadow:
+    2px 4px 0 currentColor,
+    3px 6px 0 rgba(0,0,0,0.18);
+  letter-spacing: -0.04em;
+  position: relative;
+  top: -3px;
+}
+
+/* The shadow trick: numeral renders with a duplicated darker copy */
+.card.red    .card-numeral { text-shadow: 2px 4px 0 var(--uno-red-shadow),    3px 6px 0 rgba(0,0,0,0.18); }
+.card.yellow .card-numeral { text-shadow: 2px 4px 0 var(--uno-yellow-shadow), 3px 6px 0 rgba(0,0,0,0.18); }
+.card.green  .card-numeral { text-shadow: 2px 4px 0 var(--uno-green-shadow),  3px 6px 0 rgba(0,0,0,0.18); }
+.card.blue   .card-numeral { text-shadow: 2px 4px 0 var(--uno-blue-shadow),   3px 6px 0 rgba(0,0,0,0.18); }
+
+/* Corner mini-numerals */
+.card-corner {
+  position: absolute;
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: var(--card-corner-size);
+  color: var(--uno-cream);
+  line-height: 1;
+  transform: skewX(-10deg);
+  letter-spacing: -0.05em;
+}
+.card-corner.tl { top: 10px;    left: 10px; }
+.card-corner.br { bottom: 10px; right: 10px; transform: skewX(-10deg) rotate(180deg); }
+
+/* ── Action card glyphs (SVG inside oval) ──────────────────── */
+.card-glyph {
+  width: 70%;
+  height: 70%;
+  transform: rotate(22deg);
+  display: block;
+  color: inherit;
+}
+.card.red    .card-glyph { color: var(--uno-red); }
+.card.yellow .card-glyph { color: var(--uno-yellow-shadow); }
+.card.green  .card-glyph { color: var(--uno-green); }
+.card.blue   .card-glyph { color: var(--uno-blue); }
+
+/* Corner glyphs use a smaller variant */
+.card-corner-glyph {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  color: var(--uno-cream);
+}
+.card-corner-glyph.tl { top: 10px;    left: 10px; }
+.card-corner-glyph.br { bottom: 10px; right: 10px; transform: rotate(180deg); }
+
+/* ── Wild card — four-quadrant pinwheel ───────────────────── */
+.card.wild .card-face {
+  background:
+    conic-gradient(from 45deg,
+      var(--uno-red)    0deg  90deg,
+      var(--uno-yellow) 90deg 180deg,
+      var(--uno-green)  180deg 270deg,
+      var(--uno-blue)   270deg 360deg);
+}
+.card.wild .card-oval {
+  background: var(--uno-black);
+}
+.card.wild .card-numeral,
+.card.wild .card-glyph {
+  color: var(--uno-cream);
+  text-shadow:
+    -1px 0 0 var(--uno-cream), 1px 0 0 var(--uno-cream),
+    0 4px 0 #000, 0 6px 12px rgba(0,0,0,0.6);
+}
+.card.wild .card-corner-glyph { color: var(--uno-cream); }
+
+/* ── Card back — black with red-oval cream-italic UNO motif ── */
+.card.back {
+  background: var(--uno-black);
+}
+.card.back .card-face {
+  background: var(--uno-black);
+  border: 2px solid var(--brass-dim);
+  border-radius: 8px;
+}
+.card-back-oval {
+  position: absolute;
+  inset: 18% 10%;
+  background: var(--uno-red);
+  border-radius: 50%;
+  transform: rotate(-22deg);
+  box-shadow:
+    0 0 0 2px var(--uno-red-shadow),
+    inset 0 0 18px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card-back-text {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 36px;
+  color: var(--uno-cream);
+  transform: skewX(-12deg) rotate(22deg);
+  letter-spacing: -0.04em;
+  text-shadow: 1px 2px 0 rgba(0,0,0,0.4);
+}
+.card.back .card-corner-pip {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brass-dim);
+}
+.card.back .card-corner-pip.tl { top: 10px;    left: 10px; }
+.card.back .card-corner-pip.br { bottom: 10px; right: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   GALLERY ROW (cards displayed for spec)
+   ═══════════════════════════════════════════════════════════════════ */
+.card-row {
+  display: flex;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 1.5rem 0.5rem;
+  perspective: 1200px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   THE HERO — ACTIVE PLAY HUD
+   ═══════════════════════════════════════════════════════════════════ */
+.hud {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/10;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--brass-dim);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.5),
+    inset 0 0 60px rgba(0,0,0,0.55),
+    0 30px 80px -30px rgba(0,0,0,0.6);
+  background:
+    radial-gradient(ellipse 75% 55% at 50% 55%,
+      var(--felt-mid) 0%, var(--felt-deep) 55%, var(--felt-edge) 95%);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  isolation: isolate;
+}
+
+.hud::before { /* faint felt-grain noise */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 3px 3px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hud::after { /* table-edge vignette */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 70% at 50% 50%, transparent 50%, rgba(0,0,0,0.5) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Top status bar ───────────────────────────────────── */
+.hud-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1.2rem;
+  background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.1));
+  border-bottom: 1px solid rgba(200,148,62,0.18);
+}
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24, 'WONK' 1, 'SOFT' 50;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.hud-chip strong {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 1.05rem;
+  color: var(--text-heading);
+  letter-spacing: -0.02em;
+}
+
+.hud-color-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.hud-color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--uno-red);
+  box-shadow: 0 0 12px currentColor, inset 0 0 0 1px rgba(255,255,255,0.3);
+  color: var(--uno-red);
+}
+
+.hud-direction {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--brass);
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+
+.hud-menu-btn {
+  appearance: none;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--brass-dim);
+  color: var(--brass);
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+/* ── Play area (the felt) ─────────────────────────────── */
+.hud-play {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: stretch;
+  padding: 1.5rem 1.5rem 0.5rem;
+}
+
+/* Opponents semi-circle */
+.opponents {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+}
+.opponent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24, 'WONK' 1;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.opponent.active {
+  color: var(--brass);
+}
+.opponent.active::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  box-shadow: 0 0 12px var(--brass);
+}
+.opponent-fan {
+  display: flex;
+  position: relative;
+  height: 64px;
+  width: 100px;
+  justify-content: center;
+}
+.opponent-fan .mini-back {
+  position: absolute;
+  width: 36px;
+  height: 50px;
+  border-radius: 5px;
+  background: var(--uno-black);
+  border: 1.5px solid var(--brass-dim);
+  bottom: 0;
+  left: 50%;
+  margin-left: -18px;
+  transform-origin: bottom center;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+.opponent-fan .mini-back::after {
+  content: '';
+  position: absolute;
+  inset: 6px 4px;
+  background: var(--uno-red);
+  border-radius: 50%;
+  transform: rotate(-22deg);
+  opacity: 0.85;
+}
+.opponent-name {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.opponent-count {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 1rem;
+  color: var(--text-heading);
+  letter-spacing: -0.02em;
+}
+.opponent-uno-pip {
+  position: absolute;
+  top: -2px;
+  right: 8px;
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 0.65rem;
+  color: var(--uno-cream);
+  background: var(--uno-red);
+  border: 1.5px solid var(--uno-cream);
+  border-radius: 999px;
+  padding: 1px 6px 2px;
+  box-shadow: 0 0 14px var(--uno-red), 0 4px 8px rgba(0,0,0,0.5);
+  transform: skewX(-10deg) rotate(-8deg);
+  animation: unoPulse 1.6s ease-in-out infinite;
+}
+
+/* Center pile area */
+.pile-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  position: relative;
+}
+.pile-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+.pile-label {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.pile-stack .card {
+  cursor: default;
+}
+.draw-pile {
+  position: relative;
+}
+.draw-pile .card.back {
+  position: relative;
+}
+.draw-pile .card.back:nth-child(2) { position: absolute; top: 2px;  left: 2px;  z-index: -1; opacity: 0.7; }
+.draw-pile .card.back:nth-child(3) { position: absolute; top: 4px;  left: 4px;  z-index: -2; opacity: 0.5; }
+.draw-pile-count {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%) skewX(-10deg);
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 1.6rem;
+  color: var(--uno-cream);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+.discard-pile {
+  position: relative;
+}
+.discard-pile .card:nth-child(1) { transform: rotate(-3deg); }
+.discard-pile .card:nth-child(2) {
+  position: absolute; top: 0; left: 0; z-index: 2;
+  transform: rotate(4deg);
+}
+
+/* Color burst ring (Wild) */
+.color-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 45deg,
+      var(--uno-red), var(--uno-yellow), var(--uno-green), var(--uno-blue), var(--uno-red));
+  filter: blur(40px);
+  opacity: 0.35;
+  pointer-events: none;
+  animation: burst 2.4s ease-in-out infinite;
+  z-index: -1;
+}
+
+/* ── Player hand (fanned at bottom) ────────────────────── */
+.hand {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 1rem 1rem 1.6rem;
+  height: 200px;
+  perspective: 1400px;
+}
+.hand .card {
+  margin: 0 -22px;
+  transform-origin: bottom center;
+  transition: transform 220ms var(--ease-snap), box-shadow 220ms var(--ease-snap);
+}
+/* fan tilt by index */
+.hand .card:nth-child(1) { --hand-rot: -10deg; --hand-y: 14px; }
+.hand .card:nth-child(2) { --hand-rot:  -6deg; --hand-y:  6px; }
+.hand .card:nth-child(3) { --hand-rot:  -2deg; --hand-y:  1px; }
+.hand .card:nth-child(4) { --hand-rot:   2deg; --hand-y:  1px; }
+.hand .card:nth-child(5) { --hand-rot:   6deg; --hand-y:  6px; }
+.hand .card:nth-child(6) { --hand-rot:  10deg; --hand-y: 14px; }
+.hand .card { transform: rotate(var(--hand-rot)) translateY(var(--hand-y)); }
+.hand .card:hover,
+.hand .card:focus-visible {
+  transform: rotate(var(--hand-rot)) translateY(calc(var(--hand-y) - 22px)) scale(1.06);
+  z-index: 9;
+}
+.hand .card.playable::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: calc(var(--card-radius) + 3px);
+  border: 2px solid var(--brass);
+  box-shadow: 0 0 18px var(--brass), inset 0 0 8px var(--brass);
+  pointer-events: none;
+  opacity: 0.85;
+  animation: playablePulse 2s ease-in-out infinite;
+}
+
+/* UNO callout button */
+.uno-call {
+  position: absolute;
+  right: 24px;
+  bottom: 50%;
+  transform: translateY(50%) rotate(-8deg);
+  appearance: none;
+  cursor: pointer;
+  padding: 0.6rem 1.2rem 0.7rem;
+  border-radius: 999px;
+  background: var(--uno-red);
+  border: 4px solid var(--uno-cream);
+  box-shadow:
+    0 0 0 4px var(--uno-red-shadow),
+    0 0 30px rgba(216,49,44,0.7),
+    0 12px 24px rgba(0,0,0,0.5);
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 1.4rem;
+  color: var(--uno-cream);
+  letter-spacing: -0.02em;
+  z-index: 10;
+  animation: unoCallGlow 1.2s ease-in-out infinite;
+}
+.uno-call:hover { transform: translateY(50%) rotate(-8deg) scale(1.06); }
+.uno-call::after {
+  content: '!';
+  display: inline-block;
+  margin-left: 0.1em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════ */
+@keyframes burst {
+  0%,100% { opacity: 0.25; transform: translate(-50%,-50%) scale(0.95) rotate(0deg); }
+  50%     { opacity: 0.45; transform: translate(-50%,-50%) scale(1.05) rotate(20deg); }
+}
+
+@keyframes unoPulse {
+  0%,100% { transform: skewX(-10deg) rotate(-8deg) scale(1); }
+  50%     { transform: skewX(-10deg) rotate(-8deg) scale(1.1); }
+}
+
+@keyframes unoCallGlow {
+  0%,100% { box-shadow: 0 0 0 4px var(--uno-red-shadow), 0 0 30px rgba(216,49,44,0.7), 0 12px 24px rgba(0,0,0,0.5); }
+  50%     { box-shadow: 0 0 0 4px var(--uno-red-shadow), 0 0 50px rgba(216,49,44,1.0), 0 12px 24px rgba(0,0,0,0.5); }
+}
+
+@keyframes playablePulse {
+  0%,100% { opacity: 0.6; }
+  50%     { opacity: 1; }
+}
+
+/* Card-fly: hand → pile (250ms total, 40ms hit-pause at 220-260) */
+@keyframes flyToPile {
+  0%   { transform: translate(0,0) rotate(var(--hand-rot)); }
+  88%  { transform: translate(var(--fly-x, -300px), var(--fly-y, -240px)) rotate(calc(var(--hand-rot) + 8deg)); }
+  88.1%{ transform: translate(var(--fly-x, -300px), var(--fly-y, -240px)) rotate(calc(var(--hand-rot) + 8deg)); } /* hit-pause */
+  100% { transform: translate(var(--fly-x, -300px), calc(var(--fly-y, -240px) + 4px)) rotate(calc(var(--hand-rot) + 8deg)); }
+}
+
+/* Reverse direction sweep: arrow strokes circular path */
+@keyframes reverseSweep {
+  0%   { stroke-dashoffset: 360; opacity: 0; }
+  10%  { opacity: 1; }
+  100% { stroke-dashoffset: 0;   opacity: 0; }
+}
+
+/* Shuffle riffle (idle attract) */
+@keyframes shuffle {
+  0%   { transform: translateX(-200%) rotate(-12deg); opacity: 0; }
+  18%  { transform: translateX(-12px)  rotate(-6deg); opacity: 1; }
+  30%  { transform: translateX(8px)    rotate(4deg);  opacity: 1; }
+  42%  { transform: translateX(-6px)   rotate(-3deg); opacity: 1; }
+  54%  { transform: translateX(4px)    rotate(2deg);  opacity: 1; }
+  72%  { transform: translateX(0)      rotate(0deg);  opacity: 1; }
+  100% { transform: translateX(0)      rotate(0deg);  opacity: 0; }
+}
+
+/* Confetti — round end. Conic-gradient pellets. */
+@keyframes fall {
+  0%   { transform: translateY(-20vh) rotate(0deg); }
+  100% { transform: translateY(110vh) rotate(720deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TITLE-SCREEN MOCKUP
+   ═══════════════════════════════════════════════════════════════════ */
+.title-mock {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid var(--brass-dim);
+  padding: clamp(2rem, 5vw, 4rem) 2rem;
+  display: grid;
+  place-items: center;
+  gap: 1.4rem;
+  min-height: 360px;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 60%, var(--felt-mid) 0%, var(--felt-deep) 70%),
+    var(--bg-deep);
+  overflow: hidden;
+  isolation: isolate;
+}
+.title-mock-attract {
+  position: absolute;
+  bottom: 14%;
+  width: 80%;
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+.title-mock-attract .card.back {
+  position: absolute;
+  width: 50px;
+  height: 70px;
+  --card-w: 50px;
+  --card-h: 70px;
+  animation: shuffle 6s infinite;
+}
+.title-mock-attract .card.back:nth-child(1) { animation-delay: 0s; }
+.title-mock-attract .card.back:nth-child(2) { animation-delay: 0.4s; }
+
+.title-cta {
+  position: relative;
+  z-index: 2;
+  appearance: none;
+  cursor: pointer;
+  background: var(--uno-yellow);
+  color: var(--uno-yellow-shadow);
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 1.8rem;
+  letter-spacing: 0.02em;
+  padding: 0.7rem 2.6rem 0.85rem;
+  border: 4px solid var(--uno-cream);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 4px var(--uno-yellow-shadow),
+    0 16px 30px rgba(0,0,0,0.55);
+  transform: skewX(-8deg);
+  transition: transform 200ms var(--ease-snap), box-shadow 200ms var(--ease-snap);
+}
+.title-cta:hover {
+  transform: skewX(-8deg) translateY(-3px);
+  box-shadow:
+    0 0 0 4px var(--uno-yellow-shadow),
+    0 22px 38px rgba(0,0,0,0.65);
+}
+.title-mini-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.title-mini-row a {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+  color: var(--brass);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  font-size: 0.95rem;
+  border-bottom: 1px solid transparent;
+  padding: 0.2rem 0;
+  transition: border-color 200ms var(--ease-glide), color 200ms var(--ease-glide);
+}
+.title-mini-row a:hover { color: var(--accent-glow); border-color: var(--accent-glow); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   COLOR PICKER MODAL (4-quadrant)
+   ═══════════════════════════════════════════════════════════════════ */
+.color-picker {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border: 4px solid var(--uno-cream);
+  box-shadow: 0 0 0 4px var(--uno-black), 0 30px 60px rgba(0,0,0,0.7);
+  cursor: pointer;
+  position: relative;
+}
+.color-picker > button {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  transition: filter 180ms var(--ease-glide), transform 180ms var(--ease-glide);
+}
+.color-picker > button:hover { filter: brightness(1.15); transform: scale(1.04); }
+.color-picker .pick-red    { background: var(--uno-red); }
+.color-picker .pick-yellow { background: var(--uno-yellow); }
+.color-picker .pick-green  { background: var(--uno-green); }
+.color-picker .pick-blue   { background: var(--uno-blue); }
+.color-picker::after {
+  content: '?';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: var(--uno-black);
+  color: var(--uno-cream);
+  display: grid;
+  place-items: center;
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 2rem;
+  border: 3px solid var(--uno-cream);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOT-SEAT CURTAIN (between turns in couch mode)
+   ═══════════════════════════════════════════════════════════════════ */
+.curtain {
+  position: relative;
+  border-radius: 16px;
+  background: var(--uno-black);
+  display: grid;
+  place-items: center;
+  padding: 4rem 1rem;
+  border: 1px solid var(--brass-dim);
+  overflow: hidden;
+}
+.curtain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(45deg,
+    rgba(200,148,62,0.04) 0 12px, transparent 12px 24px);
+}
+.curtain-text {
+  position: relative;
+  text-align: center;
+  display: grid;
+  gap: 0.6rem;
+}
+.curtain-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.curtain-name {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  color: var(--uno-cream);
+  transform: skewX(-10deg);
+  letter-spacing: -0.01em;
+}
+.curtain-prompt {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 24, 'WONK' 1;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TOKEN PANEL (designer reference)
+   ═══════════════════════════════════════════════════════════════════ */
+.tokens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.token-card {
+  border: 1px solid var(--brass-dim);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(0,0,0,0.3);
+  display: grid;
+  gap: 0.5rem;
+}
+.token-card h4 {
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 0.95rem;
+  color: var(--brass);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.token-card dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.7rem; font-size: 0.82rem; margin: 0; }
+.token-card dt { color: var(--text-muted); font-family: var(--font-body); }
+.token-card dd { color: var(--text-heading); margin: 0; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.swatch-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.swatch {
+  width: 40px; height: 40px; border-radius: 6px;
+  display: grid; place-items: center;
+  font-family: 'Bungee', system-ui, sans-serif;
+  font-size: 0.7rem; color: var(--uno-cream);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.swatch.r { background: var(--uno-red); }
+.swatch.y { background: var(--uno-yellow); color: var(--uno-yellow-shadow); }
+.swatch.g { background: var(--uno-green); }
+.swatch.b { background: var(--uno-blue); }
+.swatch.k { background: var(--uno-black); }
+.swatch.f1 { background: var(--felt-deep); }
+.swatch.f2 { background: var(--felt-mid); }
+.swatch.br { background: var(--brass); color: var(--uno-black); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE — portrait-reflow miniature
+   ═══════════════════════════════════════════════════════════════════ */
+.mobile-mock {
+  width: 280px;
+  margin: 0 auto;
+  aspect-ratio: 9/16;
+  border-radius: 32px;
+  border: 8px solid #18171a;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 60%, var(--felt-mid), var(--felt-deep));
+  box-shadow:
+    0 0 0 1px var(--brass-dim),
+    0 30px 60px rgba(0,0,0,0.6);
+  padding: 12px 10px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 8px;
+  overflow: hidden;
+  font-size: 0.75rem;
+}
+.mobile-mock .mm-bar {
+  display: flex; gap: 6px; align-items: center;
+  font-family: 'Bungee', sans-serif; font-size: 0.62rem;
+  color: var(--brass);
+  border-bottom: 1px solid rgba(200,148,62,0.2);
+  padding-bottom: 6px;
+}
+.mobile-mock .mm-opps {
+  display: flex; justify-content: space-around;
+  font-size: 0.6rem; color: var(--text-muted);
+}
+.mobile-mock .mm-opp { display: grid; place-items: center; gap: 2px; }
+.mobile-mock .mm-opp .mb {
+  width: 18px; height: 26px; background: var(--uno-black); border-radius: 3px;
+  border: 1px solid var(--brass-dim);
+}
+.mobile-mock .mm-opp .mb::after {
+  content: ''; display: block; width: 80%; height: 60%; margin: 16% auto 0;
+  background: var(--uno-red); border-radius: 50%;
+}
+.mobile-mock .mm-pile {
+  display: flex; justify-content: center; align-items: center; gap: 12px;
+}
+.mobile-mock .mm-pile .mc {
+  width: 50px; height: 70px; border-radius: 6px;
+  background: var(--uno-cream); padding: 3px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+.mobile-mock .mm-pile .mc.wild .inner {
+  width: 100%; height: 100%; border-radius: 4px;
+  background: conic-gradient(from 45deg, var(--uno-red), var(--uno-yellow), var(--uno-green), var(--uno-blue), var(--uno-red));
+  display: grid; place-items: center;
+  font-family: 'Bungee', sans-serif;
+  color: var(--uno-cream); font-size: 0.7rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+.mobile-mock .mm-pile .mc.back .inner {
+  width: 100%; height: 100%; border-radius: 4px;
+  background: var(--uno-black); border: 1px solid var(--brass-dim);
+}
+.mobile-mock .mm-hand {
+  display: flex; justify-content: center; gap: 4px;
+  align-items: end; padding-top: 8px;
+}
+.mobile-mock .mm-hand .mc {
+  width: 30px; height: 42px; border-radius: 4px;
+  background: var(--uno-cream); padding: 2px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+.mobile-mock .mm-hand .mc .inner {
+  width: 100%; height: 100%; border-radius: 3px;
+}
+.mobile-mock .mm-hand .mc.r .inner { background: var(--uno-red); }
+.mobile-mock .mm-hand .mc.y .inner { background: var(--uno-yellow); }
+.mobile-mock .mm-hand .mc.g .inner { background: var(--uno-green); }
+.mobile-mock .mm-hand .mc.b .inner { background: var(--uno-blue); }
+.mobile-mock .mm-uno {
+  position: absolute;
+  bottom: 70px; right: 18px;
+  background: var(--uno-red);
+  color: var(--uno-cream);
+  font-family: 'Bungee', sans-serif;
+  font-size: 0.65rem;
+  border: 2px solid var(--uno-cream);
+  border-radius: 999px;
+  padding: 4px 10px;
+  transform: rotate(-8deg);
+  box-shadow: 0 0 14px rgba(216,49,44,0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ANIMATION SHOWCASE LAB (interactive triggers)
+   ═══════════════════════════════════════════════════════════════════ */
+.lab {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.lab-cell {
+  border: 1px solid var(--brass-dim);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(0,0,0,0.3);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.7rem;
+  min-height: 220px;
+}
+.lab-cell h4 {
+  font-family: 'Bungee', sans-serif;
+  font-size: 0.85rem;
+  color: var(--brass);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.lab-cell .lab-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  overflow: hidden;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 50%, var(--felt-mid), var(--felt-deep));
+}
+.lab-cell .lab-spec {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+  line-height: 1.5;
+}
+.lab-cell button.trigger {
+  appearance: none; cursor: pointer;
+  background: var(--brass);
+  color: var(--uno-black);
+  border: none;
+  font-family: 'Bungee', sans-serif;
+  font-size: 0.78rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  transition: filter 150ms;
+}
+.lab-cell button.trigger:hover { filter: brightness(1.15); }
+
+/* Lab — fly-to-pile demo */
+.lab-fly { position: relative; width: 100%; height: 120px; }
+.lab-fly .card {
+  position: absolute;
+  bottom: 6px; left: 30%;
+  --card-w: 70px; --card-h: 98px;
+  --card-numeral-size: 44px;
+  --card-corner-size: 12px;
+  --card-radius: 8px;
+  width: var(--card-w); height: var(--card-h);
+  cursor: pointer;
+}
+.lab-fly .card.flown {
+  animation: flyToPile 320ms var(--ease-snap) forwards;
+  --fly-x: 80px;
+  --fly-y: -40px;
+  --hand-rot: 0deg;
+}
+.lab-fly .pile-spot {
+  position: absolute;
+  top: 14px; right: 18%;
+  width: 70px; height: 98px;
+  border: 2px dashed var(--brass-dim);
+  border-radius: 8px;
+}
+
+/* Lab — color-burst */
+.lab-burst { position: relative; width: 100%; height: 120px; }
+.lab-burst .burst-card {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 70px; height: 98px;
+  --card-w: 70px; --card-h: 98px;
+  --card-numeral-size: 44px;
+  --card-corner-size: 12px;
+  --card-radius: 8px;
+}
+.lab-burst .burst-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: conic-gradient(from 45deg,
+    var(--uno-red), var(--uno-yellow), var(--uno-green), var(--uno-blue), var(--uno-red));
+  transform: translate(-50%,-50%) scale(0);
+  filter: blur(20px);
+  opacity: 0;
+}
+.lab-burst.fire .burst-ring {
+  animation: burstFire 600ms var(--ease-snap) forwards;
+}
+@keyframes burstFire {
+  0%   { transform: translate(-50%,-50%) scale(0);   opacity: 0; }
+  30%  { transform: translate(-50%,-50%) scale(1.4); opacity: 0.9; }
+  100% { transform: translate(-50%,-50%) scale(3.5); opacity: 0; }
+}
+
+/* Lab — reverse sweep */
+.lab-reverse svg { width: 100px; height: 100px; }
+.lab-reverse svg .arrow {
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 360;
+  stroke-dashoffset: 360;
+  filter: drop-shadow(0 0 6px var(--brass));
+}
+.lab-reverse.fire svg .arrow {
+  animation: reverseSweep 600ms var(--ease-glide) forwards;
+}
+
+/* Lab — UNO callout pop */
+.lab-uno-pop .pop {
+  font-family: 'Bungee', sans-serif;
+  background: var(--uno-red);
+  color: var(--uno-cream);
+  padding: 0.5rem 1rem 0.6rem;
+  border: 3px solid var(--uno-cream);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px var(--uno-red-shadow);
+  transform: scale(0) rotate(-12deg);
+  transition: transform 320ms var(--ease-pop);
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+.lab-uno-pop.fire .pop { transform: scale(1) rotate(-8deg); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  /* Site styles.css already nukes animations globally — these are
+     additional explicit overrides for game-only constructs. */
+  .color-burst,
+  .opponent-uno-pip,
+  .uno-call,
+  .title-mock-attract { animation: none !important; }
+  .card { transition: opacity 120ms linear !important; transform: none !important; }
+  .hand .card { transform: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PORTRAIT REFLOW (the live game, not the iPhone-mock)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 720px) {
+  :root {
+    --card-w: 86px;
+    --card-h: 120px;
+    --card-numeral-size: 54px;
+  }
+  .hud { aspect-ratio: 9/16; }
+  .pile-zone { gap: 1rem; }
+  .opponents { gap: 0.4rem; }
+  .opponent-name { font-size: 0.7rem; }
+  .opponent-fan { width: 60px; height: 44px; }
+  .opponent-fan .mini-back { width: 24px; height: 34px; margin-left: -12px; }
+  .hand { height: 150px; padding-bottom: 1rem; }
+  .hand .card { margin: 0 -38px; }
+}
+</style>
+</head>
+<body>
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+  </filter>
+
+  <!-- Reusable card glyph paths -->
+  <defs>
+    <!-- Skip — circle with diagonal slash -->
+    <symbol id="g-skip" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="22" fill="none" stroke="currentColor" stroke-width="6"/>
+      <line x1="14" y1="46" x2="46" y2="14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+    </symbol>
+    <!-- Reverse — two arrows curling -->
+    <symbol id="g-reverse" viewBox="0 0 60 60">
+      <path d="M14 22 L26 12 L26 18 L42 18 L42 28 L26 28 L26 34 Z"
+            fill="currentColor"/>
+      <path d="M46 38 L34 48 L34 42 L18 42 L18 32 L34 32 L34 26 Z"
+            fill="currentColor"/>
+    </symbol>
+    <!-- Draw Two — +2 stacked cards -->
+    <symbol id="g-draw2" viewBox="0 0 60 60">
+      <rect x="14" y="20" width="20" height="28" rx="3" fill="currentColor" opacity="0.5"/>
+      <rect x="20" y="14" width="20" height="28" rx="3" fill="currentColor"/>
+      <text x="42" y="30" font-family="Bungee, sans-serif" font-size="22" fill="currentColor"
+            transform="skewX(-12)">+2</text>
+    </symbol>
+    <!-- Draw Four — wild +4 on quadrant -->
+    <symbol id="g-draw4" viewBox="0 0 60 60">
+      <rect x="14" y="20" width="20" height="28" rx="3" fill="#fff" opacity="0.4"/>
+      <rect x="20" y="14" width="20" height="28" rx="3" fill="#fff"/>
+      <text x="42" y="32" font-family="Bungee, sans-serif" font-size="24" fill="#fff" transform="skewX(-12)">+4</text>
+    </symbol>
+    <!-- Wild — pinwheel marker -->
+    <symbol id="g-wild" viewBox="0 0 60 60">
+      <text x="30" y="40" font-family="Bungee, sans-serif" font-size="28" fill="#fff" text-anchor="middle" transform="skewX(-12) translate(-9 0)">W</text>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="site-header">
+  <nav class="nav" aria-label="Main navigation">
+    <a class="nav-link" style="--i:0" href="/">Home</a>
+    <a class="nav-link" style="--i:1" href="/games/">Games</a>
+    <a class="nav-link" style="--i:2" href="/cookbook/">Cookbook</a>
+    <a class="nav-link" style="--i:5" href="/files/">Files</a>
+  </nav>
+</header>
+
+<main class="preview-shell">
+
+  <!-- ─────────────── 1. Wordmark + brief ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">ADR-017 · /frontend-design pass</span>
+    <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;">
+      <div class="wordmark" role="img" aria-label="UNO logo">
+        <span class="wordmark-text">UNO</span>
+      </div>
+      <div style="max-width:42ch;">
+        <h2 class="preview-h2" style="margin-bottom:0.4rem;">Saul Bass meets a 1978 game-show splash.</h2>
+        <p class="preview-note">The cards stay loud — saturated red, yellow, green, blue. The frame stays warm — felt-table greens with brass-gold bezels off the chases.house token set. <strong>Bungee</strong> (Google Font, slab-italic) owns the wordmark and card numerals; <strong>Fraunces</strong> + <strong>Bricolage</strong> stay on UI chrome. The hook is the contrast: pop-bright cards living inside a dignified, dark, warm room.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 2. Card gallery ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Card anatomy · DOM + inline SVG (no images)</span>
+    <h2 class="preview-h2">The 108-card deck, spec'd in CSS.</h2>
+    <p class="preview-note">Every card is a <code>div.card</code>. The numeral is <strong>Bungee</strong>, skewed −12°, painted with a duplicated darker copy of its color (the chunky-shadow that gives the lettering weight). The cream oval is rotated −22° — the 70s tilt. Action symbols are inline SVG so they scale crisply and recolor on a single CSS variable. Hover any card to see the lift.</p>
+
+    <div class="card-row">
+      <!-- Number cards: one of each color -->
+      <div class="card red"   tabindex="0">
+        <span class="card-corner tl">7</span>
+        <div class="card-face">
+          <div class="card-oval"><span class="card-numeral">7</span></div>
+        </div>
+        <span class="card-corner br">7</span>
+      </div>
+      <div class="card yellow" tabindex="0">
+        <span class="card-corner tl">3</span>
+        <div class="card-face">
+          <div class="card-oval"><span class="card-numeral">3</span></div>
+        </div>
+        <span class="card-corner br">3</span>
+      </div>
+      <div class="card green" tabindex="0">
+        <span class="card-corner tl">5</span>
+        <div class="card-face">
+          <div class="card-oval"><span class="card-numeral">5</span></div>
+        </div>
+        <span class="card-corner br">5</span>
+      </div>
+      <div class="card blue" tabindex="0">
+        <span class="card-corner tl">0</span>
+        <div class="card-face">
+          <div class="card-oval"><span class="card-numeral">0</span></div>
+        </div>
+        <span class="card-corner br">0</span>
+      </div>
+      <!-- Skip -->
+      <div class="card red" tabindex="0">
+        <svg class="card-corner-glyph tl"><use href="#g-skip"/></svg>
+        <div class="card-face">
+          <div class="card-oval">
+            <svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-skip"/></svg>
+          </div>
+        </div>
+        <svg class="card-corner-glyph br"><use href="#g-skip"/></svg>
+      </div>
+      <!-- Reverse -->
+      <div class="card green" tabindex="0">
+        <svg class="card-corner-glyph tl"><use href="#g-reverse"/></svg>
+        <div class="card-face">
+          <div class="card-oval">
+            <svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-reverse"/></svg>
+          </div>
+        </div>
+        <svg class="card-corner-glyph br"><use href="#g-reverse"/></svg>
+      </div>
+      <!-- Draw Two -->
+      <div class="card blue" tabindex="0">
+        <svg class="card-corner-glyph tl"><use href="#g-draw2"/></svg>
+        <div class="card-face">
+          <div class="card-oval">
+            <svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-draw2"/></svg>
+          </div>
+        </div>
+        <svg class="card-corner-glyph br"><use href="#g-draw2"/></svg>
+      </div>
+      <!-- Wild -->
+      <div class="card wild" tabindex="0">
+        <svg class="card-corner-glyph tl"><use href="#g-wild"/></svg>
+        <div class="card-face">
+          <div class="card-oval">
+            <svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-wild"/></svg>
+          </div>
+        </div>
+        <svg class="card-corner-glyph br"><use href="#g-wild"/></svg>
+      </div>
+      <!-- Wild +4 -->
+      <div class="card wild" tabindex="0">
+        <svg class="card-corner-glyph tl"><use href="#g-draw4"/></svg>
+        <div class="card-face">
+          <div class="card-oval">
+            <svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-draw4"/></svg>
+          </div>
+        </div>
+        <svg class="card-corner-glyph br"><use href="#g-draw4"/></svg>
+      </div>
+      <!-- Card back -->
+      <div class="card back" tabindex="0">
+        <span class="card-corner-pip tl"></span>
+        <div class="card-face">
+          <div class="card-back-oval">
+            <span class="card-back-text">UNO</span>
+          </div>
+        </div>
+        <span class="card-corner-pip br"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 3. The Hero ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Active play HUD · the hero frame</span>
+    <h2 class="preview-h2">The moment to design toward.</h2>
+    <p class="preview-note">Three opponents semi-circled, "Mom" mid-turn, "Dad" already at 1 card with the UNO pip lit. Player has one card left (Yellow 7). The discard pile shows a Wild +4 mid color-burst. The floating <strong>UNO!</strong> stamp is calling for a tap. Every numeral, dropshadow, and brass edge is the language for the rest of the game.</p>
+
+    <div class="hud" role="region" aria-label="Active play HUD mockup">
+      <!-- Top status -->
+      <div class="hud-bar">
+        <span class="hud-chip">DECK <strong>68</strong></span>
+        <span class="hud-color-bar">
+          <span class="hud-chip">COLOR</span>
+          <span class="hud-color-swatch" style="background:var(--uno-red);color:var(--uno-red);"></span>
+        </span>
+        <span class="hud-chip">SCORE <strong>240</strong></span>
+        <span class="hud-direction">▶ MOM ◀</span>
+        <button class="hud-menu-btn" aria-label="Menu">☰</button>
+      </div>
+
+      <!-- Play area -->
+      <div class="hud-play">
+        <div class="opponents">
+          <div class="opponent active">
+            <div class="opponent-fan" aria-label="Mom: 4 cards">
+              <span class="mini-back" style="transform:rotate(-12deg) translateX(-22px)"></span>
+              <span class="mini-back" style="transform:rotate(-4deg)  translateX(-8px)"></span>
+              <span class="mini-back" style="transform:rotate(4deg)   translateX(8px)"></span>
+              <span class="mini-back" style="transform:rotate(12deg)  translateX(22px)"></span>
+            </div>
+            <span class="opponent-name">Mom</span>
+            <span class="opponent-count">4</span>
+          </div>
+          <div class="opponent">
+            <div class="opponent-fan" aria-label="Dad: 1 card, declared UNO">
+              <span class="mini-back" style="transform:rotate(0deg)"></span>
+              <span class="opponent-uno-pip">UNO</span>
+            </div>
+            <span class="opponent-name">Dad</span>
+            <span class="opponent-count">1</span>
+          </div>
+          <div class="opponent">
+            <div class="opponent-fan" aria-label="Sis: 5 cards">
+              <span class="mini-back" style="transform:rotate(-14deg) translateX(-26px)"></span>
+              <span class="mini-back" style="transform:rotate(-7deg)  translateX(-12px)"></span>
+              <span class="mini-back" style="transform:rotate(0deg)"></span>
+              <span class="mini-back" style="transform:rotate(7deg)   translateX(12px)"></span>
+              <span class="mini-back" style="transform:rotate(14deg)  translateX(26px)"></span>
+            </div>
+            <span class="opponent-name">Sis</span>
+            <span class="opponent-count">5</span>
+          </div>
+        </div>
+
+        <div class="pile-zone">
+          <span class="color-burst" aria-hidden="true"></span>
+          <div class="pile-stack draw-pile" aria-label="Draw pile, 68 cards">
+            <span class="pile-label">DRAW</span>
+            <div style="position:relative;">
+              <div class="card back"><span class="card-corner-pip tl"></span><div class="card-face"><div class="card-back-oval"><span class="card-back-text">UNO</span></div></div><span class="card-corner-pip br"></span></div>
+              <div class="card back"></div>
+              <div class="card back"></div>
+              <span class="draw-pile-count">68</span>
+            </div>
+          </div>
+          <div class="pile-stack discard-pile" aria-label="Discard pile, top: Wild +4">
+            <span class="pile-label">DISCARD</span>
+            <div style="position:relative;">
+              <div class="card red" style="transform:rotate(-7deg);">
+                <span class="card-corner tl">9</span>
+                <div class="card-face"><div class="card-oval"><span class="card-numeral">9</span></div></div>
+                <span class="card-corner br">9</span>
+              </div>
+              <div class="card wild" style="position:absolute;inset:0;transform:rotate(4deg);">
+                <svg class="card-corner-glyph tl"><use href="#g-draw4"/></svg>
+                <div class="card-face"><div class="card-oval"><svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-draw4"/></svg></div></div>
+                <svg class="card-corner-glyph br"><use href="#g-draw4"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player hand -->
+      <div class="hand" role="group" aria-label="Your hand">
+        <div class="card blue" tabindex="0">
+          <span class="card-corner tl">2</span>
+          <div class="card-face"><div class="card-oval"><span class="card-numeral">2</span></div></div>
+          <span class="card-corner br">2</span>
+        </div>
+        <div class="card green" tabindex="0">
+          <svg class="card-corner-glyph tl"><use href="#g-skip"/></svg>
+          <div class="card-face"><div class="card-oval"><svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-skip"/></svg></div></div>
+          <svg class="card-corner-glyph br"><use href="#g-skip"/></svg>
+        </div>
+        <div class="card red" tabindex="0">
+          <span class="card-corner tl">4</span>
+          <div class="card-face"><div class="card-oval"><span class="card-numeral">4</span></div></div>
+          <span class="card-corner br">4</span>
+        </div>
+        <div class="card yellow playable" tabindex="0" aria-label="Yellow 7, playable">
+          <span class="card-corner tl">7</span>
+          <div class="card-face"><div class="card-oval"><span class="card-numeral">7</span></div></div>
+          <span class="card-corner br">7</span>
+        </div>
+        <div class="card wild" tabindex="0">
+          <svg class="card-corner-glyph tl"><use href="#g-wild"/></svg>
+          <div class="card-face"><div class="card-oval"><svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-wild"/></svg></div></div>
+          <svg class="card-corner-glyph br"><use href="#g-wild"/></svg>
+        </div>
+        <div class="card blue" tabindex="0">
+          <svg class="card-corner-glyph tl"><use href="#g-reverse"/></svg>
+          <div class="card-face"><div class="card-oval"><svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-reverse"/></svg></div></div>
+          <svg class="card-corner-glyph br"><use href="#g-reverse"/></svg>
+        </div>
+
+        <button class="uno-call" aria-label="Call UNO">UNO</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 4. Title screen + secondary surfaces ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Title · pause · color picker · hot-seat curtain</span>
+    <h2 class="preview-h2">Secondary surfaces.</h2>
+    <p class="preview-note">Each surface holds the same vocabulary: the wordmark in red & cream, brass bezels, the Bungee italic numerals where weight is needed, Fraunces where character is. The title screen has the <em>idle attract</em> — two card-backs slide in and shuffle every 12s (visible at the bottom of the panel below).</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;">
+
+      <!-- TITLE -->
+      <div class="title-mock">
+        <div class="wordmark" role="img" aria-label="UNO">
+          <span class="wordmark-text">UNO</span>
+        </div>
+        <button class="title-cta">PLAY</button>
+        <div class="title-mini-row">
+          <a href="#">New Game</a>
+          <a href="#">Continue</a>
+          <a href="#">How to Play</a>
+          <a href="#">Settings</a>
+        </div>
+        <div class="title-mock-attract">
+          <div class="card back"></div>
+          <div class="card back"></div>
+        </div>
+      </div>
+
+      <!-- COLOR PICKER -->
+      <div style="display:grid;place-items:center;padding:2rem;border-radius:16px;border:1px solid var(--brass-dim);background:radial-gradient(ellipse at center, var(--felt-mid), var(--felt-deep));">
+        <div class="color-picker" role="radiogroup" aria-label="Pick a color">
+          <button class="pick-red"    aria-label="Red"></button>
+          <button class="pick-yellow" aria-label="Yellow"></button>
+          <button class="pick-blue"   aria-label="Blue"></button>
+          <button class="pick-green"  aria-label="Green"></button>
+        </div>
+        <p class="preview-note" style="margin-top:1rem;font-size:0.82rem;text-align:center;">Pops over the table when a Wild lands. Picking flies a 400ms radial wash from the pile.</p>
+      </div>
+
+      <!-- HOT-SEAT CURTAIN -->
+      <div class="curtain">
+        <div class="curtain-text">
+          <span class="curtain-eyebrow">Couch · pass the device</span>
+          <span class="curtain-name">SIS</span>
+          <span class="curtain-prompt">Tap when you're ready</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 5. Mobile reflow ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Mobile · 9:16 portrait reflow</span>
+    <h2 class="preview-h2">Phone-sized, no compromises.</h2>
+    <p class="preview-note">Opponents collapse to a top row with bigger numerals (no fanned mini-cards). Hand fan tightens; card width shrinks to 86px. The UNO! button anchors lower-right above the hand. All animations preserved.</p>
+
+    <div class="mobile-mock">
+      <div class="mm-bar">
+        <span>☰</span><span>▶ MOM</span><span style="margin-left:auto;">68</span>
+      </div>
+      <div class="mm-opps">
+        <div class="mm-opp"><span class="mb"></span><span>Mom 4</span></div>
+        <div class="mm-opp"><span class="mb"></span><span>Dad 1!</span></div>
+        <div class="mm-opp"><span class="mb"></span><span>Sis 5</span></div>
+      </div>
+      <div class="mm-pile">
+        <div class="mc back"><div class="inner"></div></div>
+        <div class="mc wild"><div class="inner">+4</div></div>
+      </div>
+      <div class="mm-hand">
+        <div class="mc b"><div class="inner"></div></div>
+        <div class="mc g"><div class="inner"></div></div>
+        <div class="mc r"><div class="inner"></div></div>
+        <div class="mc y"><div class="inner"></div></div>
+        <div class="mc b"><div class="inner"></div></div>
+      </div>
+      <div class="mm-uno">UNO!</div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 6. Animation lab ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Animation lab · click triggers to fire</span>
+    <h2 class="preview-h2">Motion specs, live.</h2>
+    <p class="preview-note">Every spec the implementation needs. Easings live as CSS vars; durations and stagger windows are documented per cell. Site-wide <code>prefers-reduced-motion</code> already neuters animations; explicit overrides also kill the perpetual ones (color-burst, pip-pulse, attract).</p>
+
+    <div class="lab">
+      <div class="lab-cell">
+        <h4>Card lift (hover)</h4>
+        <div class="lab-stage">
+          <div class="card yellow" tabindex="0" style="--card-w:80px;--card-h:112px;--card-numeral-size:48px;--card-corner-size:14px;">
+            <span class="card-corner tl">7</span>
+            <div class="card-face"><div class="card-oval"><span class="card-numeral">7</span></div></div>
+            <span class="card-corner br">7</span>
+          </div>
+        </div>
+        <div class="lab-spec">
+          duration: 220ms<br>
+          easing: var(--ease-snap)<br>
+          y: −12px · scale: 1.04 · brass outline
+        </div>
+      </div>
+
+      <div class="lab-cell">
+        <h4>Play to pile</h4>
+        <div class="lab-stage">
+          <div class="lab-fly" id="lab-fly">
+            <div class="card red">
+              <span class="card-corner tl">5</span>
+              <div class="card-face"><div class="card-oval"><span class="card-numeral">5</span></div></div>
+              <span class="card-corner br">5</span>
+            </div>
+            <div class="pile-spot"></div>
+          </div>
+        </div>
+        <button class="trigger" data-fire="fly">FIRE</button>
+        <div class="lab-spec">
+          duration: 250ms (320ms in lab)<br>
+          88% travel · 40ms hit-pause · 12% settle<br>
+          rotate ±5° randomized
+        </div>
+      </div>
+
+      <div class="lab-cell">
+        <h4>Wild color burst</h4>
+        <div class="lab-stage">
+          <div class="lab-burst" id="lab-burst">
+            <div class="burst-ring"></div>
+            <div class="card wild burst-card">
+              <svg class="card-corner-glyph tl"><use href="#g-wild"/></svg>
+              <div class="card-face"><div class="card-oval"><svg class="card-glyph" viewBox="0 0 60 60"><use href="#g-wild"/></svg></div></div>
+              <svg class="card-corner-glyph br"><use href="#g-wild"/></svg>
+            </div>
+          </div>
+        </div>
+        <button class="trigger" data-fire="burst">FIRE</button>
+        <div class="lab-spec">
+          duration: 600ms (live game: 400ms wash + 200ms recolor)<br>
+          conic-gradient ring · blur 20→40px<br>
+          color bar shifts current-color CSS var
+        </div>
+      </div>
+
+      <div class="lab-cell">
+        <h4>Reverse sweep</h4>
+        <div class="lab-stage">
+          <div class="lab-reverse" id="lab-reverse">
+            <svg viewBox="0 0 100 100">
+              <circle class="arrow" cx="50" cy="50" r="40"/>
+              <path d="M 80 30 L 90 40 L 80 50" fill="none" stroke="var(--brass)" stroke-width="6" stroke-linecap="round" filter="drop-shadow(0 0 6px var(--brass))"/>
+            </svg>
+          </div>
+        </div>
+        <button class="trigger" data-fire="reverse">FIRE</button>
+        <div class="lab-spec">
+          duration: 600ms<br>
+          easing: var(--ease-glide)<br>
+          stroke-dashoffset 360→0 · plays a vinyl-scratch SFX
+        </div>
+      </div>
+
+      <div class="lab-cell">
+        <h4>UNO! callout pop</h4>
+        <div class="lab-stage">
+          <div class="lab-uno-pop" id="lab-uno-pop">
+            <span class="pop">UNO!</span>
+          </div>
+        </div>
+        <button class="trigger" data-fire="uno-pop">FIRE</button>
+        <div class="lab-spec">
+          duration: 320ms<br>
+          easing: var(--ease-pop) (overshoot)<br>
+          scale 0 → 1.3 → 1 · rotate −12° → −8°
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 7. Token panel ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Tokens — implementation reference for /feature-dev</span>
+    <h2 class="preview-h2">CSS variables.</h2>
+    <p class="preview-note">Drop these into <code>games/uno/index.html</code>'s inline CSS scope. They sit alongside (do not replace) the site's <code>styles.css</code> tokens — Uno's bright card palette deliberately contrasts with the warm site frame.</p>
+
+    <div class="tokens">
+      <div class="token-card">
+        <h4>Card colors</h4>
+        <div class="swatch-row">
+          <span class="swatch r">RED</span>
+          <span class="swatch y">YEL</span>
+          <span class="swatch g">GRN</span>
+          <span class="swatch b">BLU</span>
+          <span class="swatch k">BLK</span>
+        </div>
+        <dl>
+          <dt>--uno-red</dt><dd>#D8312C</dd>
+          <dt>--uno-yellow</dt><dd>#F4C419</dd>
+          <dt>--uno-green</dt><dd>#2EA749</dd>
+          <dt>--uno-blue</dt><dd>#1E72C7</dd>
+          <dt>--uno-black</dt><dd>#0E0E10</dd>
+          <dt>--uno-cream</dt><dd>#FFF6E6</dd>
+        </dl>
+      </div>
+
+      <div class="token-card">
+        <h4>Felt + frame</h4>
+        <div class="swatch-row">
+          <span class="swatch f1">deep</span>
+          <span class="swatch f2">mid</span>
+          <span class="swatch br">brass</span>
+        </div>
+        <dl>
+          <dt>--felt-deep</dt><dd>#0B1F15</dd>
+          <dt>--felt-mid</dt><dd>#15301F</dd>
+          <dt>--felt-edge</dt><dd>#08130D</dd>
+          <dt>--brass</dt><dd>#c8943e</dd>
+          <dt>--brass-dim</dt><dd>#8a6322</dd>
+        </dl>
+      </div>
+
+      <div class="token-card">
+        <h4>Easings</h4>
+        <dl>
+          <dt>--ease-snap</dt><dd>(0.2, 0.9, 0.3, 1.3)</dd>
+          <dt>--ease-thunk</dt><dd>(0.65, 0, 0.35, 1)</dd>
+          <dt>--ease-glide</dt><dd>(0.2, 0, 0, 1)</dd>
+          <dt>--ease-pop</dt><dd>(0.7, −0.2, 0.2, 1.6)</dd>
+        </dl>
+        <p class="preview-note" style="font-size:0.78rem;">Snap = card lift / play. Thunk = skip / draw landing. Glide = UI transitions. Pop = UNO callout overshoot.</p>
+      </div>
+
+      <div class="token-card">
+        <h4>Type stack</h4>
+        <dl>
+          <dt>Wordmark</dt><dd>Bungee, skewX(−10°)</dd>
+          <dt>Numerals</dt><dd>Bungee, skewX(−12°)</dd>
+          <dt>Headings</dt><dd>Fraunces (WONK 1)</dd>
+          <dt>Body</dt><dd>Bricolage Grotesque</dd>
+          <dt>Code/Tokens</dt><dd>JetBrains Mono</dd>
+        </dl>
+        <p class="preview-note" style="font-size:0.78rem;">Bungee adds one Google Font load. Already cached if user visits the site frequently.</p>
+      </div>
+
+      <div class="token-card">
+        <h4>Card geometry</h4>
+        <dl>
+          <dt>Aspect</dt><dd>5 : 7</dd>
+          <dt>Default</dt><dd>120 × 168 px</dd>
+          <dt>Mobile</dt><dd>86 × 120 px</dd>
+          <dt>Radius</dt><dd>12 px</dd>
+          <dt>Numeral</dt><dd>76 px</dd>
+          <dt>Oval tilt</dt><dd>−22°</dd>
+        </dl>
+      </div>
+
+      <div class="token-card">
+        <h4>Durations</h4>
+        <dl>
+          <dt>Hover lift</dt><dd>220 ms</dd>
+          <dt>Card-fly</dt><dd>250 ms (88+40+12)</dd>
+          <dt>Wild burst</dt><dd>400 ms wash</dd>
+          <dt>Reverse</dt><dd>600 ms</dd>
+          <dt>Skip jolt</dt><dd>240 ms</dd>
+          <dt>Draw stagger</dt><dd>80 ms / card</dd>
+          <dt>UNO pop</dt><dd>320 ms</dd>
+          <dt>Curtain wipe</dt><dd>500 ms</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 8. Notes ─────────────── -->
+  <section class="preview-section">
+    <span class="preview-label">Notes for /feature-dev:feature-dev</span>
+    <h2 class="preview-h2">Handoff.</h2>
+    <ul class="preview-note" style="line-height:1.7;font-size:0.9rem;">
+      <li><strong>No images.</strong> Every card is DOM. The full deck weighs 0 bytes of asset.</li>
+      <li><strong>Card factory.</strong> One <code>renderCard({color, value})</code> in <code>render.js</code> emits the structure used in this preview. Wild and Wild+4 are <code>color: 'wild'</code> with <code>value: 'wild' | 'wild4'</code>.</li>
+      <li><strong>Dynamic state on the card:</strong> <code>data-color</code>, <code>data-value</code>, classes <code>.playable</code> / <code>.dimmed</code> / <code>.selected</code> drive the brass-outline pulse, dim-non-playable mode, and selection halo respectively.</li>
+      <li><strong>Color bar in HUD:</strong> a single CSS var <code>--current-color</code> on <code>.hud</code> drives the swatch + the discard pile's accent shadow. Wild → set to chosen quadrant.</li>
+      <li><strong>Reduced motion.</strong> Site-wide rule already nukes most. Explicit overrides in this file kill the perpetual-loop ones (burst, pip pulse, attract).</li>
+      <li><strong>Bungee.</strong> Single weight, ~30KB gzipped from Google Fonts. Acceptable. Falls back to system slab if font fails — numerals lose chunk but stay legible.</li>
+      <li><strong>Accessibility.</strong> Number/symbol corner glyphs already present on every card (colorblind-safe). All cards <code>tabindex="0"</code>; UNO! and menu are real <code>&lt;button&gt;</code>s. Curtain announces next player by name to screen readers.</li>
+      <li><strong>Hot-seat curtain</strong> uses <code>aria-live="polite"</code> when activated; tap-to-reveal restores focus into the hand fan.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="site-footer" style="text-align:center;color:var(--text-faint);">
+  <small>ADR-017 design pass · /frontend-design · 2026-04-25</small>
+</footer>
+
+<script>
+/* ── Tiny lab triggers ─────────────────────────────── */
+document.querySelectorAll('button.trigger').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kind = btn.dataset.fire;
+    const map = {
+      'fly':     { sel: '#lab-fly .card', cls: 'flown' },
+      'burst':   { sel: '#lab-burst',     cls: 'fire'  },
+      'reverse': { sel: '#lab-reverse',   cls: 'fire'  },
+      'uno-pop': { sel: '#lab-uno-pop',   cls: 'fire'  },
+    };
+    const { sel, cls } = map[kind] || {};
+    const el = document.querySelector(sel);
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;            // restart animation
+    el.classList.add(cls);
+    if (kind === 'uno-pop') {
+      setTimeout(() => el.classList.remove(cls), 1200);
+    }
+  });
+});
+</script>
+
+</body>
+</html>
