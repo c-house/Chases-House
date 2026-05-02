@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embershore - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Embershore tokens (extends site /styles.css) ───── */
+    :root {
+      --sand-1:#f0e6d3; --sand-2:#d4b478; --sand-3:#a06828; --sand-4:#5a3618;
+      --grass-1:#c4cfa0; --grass-2:#8a9a6e; --grass-3:#6a7d5a; --grass-4:#38442b;
+      --water-1:#b8c8d4; --water-2:#6a8499; --water-3:#3a5266; --water-4:#1e2a35;
+      --stone-1:#d6c4a8; --stone-2:#9a8e7a; --stone-3:#6b5a48; --stone-4:#2a2018;
+      --ember-1:#faf3e6; --ember-2:#e8b04a; --ember-3:#c8943e; --ember-4:#a06828;
+      --parch-light:#ecdcb4; --parch:#d6c089; --parch-shade:#b89a5e;
+      --ink:#2e1f10; --ink-soft:#5a3618;
+    }
+
+    /* ── Page Content ─────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1.5rem, 5vh, 4rem) clamp(1rem, 4vw, 3rem) clamp(2rem, 5vh, 4rem);
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 70;
+      font-weight: 400;
+      font-size: clamp(2rem, 5vw + 0.3rem, 3.6rem);
+      background: linear-gradient(180deg, #faf3e6 0%, #f5d491 35%, #e8b04a 70%, #c8943e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.01em;
+      line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .page-subtitle {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      margin-bottom: clamp(1rem, 3vw, 1.6rem);
+    }
+
+    /* ── Game Frame ────────────────────────────────────── */
+    .game-frame {
+      position: relative;
+      width: min(100%, calc((100vh - 220px) * 640 / 576));
+      max-width: 1280px;
+      aspect-ratio: 640 / 576;
+      background: var(--bg-deep);
+      border: 1.5px solid var(--accent-ember);
+      border-radius: 6px;
+      box-shadow:
+        0 0 0 1px rgba(232, 176, 74, 0.18) inset,
+        0 12px 40px rgba(160, 104, 40, 0.18),
+        0 2px 8px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+    canvas#embershore-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+    }
+
+    /* ── Overlays ─────────────────────────────────────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(1rem, 3vw, 2rem);
+      color: var(--text-primary);
+      text-align: center;
+      z-index: 5;
+      pointer-events: auto;
+    }
+    .overlay.hidden { display: none; }
+
+    /* Title overlay — full sun-bleached sky, breathing */
+    #overlay-title {
+      background:
+        linear-gradient(180deg,
+          #2a1f1a 0%, #5a3618 28%, #a06828 52%,
+          #c8943e 70%, #e8b04a 84%, #d4b478 100%);
+      animation: skyDrift 40s ease-in-out infinite alternate;
+      padding-bottom: 14%;
+      justify-content: flex-end;
+    }
+    @keyframes skyDrift {
+      0%   { filter: hue-rotate(0deg) brightness(1); }
+      100% { filter: hue-rotate(-8deg) brightness(0.94); }
+    }
+    .title-hw-cloud {
+      position: absolute;
+      top: 18%; left: 50%;
+      width: 40%; height: 22%;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse 50% 50% at 50% 60%,
+        rgba(58, 36, 24, 0.55) 0%,
+        rgba(58, 36, 24, 0.25) 50%,
+        transparent 80%);
+      filter: blur(6px);
+      border-radius: 50%;
+      animation: hwBreathe 8s ease-in-out infinite;
+    }
+    @keyframes hwBreathe {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.85; }
+      50%      { transform: translateX(-50%) scale(1.04); opacity: 1; }
+    }
+    .title-sun {
+      position: absolute;
+      top: 38%; left: 50%;
+      width: 60px; height: 60px;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, var(--ember-1) 0%, var(--ember-2) 30%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(2px);
+      animation: sunGlow 4s ease-in-out infinite alternate;
+    }
+    @keyframes sunGlow {
+      0%   { opacity: 0.85; transform: translateX(-50%) scale(1); }
+      100% { opacity: 1;    transform: translateX(-50%) scale(1.05); }
+    }
+    .title-water {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 30%;
+      background: linear-gradient(180deg,
+        rgba(184, 200, 212, 0.4) 0%,
+        var(--water-2) 30%,
+        var(--water-3) 65%,
+        var(--water-4) 100%);
+    }
+    .title-beach {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 14%;
+      background: linear-gradient(180deg, var(--sand-2) 0%, var(--sand-3) 100%);
+      clip-path: polygon(0 30%, 12% 14%, 28% 22%, 52% 8%, 74% 18%, 100% 24%, 100% 100%, 0 100%);
+    }
+    .title-content {
+      position: relative;
+      z-index: 5;
+      padding: 0 5%;
+      margin-bottom: 16%;
+    }
+    .title-game-title {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 90;
+      font-weight: 350;
+      font-size: clamp(2.5rem, 6vw + 0.5rem, 5rem);
+      line-height: 0.9;
+      background: linear-gradient(180deg, #faf3e6 0%, #f5d491 35%, #e8b04a 70%, #c8943e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 4px 20px rgba(232, 176, 74, 0.3);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+    }
+    .title-game-subtitle {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: clamp(0.75rem, 1.4vw, 1rem);
+      color: rgba(250, 243, 230, 0.85);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      letter-spacing: 0.05em;
+    }
+    .title-prompt {
+      position: absolute;
+      bottom: 6%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--ember-1);
+      text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      animation: promptPulse 1.6s ease-in-out infinite;
+      z-index: 6;
+    }
+    @keyframes promptPulse {
+      0%, 100% { opacity: 0.6; }
+      50%      { opacity: 1; }
+    }
+
+    /* ── Notes / Controls ────────────────────────────── */
+    .game-notes {
+      max-width: 640px;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.7;
+    }
+    .game-notes strong { color: var(--text-primary); font-weight: 500; }
+    .game-notes kbd {
+      display: inline-block;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.65em;
+      background: var(--bg-elevated);
+      color: var(--accent-glow);
+      border: 1px solid var(--accent-ember);
+      padding: 0.15em 0.45em;
+      border-radius: 2px;
+      margin: 0 0.1em;
+    }
+
+    /* ── Idle leaf flourish ──────────────────────────── */
+    .idle-leaf {
+      position: absolute;
+      top: -40px; left: -40px;
+      width: 14px; height: 14px;
+      pointer-events: none;
+      z-index: 200;
+      opacity: 0;
+    }
+    .idle-leaf.fly { animation: leafDrift 4.8s linear forwards; }
+    @keyframes leafDrift {
+      0%   { opacity: 0; transform: translate(0, 0) rotate(0); }
+      10%  { opacity: 0.85; }
+      90%  { opacity: 0.85; }
+      100% { opacity: 0; transform: translate(110%, 70%) rotate(720deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #overlay-title, .title-hw-cloud, .title-sun, .title-prompt,
+      .idle-leaf.fly { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <ul class="nav">
+        <li><a class="nav-link" href="/" style="--i:0">Home</a></li>
+        <li><a class="nav-link" href="/games/" style="--i:1">Games</a></li>
+        <li><a class="nav-link" href="/cookbook/" style="--i:2">Cookbook</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Embershore</h1>
+    <p class="page-subtitle">a sleeping island, four sigils, one hearthwarden</p>
+
+    <div class="game-frame" id="game-frame">
+      <canvas id="embershore-canvas" width="640" height="576"></canvas>
+
+      <!-- Title overlay (visible by default until any input) -->
+      <div class="overlay" id="overlay-title">
+        <div class="title-hw-cloud"></div>
+        <div class="title-sun"></div>
+        <div class="title-water"></div>
+        <div class="title-beach"></div>
+        <div class="title-content">
+          <div class="title-game-title">Embershore</div>
+          <div class="title-game-subtitle">a sleeping island, four sigils, one hearthwarden</div>
+        </div>
+        <div class="title-prompt">press any key</div>
+      </div>
+
+      <!-- Other overlays land in later steps -->
+      <div class="overlay hidden" id="overlay-pause"></div>
+      <div class="overlay hidden" id="overlay-dialogue"></div>
+      <div class="overlay hidden" id="overlay-map"></div>
+      <div class="overlay hidden" id="overlay-gameover"></div>
+    </div>
+
+    <p class="game-notes">
+      <strong>PR1 dev preview.</strong>
+      Move with <kbd>WASD</kbd> or <kbd>arrows</kbd>.
+      Walk to the edge of a room to scroll.
+      Debug: <kbd>[</kbd>/<kbd>]</kbd> tune scroll duration · <kbd>\</kbd> cycle easing.
+    </p>
+  </main>
+
+  <footer class="site-footer">
+    chase's house · 2026
+  </footer>
+
+  <!-- Idle-leaf SVG, reused via JS -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <symbol id="leaf-glyph" viewBox="0 0 14 14">
+      <path d="M2 7 Q5 1 12 3 Q10 9 4 12 Q1 10 2 7 Z" fill="#8a9a6e" stroke="#a06828" stroke-width="0.5"/>
+      <path d="M2 7 Q6 7 10 8" stroke="#5a3618" stroke-width="0.4" fill="none"/>
+    </symbol>
+  </svg>
+
+  <!-- Script load order — see docs/design/019-embershore-architecture.md §1 -->
+  <script src="../shared/gamepad.js"></script>
+  <script src="world.js"></script>
+  <script src="entities.js"></script>
+  <script src="ai.js"></script>
+  <script src="engine.js"></script>
+  <script src="render.js"></script>
+  <script src="input.js"></script>
+  <script src="audio.js"></script>
+  <script src="dialogue.js"></script>
+  <script src="game.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embershore — Design Bible v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   EMBERSHORE — DESIGN TOKENS
+   Extension of chases.house tokens. Six 4-color ramps + UI grays.
+   ════════════════════════════════════════════════════════════ */
+:root {
+  /* — site tokens (do not redefine in production; import from /styles.css) — */
+  --bg-deep: #0a0a0b;
+  --bg-main: #141416;
+  --bg-surface: #1e1e21;
+  --bg-elevated: #28282c;
+  --text-primary: #f0e6d3;
+  --text-heading: #faf3e6;
+  --text-muted: #9a8e7a;
+  --text-faint: #5c5347;
+  --accent-gold: #c8943e;
+  --accent-glow: #e8b04a;
+  --accent-ember: #a06828;
+  --terracotta: #b05a3a;
+  --sage: #6a7d5a;
+
+  /* — Embershore extensions: 6 ramps × 4 shades — */
+  /* SAND — beach, dirt path, dungeon floors */
+  --sand-1: #f0e6d3;  /* = text-primary, lightest */
+  --sand-2: #d4b478;  /* new, mid-light */
+  --sand-3: #a06828;  /* = ember */
+  --sand-4: #5a3618;  /* new, darkest */
+
+  /* GRASS / FOLIAGE */
+  --grass-1: #c4cfa0;  /* new, lightest */
+  --grass-2: #8a9a6e;  /* new, mid */
+  --grass-3: #6a7d5a;  /* = sage */
+  --grass-4: #38442b;  /* new, darkest */
+
+  /* WATER — cove, ocean, dawn-water */
+  --water-1: #b8c8d4;  /* new, lightest */
+  --water-2: #6a8499;  /* new, mid (warm-biased blue) */
+  --water-3: #3a5266;  /* new, deep */
+  --water-4: #1e2a35;  /* new, darkest */
+
+  /* STONE — dungeon walls, totems */
+  --stone-1: #d6c4a8;  /* new */
+  --stone-2: #9a8e7a;  /* = text-muted */
+  --stone-3: #6b5a48;  /* new */
+  --stone-4: #2a2018;  /* new */
+
+  /* EMBER — fire, hearts, item-get glow */
+  --ember-1: #faf3e6;  /* = text-heading */
+  --ember-2: #e8b04a;  /* = accent-glow */
+  --ember-3: #c8943e;  /* = accent-gold */
+  --ember-4: #a06828;  /* = accent-ember */
+
+  /* NIGHT / UI BG */
+  --night-1: #28282c;  /* = bg-elevated */
+  --night-2: #1e1e21;  /* = bg-surface */
+  --night-3: #141416;  /* = bg-main */
+  --night-4: #0a0a0b;  /* = bg-deep */
+
+  /* — Heart bead specials — */
+  --heart-glow: #f5d491;
+  --heart-body: #e8b04a;
+  --heart-shadow: #a06828;
+  --heart-empty: #5c5347;
+
+  /* — Parchment surfaces — */
+  --parch-light: #ecdcb4;
+  --parch: #d6c089;
+  --parch-shade: #b89a5e;
+  --parch-deep: #7a5e34;
+  --ink: #2e1f10;
+  --ink-soft: #5a3618;
+
+  /* — Type — */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+
+  /* — Motion easings — */
+  --ease-roomscroll: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-poseup: cubic-bezier(0.5, 0, 0.5, 1.4);
+  --ease-overlay: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* — Tile size (game) — */
+  --tile: 16px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PAGE CHROME (this design-bible only — won't ship to game)
+   ════════════════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg-deep);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(200, 148, 62, 0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 80% at 80% 70%, rgba(176, 90, 58, 0.03) 0%, transparent 60%);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: clamp(2rem, 5vw, 5rem) clamp(1rem, 4vw, 3rem) 6rem;
+}
+
+.bible {
+  max-width: 88rem;
+  margin: 0 auto;
+}
+
+.bible-header {
+  margin-bottom: 4rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--accent-ember);
+  position: relative;
+}
+.bible-header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-ember), transparent);
+  opacity: 0.5;
+}
+
+.bible-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--accent-gold);
+  margin-bottom: 1.2rem;
+}
+
+.bible-title {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 80;
+  font-weight: 350;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  font-style: italic;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--text-heading);
+  background: linear-gradient(180deg, #faf3e6 20%, #e8b04a 60%, #a06828 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+.bible-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 350;
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  color: var(--text-muted);
+  max-width: 56rem;
+  font-variation-settings: 'opsz' 36, 'SOFT' 50;
+}
+
+section.bible-section {
+  margin-top: 5rem;
+}
+
+h2.section-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: 'opsz' 72, 'WONK' 1, 'SOFT' 60;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  color: var(--text-heading);
+  margin-bottom: 0.4rem;
+  letter-spacing: -0.01em;
+}
+h2.section-title .section-num {
+  font-family: var(--font-pixel);
+  font-style: normal;
+  font-size: 0.45em;
+  color: var(--accent-gold);
+  margin-right: 0.8rem;
+  vertical-align: 0.4em;
+  letter-spacing: 0.15em;
+}
+
+.section-lede {
+  font-family: var(--font-body);
+  color: var(--text-muted);
+  max-width: 50rem;
+  margin-bottom: 2.5rem;
+  font-size: 1rem;
+}
+
+.notes {
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  max-width: 42rem;
+  margin-top: 1.5rem;
+}
+.notes strong { color: var(--text-primary); font-weight: 600; }
+.notes code {
+  font-family: var(--font-pixel);
+  font-size: 0.78em;
+  background: var(--bg-elevated);
+  color: var(--accent-glow);
+  padding: 0.1em 0.4em;
+  border-radius: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   PALETTE SECTION
+   ════════════════════════════════════════════════════════════ */
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.4rem;
+}
+.ramp {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-ember);
+  border-radius: 6px;
+  padding: 1.2rem;
+}
+.ramp-name {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: var(--accent-gold);
+  margin-bottom: 0.2rem;
+}
+.ramp-desc {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+.ramp-stack {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  height: 4.5rem;
+  margin-bottom: 0.7rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+.ramp-stack > div { height: 100%; }
+.ramp-codes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.2rem;
+}
+.ramp-codes span {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════════════════════
+   TYPOGRAPHY SECTION
+   ════════════════════════════════════════════════════════════ */
+.type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+}
+@media (max-width: 900px) { .type-grid { grid-template-columns: 1fr; } }
+.type-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-ember);
+  border-radius: 6px;
+  padding: 1.6rem;
+}
+.type-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--accent-gold);
+  margin-bottom: 0.4rem;
+}
+.type-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.4rem;
+  color: var(--text-heading);
+  margin-bottom: 0.6rem;
+}
+.type-role {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.4rem;
+  font-style: italic;
+  border-left: 2px solid var(--accent-ember);
+  padding-left: 0.8rem;
+}
+.type-sample-fraunces {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 350;
+  font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 60;
+  font-size: 2rem;
+  line-height: 1.05;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 0.6rem;
+}
+.type-sample-bricolage {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  margin-bottom: 0.6rem;
+}
+.type-sample-pixel {
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 0.6rem;
+}
+.type-meta {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--text-faint);
+  letter-spacing: 0.12em;
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOTION SECTION
+   ════════════════════════════════════════════════════════════ */
+.motion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem;
+}
+@media (max-width: 900px) { .motion-grid { grid-template-columns: 1fr; } }
+.motion-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-ember);
+  border-radius: 6px;
+  padding: 1.4rem 1.6rem;
+  display: grid;
+  grid-template-columns: 1fr 7rem;
+  gap: 1rem;
+  align-items: center;
+}
+.motion-info {}
+.motion-name {
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--text-heading);
+  margin-bottom: 0.3rem;
+}
+.motion-curve {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.motion-time {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.5rem;
+  color: var(--accent-gold);
+  text-align: right;
+}
+
+/* ════════════════════════════════════════════════════════════
+   STAGE — common chrome for visual mockups
+   ════════════════════════════════════════════════════════════ */
+.stage {
+  display: grid;
+  grid-template-columns: 1fr 22rem;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+@media (max-width: 1100px) { .stage { grid-template-columns: 1fr; } }
+
+.stage-frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--night-4);
+  border: 1px solid var(--accent-ember);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px rgba(0,0,0,0.5),
+    inset 0 0 80px rgba(160, 104, 40, 0.06);
+}
+.stage-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 50%,
+      transparent 60%, rgba(0,0,0,0.18) 100%);
+}
+.stage-label {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.18em;
+  color: var(--accent-gold);
+  background: rgba(20, 20, 22, 0.7);
+  padding: 0.4rem 0.7rem;
+  border-radius: 2px;
+  z-index: 110;
+}
+.stage-notes {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+.stage-notes h4 {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--accent-gold);
+  margin-top: 1.2rem;
+  margin-bottom: 0.4rem;
+  font-weight: normal;
+}
+.stage-notes h4:first-child { margin-top: 0; }
+.stage-notes p { margin-bottom: 0.8rem; }
+.stage-notes strong { color: var(--text-primary); font-weight: 600; }
+.stage-notes code {
+  font-family: var(--font-pixel);
+  font-size: 0.7em;
+  color: var(--accent-glow);
+  background: var(--bg-elevated);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 1 — TITLE SCREEN
+   ════════════════════════════════════════════════════════════ */
+.title-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.title-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      #2a1f1a 0%,
+      #5a3618 28%,
+      #a06828 52%,
+      #c8943e 70%,
+      #e8b04a 84%,
+      #d4b478 100%);
+  animation: skyDrift 40s ease-in-out infinite alternate;
+}
+@keyframes skyDrift {
+  0%   { filter: hue-rotate(0deg) brightness(1); }
+  100% { filter: hue-rotate(-8deg) brightness(0.94); }
+}
+.title-clouds {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.title-cloud {
+  position: absolute;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(250, 243, 230, 0.18) 0%,
+    rgba(250, 243, 230, 0.06) 50%,
+    transparent 80%);
+  border-radius: 50%;
+  filter: blur(8px);
+}
+.cloud-1 { top: 18%; left: 8%; width: 30%; height: 8%; }
+.cloud-2 { top: 32%; left: 55%; width: 38%; height: 6%; }
+.cloud-3 { top: 24%; left: 30%; width: 28%; height: 5%; opacity: 0.6; }
+.hearthwarden-silhouette {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 40%;
+  height: 22%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 50% 50% at 50% 60%,
+    rgba(58, 36, 24, 0.55) 0%,
+    rgba(58, 36, 24, 0.25) 50%,
+    transparent 80%);
+  filter: blur(6px);
+  border-radius: 50%;
+  animation: hwBreathe 8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes hwBreathe {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.85; }
+  50%      { transform: translateX(-50%) scale(1.04); opacity: 1; }
+}
+.title-water {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 30%;
+  background:
+    linear-gradient(180deg,
+      rgba(184, 200, 212, 0.4) 0%,
+      var(--water-2) 30%,
+      var(--water-3) 65%,
+      var(--water-4) 100%);
+}
+.title-wave {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: rgba(245, 212, 145, 0.5);
+}
+.wave-1 { bottom: 28%; animation: waveDrift 4s ease-in-out infinite; }
+.wave-2 { bottom: 22%; animation: waveDrift 5.5s ease-in-out infinite reverse; opacity: 0.6; }
+.wave-3 { bottom: 18%; animation: waveDrift 7s ease-in-out infinite; opacity: 0.4; }
+@keyframes waveDrift {
+  0%, 100% { transform: translateX(-3%); }
+  50%      { transform: translateX(3%); }
+}
+.title-beach {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 14%;
+  background: linear-gradient(180deg, var(--sand-2) 0%, var(--sand-3) 100%);
+  clip-path: polygon(0 30%, 12% 14%, 28% 22%, 52% 8%, 74% 18%, 100% 24%, 100% 100%, 0 100%);
+}
+.title-character {
+  /* small horizontal sleeping form on the beach — placeholder; production uses sprite art */
+  position: absolute;
+  bottom: 6%;
+  left: 22%;
+  width: 22px;
+  height: 6px;
+  image-rendering: pixelated;
+  background: var(--ember-4);
+  border-radius: 4px 4px 1px 1px;
+  box-shadow: 0 -3px 0 -1px var(--ember-4);
+  animation: titleBreathe 3.6s ease-in-out infinite;
+}
+.title-character::after {
+  /* faint Z above to read as "sleeping" */
+  content: 'z';
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--ember-1);
+  opacity: 0.5;
+  animation: zFloat 3.6s ease-in-out infinite;
+}
+@keyframes titleBreathe {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50%      { transform: translateY(-1px); opacity: 0.95; }
+}
+@keyframes zFloat {
+  0%   { transform: translateY(0) rotate(0); opacity: 0; }
+  30%  { opacity: 0.5; }
+  100% { transform: translateY(-12px) rotate(8deg); opacity: 0; }
+}
+.title-sun {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, var(--ember-1) 0%, var(--ember-2) 30%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(2px);
+  animation: sunGlow 4s ease-in-out infinite alternate;
+}
+@keyframes sunGlow {
+  0%   { opacity: 0.85; transform: translateX(-50%) scale(1); }
+  100% { opacity: 1;    transform: translateX(-50%) scale(1.05); }
+}
+.title-content {
+  position: relative;
+  z-index: 5;
+  padding: 0 5%;
+  margin-bottom: 16%;
+  text-align: center;
+}
+.title-game-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 144, 'WONK' 1, 'SOFT' 90;
+  font-weight: 350;
+  font-size: clamp(2rem, 7vw, 5rem);
+  line-height: 0.9;
+  background: linear-gradient(180deg, #faf3e6 0%, #f5d491 35%, #e8b04a 70%, #c8943e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 20px rgba(232, 176, 74, 0.3);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
+}
+.title-game-subtitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(250, 243, 230, 0.85);
+  font-variation-settings: 'opsz' 24, 'SOFT' 60;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  letter-spacing: 0.05em;
+}
+.title-actions {
+  position: absolute;
+  bottom: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1rem;
+  z-index: 6;
+}
+.title-button {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: var(--ember-1);
+  background: rgba(20, 20, 22, 0.55);
+  border: 1.5px solid var(--accent-glow);
+  padding: 0.7rem 1.2rem;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  backdrop-filter: blur(2px);
+  transition: background 220ms var(--ease-overlay), color 220ms var(--ease-overlay), transform 220ms var(--ease-overlay);
+}
+.title-button:hover {
+  background: var(--accent-glow);
+  color: var(--night-4);
+  transform: translateY(-2px);
+}
+.title-credit {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.65rem;
+  color: rgba(250, 243, 230, 0.45);
+  letter-spacing: 0.08em;
+  z-index: 6;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 2 — NAME-ENTRY MODAL (logbook page)
+   ════════════════════════════════════════════════════════════ */
+.name-stage {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 80% at 50% 60%,
+      rgba(160, 104, 40, 0.4) 0%,
+      rgba(20, 20, 22, 0.85) 70%);
+}
+.name-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--night-4);
+  opacity: 0.55;
+}
+.logbook-page {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(78%, 28rem);
+  background:
+    linear-gradient(180deg, var(--parch-light) 0%, var(--parch) 60%, var(--parch-shade) 100%);
+  padding: 2rem 2rem 1.6rem;
+  border-radius: 4px 4px 4px 14px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.6),
+    0 4px 20px rgba(58, 36, 24, 0.5),
+    inset 0 0 30px rgba(184, 154, 94, 0.4);
+  position: absolute;
+}
+.logbook-page::after {
+  /* page-curl corner */
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, transparent 50%, var(--parch-shade) 50%, var(--parch-deep) 100%);
+  border-radius: 0 0 4px 0;
+  box-shadow: -2px -2px 6px rgba(0,0,0,0.2);
+}
+.logbook-page::before {
+  /* manifest line at top */
+  content: '';
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  height: 1px;
+  background: var(--ink-soft);
+  opacity: 0.3;
+}
+.logbook-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  letter-spacing: 0.25em;
+  color: var(--ink-soft);
+  margin-bottom: 0.3rem;
+}
+.logbook-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 60;
+  font-weight: 400;
+  font-size: 1.4rem;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 0.4rem;
+}
+.logbook-prompt {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.2rem;
+}
+.name-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+  border-bottom: 1.5px solid var(--ink-soft);
+  padding-bottom: 0.4rem;
+}
+.name-input-prefix {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+.name-input {
+  flex: 1;
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  padding: 0.2rem 0;
+  caret-color: var(--accent-ember);
+}
+.name-input::placeholder { color: rgba(46, 31, 16, 0.3); }
+.name-pebbles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.4rem;
+}
+.pebble {
+  position: relative;
+  background: rgba(184, 154, 94, 0.25);
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 14px 18px 16px 14px;
+  padding: 0.7rem 0.4rem 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 200ms ease, transform 200ms var(--ease-overlay), border-color 200ms;
+}
+.pebble:hover {
+  background: rgba(184, 154, 94, 0.5);
+  transform: translateY(-2px) rotate(-0.5deg);
+  border-color: var(--ink);
+}
+.pebble-figure {
+  width: 16px;
+  height: 22px;
+  margin: 0 auto 0.4rem;
+  position: relative;
+  image-rendering: pixelated;
+}
+.pebble-figure::before {
+  /* head */
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--sand-2);
+  border-radius: 1px;
+}
+.pebble-figure::after {
+  /* tunic body */
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 1px;
+}
+.pebble-finn .pebble-figure::after { background: var(--water-2); }
+.pebble-cinder .pebble-figure::after { background: var(--terracotta); }
+.pebble-mavi .pebble-figure::after { background: var(--grass-3); }
+.pebble-name {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  color: var(--ink);
+  text-transform: lowercase;
+}
+.pebble.selected {
+  background: rgba(232, 176, 74, 0.35);
+  border-color: var(--accent-ember);
+  box-shadow: 0 0 0 3px rgba(232, 176, 74, 0.2);
+}
+.logbook-continue {
+  display: block;
+  width: 100%;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: var(--parch-light);
+  background: var(--ink);
+  border: 1.5px solid var(--ink);
+  padding: 0.7rem;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 220ms ease, color 220ms ease;
+}
+.logbook-continue:hover {
+  background: var(--accent-ember);
+  border-color: var(--accent-ember);
+  color: var(--text-heading);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 3 — DIALOGUE BOX
+   ════════════════════════════════════════════════════════════ */
+.dialogue-stage {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, #4a3018 0%, #6a4a28 50%, #8a7a48 100%);
+}
+.dialogue-stage::before {
+  /* fake dungeon room — simple pixel scene */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(180deg, transparent 60%, rgba(58, 36, 24, 0.7) 100%),
+    repeating-linear-gradient(0deg,
+      transparent 0,
+      transparent 14px,
+      rgba(0,0,0,0.06) 14px,
+      rgba(0,0,0,0.06) 16px);
+}
+.dialogue-stage-character {
+  position: absolute;
+  bottom: 35%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+  background: var(--terracotta);
+  box-shadow:
+    0 -8px 0 var(--sand-2),
+    -2px 0 0 var(--terracotta),
+    2px 0 0 var(--terracotta);
+}
+.dialogue-box {
+  position: absolute;
+  bottom: 4%;
+  left: 4%;
+  right: 4%;
+  height: 28%;
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  gap: 1rem;
+  padding: 0;
+}
+.dialogue-portrait {
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 40%, var(--parch-light) 0%, var(--parch) 70%, var(--parch-shade) 100%);
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  overflow: hidden;
+  align-self: end;
+  width: 5rem;
+  height: 5rem;
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 0 8px rgba(184, 154, 94, 0.4);
+}
+.dialogue-portrait::before {
+  /* simple NPC face */
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 30%;
+  width: 40%;
+  height: 30%;
+  background: var(--sand-2);
+  border-radius: 30%;
+}
+.dialogue-portrait::after {
+  /* hair / scarf */
+  content: '';
+  position: absolute;
+  top: 18%;
+  left: 26%;
+  width: 48%;
+  height: 22%;
+  background: var(--terracotta);
+  border-radius: 50% 50% 30% 30%;
+}
+.dialogue-portrait-badge {
+  position: absolute;
+  bottom: -0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  letter-spacing: 0.18em;
+  color: var(--parch-light);
+  background: var(--accent-ember);
+  padding: 0.18rem 0.5rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  white-space: nowrap;
+  text-transform: lowercase;
+}
+.dialogue-scroll {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--parch-light) 0%, var(--parch) 100%);
+  padding: 1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* deckled top edge via clip-path */
+  clip-path: polygon(
+    0 8%, 4% 0, 12% 5%, 22% 1%, 35% 6%, 48% 0, 60% 4%, 72% 0, 84% 6%, 96% 1%, 100% 8%,
+    100% 100%, 0 100%
+  );
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.35),
+    inset 0 0 18px rgba(184, 154, 94, 0.35);
+}
+.dialogue-text {
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  line-height: 1.7;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  overflow: hidden;
+}
+.dialogue-text .cursor-name {
+  background: rgba(232, 176, 74, 0.55);
+  padding: 0 0.15em;
+  border-radius: 2px;
+  color: var(--ink);
+}
+.dialogue-prompt {
+  position: absolute;
+  bottom: 0.6rem;
+  right: 0.9rem;
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  color: var(--accent-ember);
+  animation: dlgPulse 1.4s ease-in-out infinite;
+}
+@keyframes dlgPulse {
+  0%, 100% { opacity: 0.4; transform: translateX(0); }
+  50%      { opacity: 1;   transform: translateX(2px); }
+}
+/* typewriter overlay for the "live" preview */
+.dialogue-typewriter {
+  position: absolute;
+  inset: 0;
+  background: var(--parch-light);
+  width: 100%;
+  animation: typewriter 4.5s steps(60, end) infinite alternate;
+  z-index: 2;
+  mix-blend-mode: source-over;
+}
+@keyframes typewriter {
+  0%   { clip-path: inset(0 100% 0 0); }
+  60%  { clip-path: inset(0 0 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 4 — HUD
+   ════════════════════════════════════════════════════════════ */
+.hud-stage {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, #5a8a6a 0%, #6a9a7a 50%, #4a6a4a 100%);
+}
+.hud-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(45deg,
+      transparent 0,
+      transparent 8px,
+      rgba(56, 68, 43, 0.15) 8px,
+      rgba(56, 68, 43, 0.15) 9px);
+}
+.hud-stage-character {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+}
+.hud-stage-character::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 5px;
+  width: 8px; height: 8px;
+  background: var(--sand-2);
+}
+.hud-stage-character::after {
+  content: '';
+  position: absolute;
+  top: 8px; left: 3px;
+  width: 12px; height: 12px;
+  background: var(--terracotta);
+}
+.hud-overlay {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  opacity: 0.7;
+  transition: opacity 280ms var(--ease-overlay);
+  z-index: 5;
+}
+.hud-overlay:hover { opacity: 1; }
+.hud-hearts {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.25rem 0.4rem;
+  background: rgba(20, 20, 22, 0.5);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+}
+.hud-heart {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%,
+    var(--heart-glow) 0%,
+    var(--heart-body) 40%,
+    var(--heart-shadow) 100%);
+  box-shadow:
+    0 0 6px rgba(245, 212, 145, 0.7),
+    inset 0 -2px 2px rgba(160, 104, 40, 0.6);
+  position: relative;
+  animation: heartPulse 2.4s ease-in-out infinite;
+}
+.hud-heart:nth-child(2) { animation-delay: 0.2s; }
+.hud-heart:nth-child(3) { animation-delay: 0.4s; }
+.hud-heart:nth-child(4) { animation-delay: 0.6s; }
+.hud-heart.fractured {
+  background: var(--heart-empty);
+  box-shadow: inset 0 -1px 1px rgba(0,0,0,0.5);
+  position: relative;
+}
+.hud-heart.fractured::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 45%, rgba(0,0,0,0.4) 47%, transparent 52%);
+  border-radius: 50%;
+}
+.hud-heart.empty {
+  background: transparent;
+  border: 1.5px solid var(--heart-empty);
+  box-shadow: none;
+}
+@keyframes heartPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(245, 212, 145, 0.7), inset 0 -2px 2px rgba(160, 104, 40, 0.6); }
+  50%      { box-shadow: 0 0 10px rgba(245, 212, 145, 0.9), inset 0 -2px 2px rgba(160, 104, 40, 0.6); }
+}
+.hud-currency {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(20, 20, 22, 0.5);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: var(--ember-1);
+}
+.hud-coin {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--accent-glow);
+  transform: rotate(45deg);
+  box-shadow:
+    0 0 4px rgba(232, 176, 74, 0.8),
+    inset -1px -1px 0 var(--accent-ember);
+}
+.hud-equip {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  background: rgba(20, 20, 22, 0.5);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+}
+.hud-slot {
+  width: 22px;
+  height: 22px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--accent-ember);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.hud-slot::after {
+  content: attr(data-key);
+  position: absolute;
+  top: -8px;
+  right: -3px;
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  color: var(--accent-glow);
+  background: var(--night-4);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+.hud-slot-icon {
+  width: 12px;
+  height: 12px;
+  background: var(--accent-glow);
+}
+.icon-sword { clip-path: polygon(50% 0, 60% 70%, 100% 80%, 60% 90%, 50% 100%, 40% 90%, 0 80%, 40% 70%); }
+.icon-shield { background: var(--terracotta); border-radius: 50% 50% 30% 30%; }
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 5 — PAUSE / INVENTORY (field journal spread)
+   ════════════════════════════════════════════════════════════ */
+.pause-stage {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #2a4055 0%, #1a2a35 100%);
+}
+.pause-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.7);
+  backdrop-filter: blur(2px);
+}
+.journal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 92%;
+  height: 80%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background:
+    linear-gradient(180deg, var(--parch-light) 0%, var(--parch) 100%);
+  border-radius: 4px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.6),
+    0 4px 20px rgba(58, 36, 24, 0.5);
+  overflow: hidden;
+}
+.journal::before {
+  /* spine shadow */
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 24px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(58, 36, 24, 0.25) 30%,
+    rgba(58, 36, 24, 0.55) 50%,
+    rgba(58, 36, 24, 0.25) 70%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+.journal-page { padding: 1rem 1.4rem; position: relative; }
+.journal-eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  letter-spacing: 0.25em;
+  color: var(--accent-ember);
+  margin-bottom: 0.3rem;
+}
+.journal-page-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--ink);
+  margin-bottom: 0.8rem;
+}
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+.inv-slot {
+  aspect-ratio: 1;
+  background: rgba(184, 154, 94, 0.25);
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.inv-slot.equipped-a, .inv-slot.equipped-b {
+  background: rgba(232, 176, 74, 0.45);
+  border-color: var(--accent-ember);
+  box-shadow:
+    0 0 0 2px rgba(160, 104, 40, 0.3),
+    inset 0 0 6px rgba(232, 176, 74, 0.4);
+}
+.inv-slot.equipped-a::before,
+.inv-slot.equipped-b::before {
+  content: attr(data-slot);
+  position: absolute;
+  top: -7px;
+  right: -5px;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--parch-light);
+  background: var(--ink);
+  padding: 1px 4px;
+  border-radius: 2px;
+  letter-spacing: 0.1em;
+}
+.inv-slot-icon {
+  width: 60%;
+  height: 60%;
+  background: var(--ink-soft);
+}
+.inv-slot.empty .inv-slot-icon { background: transparent; }
+.inv-slot.empty {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(46, 31, 16, 0.25);
+}
+.inv-icon-sword    { clip-path: polygon(50% 0, 60% 70%, 100% 80%, 60% 90%, 50% 100%, 40% 90%, 0 80%, 40% 70%); }
+.inv-icon-feather  { clip-path: polygon(50% 0, 80% 30%, 70% 70%, 100% 80%, 50% 100%, 0 80%, 30% 70%, 20% 30%); }
+.inv-icon-bomb     { clip-path: circle(40% at 50% 60%); }
+.inv-icon-bow      { clip-path: polygon(0 50%, 50% 0, 100% 50%, 50% 60%); }
+.inv-icon-boomer   { clip-path: polygon(20% 0, 100% 80%, 80% 100%, 0 20%); }
+.journal-stats {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--ink);
+  line-height: 1.9;
+}
+.journal-stats dt {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-ember);
+  display: inline;
+}
+.journal-stats dd { display: inline; margin-right: 0.8rem; }
+.journal-stats dd::after { content: '\A'; white-space: pre; }
+.mini-map {
+  margin-top: 0.8rem;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  background:
+    linear-gradient(180deg, var(--parch-shade) 0%, var(--parch-deep) 100%);
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 3px;
+  position: relative;
+  background-image:
+    radial-gradient(circle at 30% 40%, var(--grass-3) 6px, transparent 7px),
+    radial-gradient(circle at 70% 30%, var(--stone-3) 5px, transparent 6px),
+    radial-gradient(circle at 50% 70%, var(--water-3) 7px, transparent 8px),
+    radial-gradient(circle at 20% 80%, var(--grass-3) 5px, transparent 6px);
+}
+.mini-map-player {
+  position: absolute;
+  top: 45%;
+  left: 35%;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-glow);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-glow);
+  animation: heartPulse 1.6s ease-in-out infinite;
+}
+.journal-footer {
+  position: absolute;
+  bottom: 0.8rem;
+  left: 1.4rem;
+  right: 1.4rem;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-soft);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 6 — MAP (sea-chart)
+   ════════════════════════════════════════════════════════════ */
+.map-stage {
+  position: absolute;
+  inset: 0;
+  background: var(--night-3);
+}
+.map-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.6);
+}
+.sea-chart {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 88%;
+  height: 84%;
+  background:
+    radial-gradient(ellipse 100% 100% at 50% 50%,
+      var(--parch-light) 0%,
+      var(--parch) 50%,
+      var(--parch-shade) 100%);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.7),
+    inset 0 0 80px rgba(122, 94, 52, 0.4);
+  overflow: hidden;
+}
+.sea-chart::before {
+  /* fold creases */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 32%, rgba(58, 36, 24, 0.18) 33%, transparent 34%),
+    linear-gradient(90deg, transparent 65%, rgba(58, 36, 24, 0.18) 66%, transparent 67%),
+    linear-gradient(0deg,  transparent 47%, rgba(58, 36, 24, 0.15) 48%, transparent 49%);
+  pointer-events: none;
+}
+.sea-chart::after {
+  /* paper grain */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 20% 30%, rgba(58, 36, 24, 0.06) 0, transparent 4px);
+  background-size: 8px 8px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.chart-title {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 72, 'WONK' 1, 'SOFT' 70;
+  font-weight: 400;
+  font-size: 1.3rem;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+  z-index: 3;
+}
+.compass-rose {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 60px;
+  height: 60px;
+  z-index: 3;
+}
+.compass-rose svg { width: 100%; height: 100%; }
+.island-grid {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 0;
+  width: 70%;
+  height: 60%;
+}
+.island-cell {
+  position: relative;
+  border-right: 1px dashed rgba(58, 36, 24, 0.15);
+  border-bottom: 1px dashed rgba(58, 36, 24, 0.15);
+}
+.island-cell:nth-child(5n) { border-right: none; }
+.island-cell:nth-last-child(-n+5) { border-bottom: none; }
+.cell-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--ink-soft);
+}
+.cell-icon.cleared { color: var(--accent-gold); text-shadow: 0 0 4px rgba(232, 176, 74, 0.6); }
+.cell-icon.shell { color: var(--accent-ember); font-size: 0.5rem; }
+.cell-icon.player {
+  width: 8px; height: 8px;
+  background: var(--accent-glow);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: heartPulse 1.2s ease-in-out infinite;
+}
+.chart-legend {
+  position: absolute;
+  bottom: 1rem;
+  left: 1.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+  display: flex;
+  gap: 1rem;
+}
+.legend-item { display: flex; align-items: center; gap: 0.3rem; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.legend-dot.cleared { background: var(--accent-gold); }
+.legend-dot.uncleared { background: var(--ink-soft); opacity: 0.4; }
+.legend-dot.shell { background: var(--accent-ember); }
+.legend-dot.you {
+  background: var(--accent-glow);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+.chart-hint {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  color: var(--ink-soft);
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 7 — GAME-OVER (wake in inn)
+   ════════════════════════════════════════════════════════════ */
+.gameover-stage {
+  position: absolute;
+  inset: 0;
+  background: var(--night-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+.gameover-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 60% at 50% 45%,
+    rgba(232, 176, 74, 0.18) 0%,
+    transparent 50%);
+}
+.gameover-window {
+  width: 200px;
+  height: 140px;
+  position: relative;
+  margin-bottom: 2rem;
+  background:
+    linear-gradient(180deg, #1a1a1a 0%, #0a0a0b 100%);
+  border: 4px solid var(--ink);
+  border-radius: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+}
+.gameover-window::before {
+  /* window cross */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 49%, var(--ink) 49%, var(--ink) 51%, transparent 51%),
+    linear-gradient(0deg,  transparent 49%, var(--ink) 49%, var(--ink) 51%, transparent 51%);
+  z-index: 2;
+}
+.gameover-window-pane {
+  background: linear-gradient(180deg,
+    var(--ember-2) 0%,
+    var(--accent-gold) 40%,
+    var(--terracotta) 70%,
+    var(--sand-2) 100%);
+  position: relative;
+}
+.gameover-window-pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    rgba(250, 243, 230, 0.4) 0%,
+    transparent 30%);
+}
+.gameover-line {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 80;
+  font-weight: 350;
+  font-size: clamp(1.4rem, 3.5vw, 2.6rem);
+  color: var(--text-heading);
+  text-align: center;
+  letter-spacing: -0.005em;
+  margin-bottom: 1.6rem;
+  text-shadow: 0 2px 16px rgba(232, 176, 74, 0.3);
+  animation: breathe 4s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+.gameover-prompt {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-transform: lowercase;
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 8 — ENDING (palette inversion)
+   ════════════════════════════════════════════════════════════ */
+.ending-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.ending-frame {
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid var(--accent-ember);
+}
+.ending-frame:last-child { border-right: none; }
+.ending-frame-label {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  letter-spacing: 0.18em;
+  color: var(--accent-gold);
+  background: rgba(20, 20, 22, 0.7);
+  padding: 0.3rem 0.5rem;
+  border-radius: 2px;
+  z-index: 10;
+}
+.ending-frame-1 {
+  background:
+    linear-gradient(180deg,
+      #5a3618 0%, #a06828 35%, #c8943e 70%, #e8b04a 100%);
+}
+.ending-frame-1 .ending-island {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 12%;
+  background: linear-gradient(180deg, var(--grass-2) 0%, var(--grass-4) 100%);
+  border-radius: 50% 50% 4px 4px;
+}
+.ending-frame-1 .ending-character {
+  position: absolute;
+  bottom: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px; height: 12px;
+  background: var(--terracotta);
+}
+.ending-frame-2 {
+  background:
+    linear-gradient(180deg,
+      #2a1f1a 0%, #5a3618 35%, #8a6840 70%, #c8943e 100%);
+  filter: contrast(0.85) brightness(0.7);
+}
+.ending-frame-2 .ending-island {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 12%;
+  background: linear-gradient(180deg, var(--ember-3) 0%, var(--ember-4) 100%);
+  border-radius: 50% 50% 4px 4px;
+  filter: blur(2px);
+  opacity: 0.7;
+}
+.ending-frame-2 .ending-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.4);
+}
+.ending-frame-3 {
+  background: var(--night-4);
+}
+.ending-frame-3 .ending-island {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36%;
+  height: 8%;
+  background: linear-gradient(180deg, transparent 0%, var(--accent-gold) 100%);
+  border-radius: 50% 50% 0 0;
+  filter: blur(4px);
+  opacity: 0.5;
+}
+.ending-frame-3 .ending-character {
+  position: absolute;
+  bottom: 24%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 8px;
+  background: var(--accent-gold);
+  box-shadow: 0 0 12px var(--accent-gold);
+}
+.ending-text-3 {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 80;
+  font-weight: 350;
+  font-size: 0.95rem;
+  color: var(--accent-gold);
+  text-align: center;
+  width: 90%;
+  text-shadow: 0 0 16px rgba(232, 176, 74, 0.6);
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+.ending-credits-3 {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  color: var(--accent-glow);
+  letter-spacing: 0.18em;
+  opacity: 0.8;
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SURFACE 9 — GALLERY CARD (matches site /styles.css)
+   ════════════════════════════════════════════════════════════ */
+.gallery-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.2rem;
+}
+.context-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.2rem, 2.4vw, 1.8rem);
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-ember);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.context-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-gold);
+  box-shadow: 0 8px 32px rgba(200, 148, 62, 0.12), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.context-card-icon {
+  display: block;
+  font-size: 1.8rem;
+  margin-bottom: 0.6rem;
+  opacity: 0.9;
+}
+.context-card-title {
+  font-family: var(--font-display);
+  font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text-heading);
+  margin-bottom: 0.3rem;
+}
+.context-card-desc {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  flex: 1;
+}
+.context-card-tag {
+  margin-top: 0.8rem;
+  align-self: flex-start;
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-ember);
+  border-radius: 3px;
+}
+/* hero-frame card variant for embershore — adds a tiny ember-glow at top-right that drifts on hover */
+.context-card.embershore {
+  position: relative;
+}
+.context-card.embershore::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(232, 176, 74, 0.18) 0%,
+    transparent 70%);
+  pointer-events: none;
+  transition: transform 0.6s var(--ease-overlay), opacity 0.6s ease;
+  opacity: 0.7;
+}
+.context-card.embershore:hover::before {
+  transform: translate(-10%, 10%) scale(1.1);
+  opacity: 1;
+}
+
+/* ════════════════════════════════════════════════════════════
+   FOOTER
+   ════════════════════════════════════════════════════════════ */
+.bible-footer {
+  margin-top: 6rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--accent-ember);
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════════════════════
+   IDLE LEAF FLOURISH (signature) — drifts across page on idle
+   ════════════════════════════════════════════════════════════ */
+.idle-leaf {
+  position: fixed;
+  top: -40px;
+  left: -40px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 200;
+  opacity: 0;
+}
+.idle-leaf.fly {
+  animation: leafDrift 4.8s linear forwards;
+}
+@keyframes leafDrift {
+  0%   { opacity: 0; transform: translate(0, 0) rotate(0); }
+  10%  { opacity: 0.85; }
+  90%  { opacity: 0.85; }
+  100% { opacity: 0; transform: translate(110vw, 70vh) rotate(720deg); }
+}
+</style>
+</head>
+<body>
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" />
+    <feColorMatrix values="0 0 0 0 0.6 0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0.5 0" />
+  </filter>
+</svg>
+
+<div class="bible">
+
+  <header class="bible-header">
+    <div class="bible-eyebrow">ADR-019 · DESIGN BIBLE V1</div>
+    <h1 class="bible-title">Embershore.</h1>
+    <p class="bible-subtitle">Sun-bleached dream-cartography. A small island someone has been carrying in their pocket for years.</p>
+  </header>
+
+  <!-- ═════ PALETTE ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">01</span>Palette</h2>
+    <p class="section-lede">Six 4-color ramps anchored on the chases.house warm tokens. No new accent hues — only sub-shades within the warm-tone family, with cool ramps (water, stone, night) desaturated toward the warm bias. Site tokens noted in monospace; new shades are tinted from existing tokens.</p>
+
+    <div class="palette-grid">
+      <div class="ramp">
+        <div class="ramp-name">SAND</div>
+        <div class="ramp-desc">beach, dirt path, dungeon floors</div>
+        <div class="ramp-stack">
+          <div style="background:#f0e6d3"></div>
+          <div style="background:#d4b478"></div>
+          <div style="background:#a06828"></div>
+          <div style="background:#5a3618"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>F0E6D3</span><span>D4B478</span><span>A06828</span><span>5A3618</span>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="ramp-name">GRASS</div>
+        <div class="ramp-desc">foliage, hedges, swamp</div>
+        <div class="ramp-stack">
+          <div style="background:#c4cfa0"></div>
+          <div style="background:#8a9a6e"></div>
+          <div style="background:#6a7d5a"></div>
+          <div style="background:#38442b"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>C4CFA0</span><span>8A9A6E</span><span>6A7D5A</span><span>38442B</span>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="ramp-name">WATER</div>
+        <div class="ramp-desc">cove, ocean, dawn-water</div>
+        <div class="ramp-stack">
+          <div style="background:#b8c8d4"></div>
+          <div style="background:#6a8499"></div>
+          <div style="background:#3a5266"></div>
+          <div style="background:#1e2a35"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>B8C8D4</span><span>6A8499</span><span>3A5266</span><span>1E2A35</span>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="ramp-name">STONE</div>
+        <div class="ramp-desc">dungeon walls, totems</div>
+        <div class="ramp-stack">
+          <div style="background:#d6c4a8"></div>
+          <div style="background:#9a8e7a"></div>
+          <div style="background:#6b5a48"></div>
+          <div style="background:#2a2018"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>D6C4A8</span><span>9A8E7A</span><span>6B5A48</span><span>2A2018</span>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="ramp-name">EMBER</div>
+        <div class="ramp-desc">fire, hearts, item-get glow</div>
+        <div class="ramp-stack">
+          <div style="background:#faf3e6"></div>
+          <div style="background:#e8b04a"></div>
+          <div style="background:#c8943e"></div>
+          <div style="background:#a06828"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>FAF3E6</span><span>E8B04A</span><span>C8943E</span><span>A06828</span>
+        </div>
+      </div>
+      <div class="ramp">
+        <div class="ramp-name">NIGHT</div>
+        <div class="ramp-desc">UI bg, vignettes, fade-outs</div>
+        <div class="ramp-stack">
+          <div style="background:#28282c"></div>
+          <div style="background:#1e1e21"></div>
+          <div style="background:#141416"></div>
+          <div style="background:#0a0a0b"></div>
+        </div>
+        <div class="ramp-codes">
+          <span>28282C</span><span>1E1E21</span><span>141416</span><span>0A0A0B</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <strong>Palette extension justification.</strong> Chases.house tokens give 5 anchor warm-tones (gold, glow, ember, terracotta, sage) and 4 UI grays. For 4-color GBC-style ramps per material I introduced 11 new shades, all derived from the warm bias: sand expansion uses two darker tints of ember; grass extends sage in both directions; stone is desaturated parchment; water is a warm-leaning blue (saturation ≤ 30%, hue rotated 4° toward cyan-warm). No new hues — only sub-shades within the existing warm family. <code>--accent-ember</code> appears in two ramps (sand and ember) deliberately so the palette feels of-a-piece rather than 6 disjoint pickers.
+    </div>
+  </section>
+
+  <!-- ═════ TYPOGRAPHY ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">02</span>Typography</h2>
+    <p class="section-lede">Three fonts, intentionally split by purpose. The contrast IS the design — pixel-grid rigor where the game lives, soft humanist serif where the dream speaks, neutral sans for utility menu chrome.</p>
+
+    <div class="type-grid">
+      <div class="type-card">
+        <div class="type-eyebrow">DIEGETIC · IN-WORLD UI</div>
+        <div class="type-name">Press Start 2P</div>
+        <div class="type-role">HUD numerics, dialogue body, item names, button labels. The pixel grid that says "you are inside the game."</div>
+        <div class="type-sample-pixel">the lantern flickers...</div>
+        <div class="type-sample-pixel" style="font-size:0.65rem">12 RUPEES · 4 SHELLS</div>
+        <div class="type-sample-pixel" style="font-size:0.55rem">A SWORD     B SHIELD</div>
+        <div class="type-meta">12PX · 14PX · 16PX · 22PX</div>
+      </div>
+
+      <div class="type-card">
+        <div class="type-eyebrow">POETIC · DREAM-SPEAK</div>
+        <div class="type-name">Fraunces Italic</div>
+        <div class="type-role">Screen titles, game-over line, ending credits, name-entry header, totem-stone whispers. The voice of the dream itself.</div>
+        <div class="type-sample-fraunces">the dream blurs...</div>
+        <div class="type-sample-fraunces" style="font-size:1.2rem; color:var(--text-muted)">and the hearthwarden dreamed of you.</div>
+        <div class="type-meta">OPSZ 24–144 · WONK 1 · SOFT 50–90</div>
+      </div>
+
+      <div class="type-card">
+        <div class="type-eyebrow">UTILITY · MENU CHROME</div>
+        <div class="type-name">Bricolage Grotesque</div>
+        <div class="type-role">Pause menu options, journal stats, settings labels, accessibility toggles. Legible at small sizes without competing for attention.</div>
+        <div class="type-sample-bricolage" style="font-weight:500">Resume Dream</div>
+        <div class="type-sample-bricolage" style="font-weight:400; font-size:0.9rem">Reduced motion · enabled</div>
+        <div class="type-sample-bricolage" style="font-weight:400; font-size:0.85rem; color:var(--text-muted)">Music ━━━○──── 60</div>
+        <div class="type-meta">OPSZ 12–48 · WGHT 400–600</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <strong>Why three fonts?</strong> A two-font system would force either the menus to feel diegetic (PSP for "Music: 60" looks like a dungeon HUD, breaking the menu/world boundary) or the in-world UI to feel papery (Fraunces hearts read as decorative, not as game state). Three fonts let each register hold its own integrity. <strong>DRY check:</strong> all three are already loaded by the chases.house site (Fraunces and Bricolage globally; Press Start 2P locally by Pac-Man). No new font requests.
+    </div>
+  </section>
+
+  <!-- ═════ MOTION ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">03</span>Motion</h2>
+    <p class="section-lede">Deliberate, never snappy. Every transition has a purpose. The room-scroll is non-negotiable; everything else inherits its tempo. Reduced-motion collapses all of this to instant cuts except the ending inversion, which becomes a 1.5s crossfade (you can't skip the ending poetry without breaking it).</p>
+
+    <div class="motion-grid">
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">ROOM_SCROLL</div>
+          <div class="motion-curve">cubic-bezier(0.65, 0, 0.35, 1) — the signature</div>
+        </div>
+        <div class="motion-time">280ms</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">ITEM_GET_POSE</div>
+          <div class="motion-curve">600ms up · 1200ms hold · 600ms down</div>
+        </div>
+        <div class="motion-time">2.4s</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">DIALOGUE_TYPEWRITER</div>
+          <div class="motion-curve">+80ms after punctuation</div>
+        </div>
+        <div class="motion-time">24ms / char</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">HEART_FRACTURE</div>
+          <div class="motion-curve">cubic-bezier(0.5, 0, 0.5, 1.4) — slight overshoot</div>
+        </div>
+        <div class="motion-time">320ms</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">TITLE_SKY_BREATHE</div>
+          <div class="motion-curve">infinite ease-in-out — gradient hue drifts ±8°</div>
+        </div>
+        <div class="motion-time">40s</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">HEARTHWARDEN_PULSE</div>
+          <div class="motion-curve">infinite ease-in-out — scale 1.00 → 1.04</div>
+        </div>
+        <div class="motion-time">8s</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">OVERLAY_ENTER</div>
+          <div class="motion-curve">cubic-bezier(0.16, 1, 0.3, 1) — fade + 4px-up</div>
+        </div>
+        <div class="motion-time">320ms</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">IDLE_LEAF</div>
+          <div class="motion-curve">triggered after 6s no-input · diagonal drift</div>
+        </div>
+        <div class="motion-time">4.8s</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">WAKE_IN_INN</div>
+          <div class="motion-curve">slow because cozy · no harsh cut</div>
+        </div>
+        <div class="motion-time">1.8s</div>
+      </div>
+      <div class="motion-card">
+        <div class="motion-info">
+          <div class="motion-name">ENDING_INVERT</div>
+          <div class="motion-curve">luxurious — credits crossfade in over last 6s</div>
+        </div>
+        <div class="motion-time">12s</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 1: TITLE ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">04</span>Title Screen</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 1 · TITLE</span>
+        <div class="title-stage">
+          <div class="title-sky"></div>
+          <div class="hearthwarden-silhouette"></div>
+          <div class="title-clouds">
+            <div class="title-cloud cloud-1"></div>
+            <div class="title-cloud cloud-2"></div>
+            <div class="title-cloud cloud-3"></div>
+          </div>
+          <div class="title-sun"></div>
+          <div class="title-water">
+            <div class="title-wave wave-1"></div>
+            <div class="title-wave wave-2"></div>
+            <div class="title-wave wave-3"></div>
+          </div>
+          <div class="title-beach"></div>
+          <div class="title-character"></div>
+          <div class="title-content">
+            <div class="title-game-title">Embershore</div>
+            <div class="title-game-subtitle">a sleeping island, four sigils, one hearthwarden</div>
+          </div>
+          <div class="title-actions">
+            <button class="title-button">Begin a dream</button>
+            <button class="title-button">Continue dreaming</button>
+          </div>
+          <div class="title-credit">a chases.house dream</div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>WHAT'S LIVE</h4>
+        <p>The sky <strong>breathes</strong> on a 40s hue-rotate loop. The Hearthwarden's cloud-silhouette pulses on an 8s ease (scale 1.00 → 1.04). Three wave-bands drift offset to suggest tide. The sun glows on a 4s alternate. The character bobs gently as if asleep.</p>
+        <h4>THE WORD CHOICE</h4>
+        <p><strong>"Begin a dream"</strong> not "New Game." <strong>"Continue dreaming"</strong> not "Continue." The verbs commit to the conceit. If the player has no save, the second button shows as <code>continue dreaming</code> at 40% opacity, disabled.</p>
+        <h4>WHEN A SAVE EXISTS</h4>
+        <p>"Continue dreaming" reads the player's chosen name and shows it underneath: <em>cinder, chapter 3 · the tide temple</em> in Fraunces italic at 0.7rem.</p>
+        <h4>FALLBACKS</h4>
+        <p><strong>Reduced motion</strong>: sky, clouds, hearthwarden, waves, sun, character all freeze. The player still sees a beautiful static frame.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 2: NAME-ENTRY ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">05</span>Name-Entry Modal</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 2 · NAME ENTRY</span>
+        <div class="name-stage">
+          <div class="logbook-page">
+            <div class="logbook-eyebrow">SHIPS' LOG · ENTRY 0001</div>
+            <div class="logbook-title">The seabird brought you ashore.</div>
+            <div class="logbook-prompt">What name do you carry?</div>
+            <div class="name-input-row">
+              <span class="name-input-prefix">name :</span>
+              <input class="name-input" type="text" maxlength="8" placeholder="cinder" value="" />
+            </div>
+            <div class="name-pebbles">
+              <div class="pebble pebble-finn">
+                <div class="pebble-figure"></div>
+                <div class="pebble-name">finn</div>
+              </div>
+              <div class="pebble pebble-cinder selected">
+                <div class="pebble-figure"></div>
+                <div class="pebble-name">cinder</div>
+              </div>
+              <div class="pebble pebble-mavi">
+                <div class="pebble-figure"></div>
+                <div class="pebble-name">mavi</div>
+              </div>
+            </div>
+            <button class="logbook-continue">Continue</button>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>NOT A MODAL — A LOGBOOK PAGE</h4>
+        <p>The card has a page-curl shadow at the bottom-right corner, manifest-line at the top, ink fonts on parchment-tinted background. The conceit: the seabird that found you is making you a crew manifest entry.</p>
+        <h4>QUICK-PICKS SHOW THE CHARACTER</h4>
+        <p>Each pebble button renders a tiny silhouette of how the named character will look in-game — <strong>Finn</strong> in water-blue tunic (sea-coded), <strong>Cinder</strong> in terracotta (lore-tied to the Hearthwarden), <strong>Mavi</strong> in sage (forest-coded). Player picks an identity, not just a name.</p>
+        <h4>DEFAULT → CINDER</h4>
+        <p>Empty Enter selects "cinder" and continues. The placeholder text in the input shows "cinder" at 30% opacity to signal this. Pebbles toggle the input value; the input is the source of truth.</p>
+        <h4>CHARACTER CONSTRAINTS</h4>
+        <p>8 chars max, lowercased on entry, A–Z and space only. Strips emoji and special chars silently. If the player types something offensive the game still loads — we don't moderate. This is a personal site for cozy play.</p>
+        <h4>APPEARS ONCE</h4>
+        <p>Only on a fresh save, after the wash-ashore intro completes. Continuing a save skips this screen entirely. Starting a new game while a save exists prompts "overwrite the last dream?" first.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 3: DIALOGUE ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">06</span>Dialogue Box</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 3 · DIALOGUE</span>
+        <div class="dialogue-stage">
+          <div class="dialogue-stage-character"></div>
+          <div class="dialogue-box">
+            <div class="dialogue-portrait">
+              <span class="dialogue-portrait-badge">marin</span>
+            </div>
+            <div class="dialogue-scroll">
+              <div class="dialogue-text">
+                you washed up by the dock, <span class="cursor-name">cinder</span>. the hearthwarden sleeps beneath us — can you hear her?
+              </div>
+              <div class="dialogue-prompt">▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>DECKLED PARCHMENT, NOT A RECTANGLE</h4>
+        <p>The scroll has an irregular hand-torn top edge via SVG <code>clip-path</code> with 11 jagged points. Drop-shadow + inset paper-grain. The portrait is a circular frame with a 2.5px ink-colored border, NPC art inside, and a tiny <strong>name-stamp badge</strong> at the bottom in Press Start 2P at 0.45rem.</p>
+        <h4>{NAME} INTERPOLATION</h4>
+        <p>Whenever a string contains the player's name (<code>{name}</code> in source data), the rendered name is <strong>highlighted</strong> with a subtle ember-glow underbox — see "cinder" in the preview. Tells the player "this is yours." Implementation: <code>dialogue.js</code> string preprocessor wraps the substituted name in <code>&lt;span class="cursor-name"&gt;</code>.</p>
+        <h4>NPC-SPECIFIC FRAMING (V1 SUBSET)</h4>
+        <p>The bard's box has a faint music-staff watermark behind the text. Totem-stone hints use a stone-carved frame (chiseled rectangular border) instead of parchment with a different font (Bricolage italic, slightly mystical). Fishermen and inn-keep use the default parchment shown here. <strong>Drop:</strong> per-NPC unique frames beyond these three categories — over-reach for v1.</p>
+        <h4>TYPEWRITER</h4>
+        <p>24ms per character. After a period, comma, or question-mark: +80ms. After a paragraph break: +400ms. Player can <strong>tap to skip</strong> the typewriter to instant-fill the box. Tapping again advances. The "▶" prompt at the bottom-right pulses on a 1.4s ease only AFTER the typewriter finishes.</p>
+        <h4>HEIGHT</h4>
+        <p>Box occupies bottom 28% of the screen. Game state below the box is paused (no enemies move during dialogue) — cozy, not punishing.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 4: HUD ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">07</span>HUD</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 4 · HUD (HOVER FRAME TO SOLIDIFY)</span>
+        <div class="hud-stage">
+          <div class="hud-stage-character"></div>
+          <div class="hud-overlay">
+            <div class="hud-hearts">
+              <div class="hud-heart"></div>
+              <div class="hud-heart"></div>
+              <div class="hud-heart"></div>
+              <div class="hud-heart fractured"></div>
+              <div class="hud-heart empty"></div>
+            </div>
+            <div class="hud-currency">
+              <span class="hud-coin"></span>
+              <span>012</span>
+            </div>
+            <div class="hud-equip">
+              <div class="hud-slot" data-key="A">
+                <div class="hud-slot-icon icon-sword"></div>
+              </div>
+              <div class="hud-slot" data-key="B">
+                <div class="hud-slot-icon icon-shield"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>EMBER-BEAD HEARTS</h4>
+        <p>Tiny radial-gradient orbs with a soft ember halo. Each heart pulses subtly (2.4s, staggered by 0.2s — a hearth-flicker). On damage, the bead <strong>fractures</strong> (diagonal crack via a clip-path overlay) and dims to <code>--heart-empty</code>. Lost-and-empty hearts become outline-only rings. Subverts the GBC pixel-heart trope while staying in palette.</p>
+        <h4>RUPEE → "FOUND"</h4>
+        <p>The currency is rupees but they're called <strong>"found"</strong> in NPC dialogue ("I'll take 5 found for that fishing line"). The icon is a gold-glow diamond with an inner ember-shadow. Numerals are zero-padded to 3 digits in Press Start 2P.</p>
+        <h4>EQUIP SLOTS A &amp; B</h4>
+        <p>Two slots, each 22×22, with a tiny <code>A</code>/<code>B</code> badge in the corner showing the keyboard binding. The icon inside is a simple silhouette derived from the inventory item. Slots empty until items are picked up.</p>
+        <h4>FADE-WHEN-FULL</h4>
+        <p>Whole HUD at 70% opacity by default. <strong>Fades to 100%</strong> on any HUD-relevant event: damage taken, item picked up, slot swap. Holds at 100% for 3s, then eases back. Hover-to-solidify shown above demonstrates this. Player can tap <code>H</code> to permanently lock to 100% if they prefer.</p>
+        <h4>RESERVED SAFE MARGIN</h4>
+        <p>Top-left 15% of the screen is reserved as a <strong>HUD-safe zone</strong>. Dungeon room data flags the safe zone; enemies and pickups never spawn there. Guarantees the HUD never overlaps something the player must read or react to.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 5: PAUSE / INVENTORY ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">08</span>Pause / Inventory</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 5 · FIELD JOURNAL</span>
+        <div class="pause-stage">
+          <div class="journal">
+            <div class="journal-page">
+              <div class="journal-eyebrow">CHAPTER III · INVENTORY</div>
+              <div class="journal-page-title">what you carry</div>
+              <div class="inv-grid">
+                <div class="inv-slot equipped-a" data-slot="A"><div class="inv-slot-icon inv-icon-sword"></div></div>
+                <div class="inv-slot equipped-b" data-slot="B"><div class="inv-slot-icon" style="border-radius:50% 50% 30% 30%; background:var(--terracotta)"></div></div>
+                <div class="inv-slot"><div class="inv-slot-icon inv-icon-feather"></div></div>
+                <div class="inv-slot"><div class="inv-slot-icon inv-icon-bomb"></div></div>
+                <div class="inv-slot"><div class="inv-slot-icon inv-icon-bow"></div></div>
+                <div class="inv-slot"><div class="inv-slot-icon inv-icon-boomer"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+                <div class="inv-slot empty"><div class="inv-slot-icon"></div></div>
+              </div>
+            </div>
+            <div class="journal-page">
+              <div class="journal-eyebrow">CHAPTER III · CHART &amp; LOG</div>
+              <div class="journal-page-title">where you've wandered</div>
+              <dl class="journal-stats">
+                <dt>HEARTS</dt> <dd>4 of 6</dd>
+                <dt>FOUND</dt> <dd>012</dd>
+                <dt>SIGILS</dt> <dd>1 of 4</dd>
+                <dt>SHELLS</dt> <dd>3 of 8</dd>
+                <dt>FISH</dt> <dd>5 species, biggest 38cm</dd>
+              </dl>
+              <div class="mini-map">
+                <div class="mini-map-player"></div>
+              </div>
+            </div>
+            <div class="journal-footer">
+              <span>ESC — RESUME</span>
+              <span>S — SAVE &amp; QUIT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>DOUBLE-PAGE FIELD JOURNAL</h4>
+        <p>The pause menu is a hand-drawn journal spread, not a UI grid. Spine shadow runs down the center. Left page is the inventory grid; right page is the chart and stats. Background game state is blurred and darkened to 40% — present but distant.</p>
+        <h4>EQUIP SLOTS BY GOLD-GLOW</h4>
+        <p>Equipped items get a gold-glow background (<code>rgba(232, 176, 74, 0.45)</code>) and a tiny stamped <code>A</code> or <code>B</code> badge in the corner — the same letters that appear in the HUD. Player <strong>clicks an item, then presses A or B</strong> to assign it to that slot. Or arrow keys + Enter for keyboard.</p>
+        <h4>STATS IN THE NPC LANGUAGE</h4>
+        <p>"FOUND" not "rupees." "SIGILS" not "boss progression." "SHELLS" not "collectibles." Vocabulary commits to the lore. <strong>Why:</strong> reading "12 RUPEES" in the journal would break frame; "012 found" sounds like a sailor's tally.</p>
+        <h4>MINI-MAP PREVIEW</h4>
+        <p>A small parchment thumbnail of the overworld with the player's location pulsing as a gold ember. Clicking it opens the full Map screen (Surface 6). Always visible — players love seeing where they are.</p>
+        <h4>SAVE BEHAVIOR</h4>
+        <p>The game auto-saves on every screen transition (per ADR §Persistence), so "Save &amp; Quit" is technically just "Quit." We label it <strong>Save &amp; Quit</strong> anyway because cozy reassurance &gt; technical accuracy.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 6: MAP ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">09</span>Map Screen</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 6 · SEA-CHART</span>
+        <div class="map-stage">
+          <div class="sea-chart">
+            <div class="chart-title">Embershore</div>
+            <div class="compass-rose">
+              <svg viewBox="0 0 60 60">
+                <g stroke="#5a3618" stroke-width="0.8" fill="none">
+                  <circle cx="30" cy="30" r="24" stroke-dasharray="2 2" opacity="0.5"/>
+                  <circle cx="30" cy="30" r="16"/>
+                  <path d="M30 6 L34 26 L30 30 L26 26 Z" fill="#c8943e"/>
+                  <path d="M30 54 L34 34 L30 30 L26 34 Z" fill="#5a3618"/>
+                  <path d="M6 30 L26 26 L30 30 L26 34 Z" fill="#a06828"/>
+                  <path d="M54 30 L34 26 L30 30 L34 34 Z" fill="#a06828"/>
+                  <text x="30" y="4" font-family="Press Start 2P, monospace" font-size="3" fill="#5a3618" text-anchor="middle">N</text>
+                  <text x="30" y="59" font-family="Press Start 2P, monospace" font-size="3" fill="#5a3618" text-anchor="middle">S</text>
+                </g>
+              </svg>
+            </div>
+            <div class="island-grid">
+              <!-- Row 1 -->
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+              <div class="island-cell"><span class="cell-icon cleared">✦</span></div>
+              <div class="island-cell"><span class="cell-icon shell">◗</span></div>
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+              <!-- Row 2 -->
+              <div class="island-cell"><span class="cell-icon shell">◗</span></div>
+              <div class="island-cell"><span class="cell-icon">▲</span></div>
+              <div class="island-cell"></div>
+              <div class="island-cell"></div>
+              <div class="island-cell"><span class="cell-icon">✧</span></div>
+              <!-- Row 3 -->
+              <div class="island-cell"></div>
+              <div class="island-cell"><span class="cell-icon player"></span></div>
+              <div class="island-cell"><span class="cell-icon">⌂</span></div>
+              <div class="island-cell"><span class="cell-icon">▲</span></div>
+              <div class="island-cell"><span class="cell-icon shell">◗</span></div>
+              <!-- Row 4 -->
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+              <div class="island-cell"><span class="cell-icon">𓆟</span></div>
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+              <div class="island-cell"><span class="cell-icon">✧</span></div>
+              <div class="island-cell"><span class="cell-icon">~</span></div>
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item"><span class="legend-dot cleared"></span>cleared</div>
+              <div class="legend-item"><span class="legend-dot uncleared"></span>unfound</div>
+              <div class="legend-item"><span class="legend-dot shell"></span>shell</div>
+              <div class="legend-item"><span class="legend-dot you"></span>you</div>
+            </div>
+            <div class="chart-hint">ESC — RESUME</div>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>FOLDED SEA-CHART, NOT A UI MAP</h4>
+        <p>Three subtle vertical fold creases (33%, 66%) and one horizontal (48%) cross the parchment. Paper grain via radial-gradient pattern. Hand-drawn ink-line cell borders are dashed and slightly desaturated — they read as "drawn by hand" rather than "rendered by Tailwind."</p>
+        <h4>HAND-DRAWN COMPASS ROSE</h4>
+        <p>Top-right corner. Original SVG. Gold and ember on parchment. The dashed outer ring suggests cartographer's marginalia. Letters in Press Start 2P at 3px to keep the in-game font system consistent even on a story-tone surface.</p>
+        <h4>CELL ICONS</h4>
+        <p>Tiny glyphs say what's at each cell: <code>~</code> water, <code>▲</code> mountain, <code>⌂</code> village, <code>𓆟</code> fishing cove, <code>✦</code> dungeon (cleared, gold-glowing), <code>✧</code> dungeon (uncleared, faded), <code>◗</code> shell. <strong>The player's location pulses</strong> as an ember dot — the same heart-pulse animation as the HUD beads, for visual cohesion.</p>
+        <h4>LEGEND IN THE NPC LANGUAGE</h4>
+        <p>"Cleared / unfound / shell / you" — informal, lowercased. Not "completed dungeons" or "current position." Vocabulary stays cozy.</p>
+        <h4>FOG-OF-MAP</h4>
+        <p>Cells the player hasn't entered yet show <strong>no glyph</strong> (just dashed cell border). Dungeons appear as <code>✧</code> only after the player has been to the cell. Shells appear only after found. Encourages exploration; respects the cozy pace (no checklist anxiety).</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 7: GAME-OVER ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">10</span>Game-Over · Wake in Inn</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 7 · WAKE IN INN</span>
+        <div class="gameover-stage">
+          <div class="gameover-vignette"></div>
+          <div class="gameover-window">
+            <div class="gameover-window-pane"></div>
+            <div class="gameover-window-pane"></div>
+            <div class="gameover-window-pane"></div>
+            <div class="gameover-window-pane"></div>
+          </div>
+          <div class="gameover-line">the dream blurs...</div>
+          <div class="gameover-prompt">press any key to wake</div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>NO DEFEAT LANGUAGE — ANYWHERE</h4>
+        <p>Not "GAME OVER." Not "YOU DIED." Not even "Try again?" The screen reads <strong>"the dream blurs..."</strong> in Fraunces italic at 2.6rem with a soft ember text-shadow. Below: "press any key to wake" in lowercase Press Start 2P. That is the entire screen.</p>
+        <h4>THE WINDOW</h4>
+        <p>Above the line is an illustrated window — four panes of dawn-light gradient (ember → gold → terracotta → sand) with a subtle frost shimmer at the top. The implication: you are in bed, in the inn, looking at sunrise through the window. No words spell this out.</p>
+        <h4>THE FADE</h4>
+        <p>Slow 1.8s crossfade from the moment of damage. Music (the dungeon track) lowers in volume by -12dB across the same duration; the inn-theme then crossfades in over the next 2s. Player presses any key, the inn-theme stays, the screen transitions to the inn room interior (which is just the regular game with the player at full hearts, in the inn screen).</p>
+        <h4>NO PROGRESS LOST</h4>
+        <p>Per ADR. Dungeon enemies respawn. Items kept. Sigils kept. Found rupees kept. Hearts refilled. The screen is mood, not consequence.</p>
+        <h4>WHEN IT FIRES</h4>
+        <p>Hearts hit zero in any context (overworld, dungeon, fishing). The fade always shows. Even the boss fight uses this — bosses respawn at full health, but so do you.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 8: ENDING ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">11</span>Hearthwarden Ending</h2>
+    <div class="stage">
+      <div class="stage-frame">
+        <span class="stage-label">SURFACE 8 · ENDING (3 FRAMES OF 12s INVERSION)</span>
+        <div class="ending-stage">
+          <div class="ending-frame ending-frame-1">
+            <span class="ending-frame-label">T = 0.0s</span>
+            <div class="ending-island"></div>
+            <div class="ending-character"></div>
+          </div>
+          <div class="ending-frame ending-frame-2">
+            <span class="ending-frame-label">T = 6.0s</span>
+            <div class="ending-island"></div>
+            <div class="ending-character" style="position:absolute; bottom:24%; left:50%; transform:translateX(-50%); width:5px; height:10px; background:var(--ember-3); opacity:0.7;"></div>
+            <div class="ending-overlay"></div>
+          </div>
+          <div class="ending-frame ending-frame-3">
+            <span class="ending-frame-label">T = 12.0s</span>
+            <div class="ending-island"></div>
+            <div class="ending-character"></div>
+            <div class="ending-text-3">and the hearthwarden dreamed of you.</div>
+            <div class="ending-credits-3">Embershore · a chases.house dream</div>
+          </div>
+        </div>
+      </div>
+      <aside class="stage-notes">
+        <h4>LITERAL PALETTE INVERSION</h4>
+        <p>Frame 1 (T=0): the in-game state at full warm palette — the cliff, sun-down sky, player on the beach. Frame 2 (T=6): brightness is dropping, the gradient is darkening, the player silhouette is dimming. Frame 3 (T=12): full inversion. Sky is now <code>--night-4</code>, the player and island silhouettes are now <code>--accent-gold</code>. The dream's afterimage.</p>
+        <h4>THE FRAUNCES LINE</h4>
+        <p>"and the hearthwarden dreamed of you" appears at T=8s and crossfades over the final 4s. Punctuation matters: lowercase, period at the end, no exclamation. It is a soft completion, not a triumph.</p>
+        <h4>CREDITS UNDER</h4>
+        <p>Below the line, in Press Start 2P at 0.4rem, the credits scroll in over the final 4s: "Embershore · a chases.house dream" — then names of CC0 asset creators (Patrick de Arteaga for music, Juhani Junkala for SFX, etc.) — then the ADR-019 link. Total credits ~10 lines. Player can press any key to skip after T=12.</p>
+        <h4>WHY 12 SECONDS</h4>
+        <p>Long enough to feel ceremonial. Short enough that someone watching over your shoulder doesn't get bored. The pacing matches the item-get pose's 2.4s × 5 — five item-gets worth of contemplation.</p>
+        <h4>REDUCED-MOTION</h4>
+        <p>Collapses to a 1.5s crossfade between Frame 1 and Frame 3. The Fraunces line still appears, the credits still scroll. The poetry survives even at instant speed.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═════ SURFACE 9: GALLERY CARD ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">12</span>Gallery Card</h2>
+    <p class="section-lede">Inserted into the existing 9-card grid at <code>games/index.html</code>. Same site card pattern (3-line desc + icon + tag). The card has a subtle <strong>ember-glow</strong> aurea at the top-right that drifts on hover — a flourish unique to this card, signaling "the dreamiest game in the gallery." All other site cards remain unmodified.</p>
+
+    <div class="gallery-context">
+      <a class="context-card" href="#">
+        <span class="context-card-icon" aria-hidden="true">&#9737;</span>
+        <span class="context-card-title">Pac-Man</span>
+        <span class="context-card-desc">Classic maze chase with AI ghosts. Play solo, team up in co-op, or battle for dots in 4-player royale.</span>
+        <span class="context-card-tag">multiplayer</span>
+      </a>
+      <a class="context-card embershore" href="#">
+        <span class="context-card-icon" aria-hidden="true">&#127755;</span>
+        <span class="context-card-title">Embershore</span>
+        <span class="context-card-desc">Wash ashore on a sleeping island. Fish at the cove, gather four sigils, and wake the Hearthwarden in this cozy 30-minute adventure.</span>
+        <span class="context-card-tag">solo</span>
+      </a>
+      <a class="context-card" href="#">
+        <span class="context-card-icon" aria-hidden="true">&#10067;</span>
+        <span class="context-card-title">Jeopardy</span>
+        <span class="context-card-desc">Host a Jackbox-style trivia game on the big screen. Players buzz in on their phones.</span>
+        <span class="context-card-tag">multiplayer</span>
+      </a>
+    </div>
+
+    <div class="notes" style="margin-top:2rem">
+      <h4 style="font-family:var(--font-pixel); font-size:0.6rem; letter-spacing:0.18em; color:var(--accent-gold); margin-bottom:0.6rem; font-weight:normal">CARD COPY</h4>
+      <p>Title: <strong>Embershore</strong>. Description (matches site's 1–3 sentence cadence): <em>"Wash ashore on a sleeping island. Fish at the cove, gather four sigils, and wake the Hearthwarden in this cozy 30-minute adventure."</em> Tag: <code>solo</code> (matches existing site tagging convention). Icon: <code>🌅</code> (sunrise, U+1F305) — telegraphs warm-tone, dawn-on-island instantly.</p>
+      <p><strong>The aurea flourish</strong> is the single deviation from existing card pattern. It's a CSS pseudo-element on <code>.game-card.embershore</code> only; other cards stay untouched. On hover, the aurea drifts down-left and brightens slightly. Subtle enough that someone scanning the grid notices "this one feels different" without knowing why.</p>
+    </div>
+  </section>
+
+  <!-- ═════ DETAILS THAT NOBODY ASKED FOR ═════ -->
+  <section class="bible-section">
+    <h2 class="section-title"><span class="section-num">13</span>The Details Nobody Asked For</h2>
+    <p class="section-lede">Small flourishes that reward a close look. None are mechanically required; all are mood-load-bearing.</p>
+
+    <div class="notes">
+      <h4>THE IDLE LEAF</h4>
+      <p>After 6s of no input on any screen — title, name-entry, gameplay, menu, ending — a single leaf drifts diagonally across the screen at a slight rotation. The leaf is <code>14×14px</code>, <code>--grass-2</code> on top, <code>--ember-3</code> on bottom, with a subtle CSS-only shading. Drifts for 4.8s, rotates 720°, fades out at the right edge. <strong>Triggers once per idle period</strong>; doesn't repeat until the player moves the mouse or presses a key. <em>(Live demo on this page — go silent for 6s.)</em></p>
+      <h4>TUNIC FLUTTER</h4>
+      <p>When the player character stands still for 6s, the tunic-edge sprite swaps to the "fluttered" variant for 200ms — a single frame showing the bottom-right hem lifted as if by a breeze. Same trigger as the leaf, deliberately synced — the leaf appears at the same instant as the flutter, so an observant player connects them: "the wind moved both."</p>
+      <h4>MUSIC HOLDS THROUGH ROOM-SCROLL</h4>
+      <p>Standard mistake: cut the music or fade it during a room transition. We <strong>don't</strong>. The music continues unbroken across the 280ms scroll. This is the single most load-bearing audio decision — without it, transitions feel like loading screens. With it, they feel like turning a page.</p>
+      <h4>SIREN TRACK SHARES PALETTE WITH SKY</h4>
+      <p>The Hearthwarden whisper track (a quiet ambient tone that plays at low volume across the whole island) modulates its own playback rate by ±2% on the same 8s ease as the Hearthwarden silhouette pulse. The world breathes in sync with itself. Most players never consciously notice; everyone feels it.</p>
+      <h4>BARD'S VERSES REWARD FULL EXPLORATION</h4>
+      <p>The bard NPC hums one bar of the final ritual song the first time you visit each new screen. Visit all 20 overworld screens and you've heard the full melody — assembled in your head, not on the soundtrack. The final ritual cutscene then plays the full track with vocals as the actual song. <strong>The reveal is that you already knew it.</strong></p>
+      <h4>TOTEM STONES KNOW WHAT YOU'VE DONE</h4>
+      <p>Each totem checks game state and offers a contextual hint. Pre-first-dungeon: "the cove holds a quieter dream." After 2 sigils: "you wear two of her dreams now, {name}. she stirs." Before final ritual: "she is almost awake. light the campfire." Same totem, three lines over the playthrough. Players who re-read totems get rewarded.</p>
+    </div>
+  </section>
+
+  <footer class="bible-footer">
+    DESIGN BIBLE V1 · ADR-019 · CHASES.HOUSE
+  </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// IDLE LEAF FLOURISH — fires after 6s no input, on any screen
+// ═══════════════════════════════════════════════════════════
+(function() {
+  let idleTimer = null;
+  const IDLE_MS = 6000;
+
+  function dropLeaf() {
+    const leaf = document.createElement('div');
+    leaf.className = 'idle-leaf fly';
+    leaf.innerHTML = `
+      <svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 7 Q5 1 12 3 Q10 9 4 12 Q1 10 2 7 Z" fill="#8a9a6e" stroke="#a06828" stroke-width="0.5"/>
+        <path d="M2 7 Q6 7 10 8" stroke="#5a3618" stroke-width="0.4" fill="none"/>
+      </svg>`;
+    leaf.style.top = (10 + Math.random() * 30) + '%';
+    leaf.style.left = '-30px';
+    document.body.appendChild(leaf);
+    setTimeout(() => leaf.remove(), 4900);
+  }
+
+  function resetIdle() {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(dropLeaf, IDLE_MS);
+  }
+
+  ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, resetIdle, { passive: true });
+  });
+  resetIdle();
+})();
+
+// ═══════════════════════════════════════════════════════════
+// NAME-ENTRY: pebble buttons sync to the input
+// ═══════════════════════════════════════════════════════════
+(function() {
+  const input = document.querySelector('.name-input');
+  const pebbles = document.querySelectorAll('.pebble');
+  if (!input) return;
+
+  pebbles.forEach(p => {
+    p.addEventListener('click', () => {
+      const name = p.querySelector('.pebble-name').textContent;
+      input.value = name;
+      pebbles.forEach(x => x.classList.remove('selected'));
+      p.classList.add('selected');
+    });
+  });
+
+  input.addEventListener('input', () => {
+    const v = input.value.toLowerCase().trim();
+    pebbles.forEach(p => {
+      const name = p.querySelector('.pebble-name').textContent;
+      p.classList.toggle('selected', name === v);
+    });
+  });
+})();
+</script>
+</body>
+</html>
