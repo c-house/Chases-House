@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fishing - Chase's House</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    /* ── Page tokens (game-local) ─────────────────────── */
+    :root {
+      --wood-light: #a06828;
+      --wood-mid: #6b4818;
+      --wood-dark: #4a3210;
+      --wood-deep: #2a1a08;
+      --water-shimmer: #7fb0d4;
+      --water-near: #3e6a8f;
+      --water-mid: #2a4a6b;
+      --water-deep: #1d3147;
+      --pixel-cream: #f0e6d3;
+      --font-pixel: 'Pixelify Sans', 'Press Start 2P', monospace;
+    }
+
+    /* ── Page Layout ──────────────────────────────────── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(1.5rem, 4vh, 3rem) clamp(1rem, 4vw, 3rem) clamp(2rem, 5vh, 4rem);
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-size: clamp(2rem, 5vw + 0.3rem, 3.2rem);
+      font-weight: 350;
+      color: var(--text-heading);
+      line-height: 1.05;
+      letter-spacing: -0.005em;
+      text-align: center;
+      animation: fadeSlideUp 800ms ease-out backwards;
+      animation-delay: 100ms;
+    }
+
+    .page-subtitle {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-variation-settings: 'opsz' 14, 'SOFT' 60;
+      font-size: clamp(0.9rem, 1.4vw + 0.2rem, 1.1rem);
+      font-weight: 350;
+      color: var(--text-muted);
+      margin-top: 0.4rem;
+      margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+      text-align: center;
+      max-width: 32rem;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 250ms;
+    }
+
+    /* ── Game Frame (the dusk shadowbox) ──────────────── */
+    .game-frame {
+      position: relative;
+      width: min(100%, 1180px);
+      aspect-ratio: 16 / 9;
+      background: #0a0a0b;
+      border: 4px solid var(--wood-light);
+      border-radius: 3px;
+      box-shadow:
+        0 0 0 1px var(--wood-deep) inset,
+        0 0 0 6px rgba(74, 50, 16, 0.4),
+        0 16px 48px rgba(0, 0, 0, 0.6),
+        0 4px 16px rgba(160, 104, 40, 0.18);
+      overflow: hidden;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 400ms;
+      touch-action: none;
+    }
+
+    /* Decorative wood-grain notches at the four corners of the frame */
+    .game-frame::before,
+    .game-frame::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      pointer-events: none;
+      z-index: 4;
+      background:
+        linear-gradient(135deg, var(--wood-mid) 0% 50%, transparent 50%);
+      opacity: 0.85;
+    }
+    .game-frame::before { top: -1px; left: -1px; }
+    .game-frame::after { bottom: -1px; right: -1px; transform: rotate(180deg); }
+
+    canvas#game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      background: #0a0a0b;
+    }
+
+    /* ── Overlays (positioned within the frame) ──────── */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 2;
+      color: var(--pixel-cream);
+      font-family: var(--font-pixel);
+      letter-spacing: 0.04em;
+    }
+    .overlay[hidden] { display: none; }
+    .overlay.dim {
+      background: rgba(10, 10, 11, 0.78);
+      pointer-events: auto;
+    }
+
+    /* ── Title overlay (very minimal — scene shows behind) ─ */
+    .title-overlay {
+      justify-content: flex-end;
+      padding-bottom: clamp(1rem, 4%, 2.5rem);
+    }
+
+    .title-prompt {
+      pointer-events: auto;
+      font-family: var(--font-pixel);
+      font-size: clamp(0.9rem, 1.5vw + 0.2rem, 1.2rem);
+      font-weight: 500;
+      color: var(--pixel-cream);
+      background: transparent;
+      border: none;
+      padding: 0.3em 0.8em;
+      letter-spacing: 0.08em;
+      text-shadow:
+        2px 2px 0 var(--wood-deep),
+        -1px 0 0 var(--wood-deep),
+        0 -1px 0 var(--wood-deep),
+        1px 0 0 var(--wood-deep),
+        0 1px 0 var(--wood-deep);
+      animation: titlePulse 2.4s steps(8) infinite;
+    }
+
+    .title-prompt kbd {
+      font-family: var(--font-pixel);
+      font-size: 0.95em;
+      color: var(--accent-glow);
+      background: var(--wood-deep);
+      border: 2px solid var(--wood-mid);
+      border-top-color: var(--wood-light);
+      border-left-color: var(--wood-mid);
+      padding: 0.05em 0.45em;
+      margin: 0 0.15em;
+      text-shadow: 1px 1px 0 #000;
+      box-shadow: 1px 1px 0 var(--wood-deep);
+    }
+
+    @keyframes titlePulse {
+      0%, 100% { opacity: 0.85; transform: translateY(0); }
+      50%      { opacity: 1.0;  transform: translateY(-2px); }
+    }
+
+    /* ── Wood-Plank Button ────────────────────────────── */
+    .plank-btn {
+      pointer-events: auto;
+      font-family: var(--font-pixel);
+      font-size: clamp(0.85rem, 1.3vw + 0.2rem, 1.05rem);
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: var(--pixel-cream);
+      background: linear-gradient(180deg,
+        var(--wood-light) 0%,
+        var(--wood-light) 35%,
+        var(--wood-mid) 36%,
+        var(--wood-mid) 65%,
+        var(--wood-dark) 66%,
+        var(--wood-dark) 100%);
+      background-size: 100% 6px;
+      background-color: var(--wood-mid);
+      border: 2px solid var(--wood-deep);
+      border-top-color: var(--wood-light);
+      border-left-color: var(--wood-mid);
+      padding: 0.55em 1.4em;
+      text-shadow: 1px 1px 0 var(--wood-deep);
+      cursor: pointer;
+      transition: filter 0.15s steps(2), transform 0.15s steps(2);
+      image-rendering: pixelated;
+    }
+
+    .plank-btn:hover {
+      filter: brightness(1.15) saturate(1.05);
+    }
+
+    .plank-btn:active {
+      transform: translateY(1px);
+      filter: brightness(0.92);
+    }
+
+    .plank-btn.primary {
+      background-color: var(--accent-ember);
+      border-top-color: var(--accent-glow);
+      color: var(--pixel-cream);
+    }
+
+    .plank-btn.primary:hover {
+      filter: brightness(1.2) saturate(1.1);
+      color: #fff8e8;
+    }
+
+    /* ── Modal Panel (used for pause / catch / shop / help) ─ */
+    .panel {
+      pointer-events: auto;
+      background: #241a0e;
+      background-image:
+        repeating-linear-gradient(0deg,
+          rgba(160, 104, 40, 0.06) 0,
+          rgba(160, 104, 40, 0.06) 1px,
+          transparent 1px,
+          transparent 4px);
+      border: 3px solid var(--wood-mid);
+      box-shadow:
+        0 0 0 1px var(--wood-deep) inset,
+        0 0 0 4px var(--wood-light),
+        0 0 0 5px var(--wood-deep),
+        0 12px 40px rgba(0, 0, 0, 0.6);
+      padding: clamp(1rem, 2.5vw, 1.6rem) clamp(1.2rem, 3vw, 2rem);
+      max-width: min(90%, 32rem);
+      animation: panelOpen 220ms steps(3) backwards;
+    }
+
+    @keyframes panelOpen {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .panel-title {
+      font-family: var(--font-pixel);
+      font-size: clamp(1.1rem, 2vw + 0.3rem, 1.55rem);
+      font-weight: 600;
+      color: var(--accent-glow);
+      letter-spacing: 0.08em;
+      text-shadow: 2px 2px 0 var(--wood-deep);
+      text-align: center;
+      margin-bottom: 0.9rem;
+    }
+
+    .panel-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: stretch;
+    }
+
+    .panel-row.horizontal {
+      flex-direction: row;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .panel-hint {
+      font-family: var(--font-pixel);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.7rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Catch Reveal ─────────────────────────────────── */
+    .catch-portrait {
+      width: 200px;
+      height: 150px;
+      margin: 0 auto 1rem;
+      background: var(--water-deep);
+      background-image:
+        repeating-linear-gradient(135deg,
+          rgba(127, 176, 212, 0.10) 0,
+          rgba(127, 176, 212, 0.10) 2px,
+          transparent 2px,
+          transparent 6px),
+        radial-gradient(ellipse at 50% 70%, rgba(232, 176, 74, 0.10) 0%, transparent 60%);
+      border: 2px solid var(--wood-mid);
+      box-shadow:
+        0 0 0 1px var(--wood-deep) inset,
+        0 0 0 4px var(--wood-light),
+        0 0 0 5px var(--wood-deep);
+      display: grid;
+      place-items: center;
+      image-rendering: pixelated;
+      position: relative;
+      overflow: hidden;
+      animation: catchPortraitRise 380ms steps(5) backwards;
+    }
+
+    @keyframes catchPortraitRise {
+      from { opacity: 0; transform: translateY(14px) scale(0.8); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .catch-portrait canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    /* Rare-tier shine sweep — only added on rare catches via JS */
+    .catch-portrait.is-rare::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        100deg,
+        transparent 0%,
+        transparent 35%,
+        rgba(255, 248, 232, 0.35) 50%,
+        transparent 65%,
+        transparent 100%
+      );
+      mix-blend-mode: screen;
+      animation: rareShine 1.4s steps(8) 200ms 2;
+      pointer-events: none;
+    }
+    @keyframes rareShine {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(100%); }
+    }
+
+    .catch-name {
+      font-family: var(--font-pixel);
+      font-size: 1.45rem;
+      font-weight: 600;
+      color: var(--accent-glow);
+      text-align: center;
+      letter-spacing: 0.06em;
+      text-shadow: 2px 2px 0 var(--wood-deep);
+      animation: catchTextRise 320ms steps(4) 80ms backwards;
+    }
+
+    @keyframes catchTextRise {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .catch-meta {
+      font-family: var(--font-pixel);
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 0.3rem;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      animation: catchTextRise 320ms steps(4) 160ms backwards;
+    }
+
+    .catch-stars {
+      font-family: var(--font-pixel);
+      font-size: 1.25rem;
+      text-align: center;
+      margin: 0.5rem 0;
+      letter-spacing: 0.18em;
+      filter: drop-shadow(1px 1px 0 var(--wood-deep));
+    }
+
+    /* Each star is its own span so we can stagger reveal them */
+    .catch-stars .star {
+      display: inline-block;
+      color: var(--accent-gold);
+      animation: starPop 240ms steps(3) backwards;
+    }
+    .catch-stars .star.empty { color: var(--wood-mid); animation: none; }
+    .catch-stars .star:nth-child(1) { animation-delay: 240ms; }
+    .catch-stars .star:nth-child(2) { animation-delay: 360ms; }
+    .catch-stars .star:nth-child(3) { animation-delay: 480ms; }
+    .catch-stars .star:nth-child(4) { animation-delay: 600ms; }
+    .catch-stars .star:nth-child(5) { animation-delay: 720ms; }
+
+    @keyframes starPop {
+      0%   { opacity: 0; transform: scale(0.2); color: var(--pixel-cream); }
+      60%  { opacity: 1; transform: scale(1.45); color: #fff8e8; }
+      100% { opacity: 1; transform: scale(1); color: var(--accent-gold); }
+    }
+
+    .catch-cash {
+      font-family: var(--font-pixel);
+      font-size: 1.5rem;
+      color: var(--accent-glow);
+      text-align: center;
+      margin: 0.5rem 0 1rem;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 2px 2px 0 var(--wood-deep);
+      animation: catchTextRise 320ms steps(4) 280ms backwards;
+    }
+
+    .catch-cash::before {
+      content: '+ ';
+      color: var(--accent-gold);
+    }
+
+    /* ── Shop Sheet ───────────────────────────────────── */
+    .shop-overlay { justify-content: flex-end; pointer-events: auto; }
+    .shop-sheet {
+      pointer-events: auto;
+      width: min(96%, 56rem);
+      margin: 0 auto;
+      background: #1a120a;
+      border: 3px solid var(--wood-mid);
+      border-bottom: none;
+      box-shadow:
+        0 0 0 1px var(--wood-deep) inset,
+        0 -8px 32px rgba(0, 0, 0, 0.5);
+      padding: clamp(0.9rem, 2vw, 1.3rem) clamp(1rem, 3vw, 1.6rem) clamp(1rem, 2vw, 1.4rem);
+      animation: sheetSlide 280ms steps(4) backwards;
+    }
+
+    @keyframes sheetSlide {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    .shop-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+      gap: 1rem;
+    }
+
+    .shop-title {
+      font-family: var(--font-pixel);
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent-glow);
+      letter-spacing: 0.08em;
+      text-shadow: 1px 1px 0 var(--wood-deep);
+    }
+
+    .shop-cash {
+      font-family: var(--font-pixel);
+      font-size: 1.05rem;
+      color: var(--accent-gold);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    .shop-cash::before {
+      content: '◉';
+      color: var(--accent-gold);
+      margin-right: 0.4em;
+    }
+
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(0.6rem, 1.5vw, 1rem);
+    }
+
+    .shop-card {
+      background: #2a1a08;
+      background-image:
+        repeating-linear-gradient(0deg,
+          rgba(232, 176, 74, 0.04) 0,
+          rgba(232, 176, 74, 0.04) 1px,
+          transparent 1px,
+          transparent 3px);
+      border: 2px solid var(--wood-mid);
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .shop-card-name {
+      font-family: var(--font-pixel);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--pixel-cream);
+      letter-spacing: 0.06em;
+    }
+
+    .shop-card-tier {
+      display: flex;
+      gap: 3px;
+    }
+
+    .tier-pip {
+      width: 14px;
+      height: 14px;
+      background: var(--wood-deep);
+      border: 1px solid var(--wood-mid);
+      image-rendering: pixelated;
+    }
+
+    .tier-pip.filled {
+      background: var(--accent-gold);
+      border-color: var(--accent-glow);
+      box-shadow: 0 0 0 1px var(--wood-deep) inset;
+    }
+
+    .shop-card-effect {
+      font-family: var(--font-pixel);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .shop-card-buy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+    }
+
+    .shop-card-price {
+      font-family: var(--font-pixel);
+      font-size: 0.9rem;
+      color: var(--accent-glow);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Help Slides ──────────────────────────────────── */
+    .help-illust {
+      width: 100%;
+      height: 96px;
+      background: var(--water-deep);
+      background-image:
+        repeating-linear-gradient(135deg,
+          rgba(127, 176, 212, 0.06) 0,
+          rgba(127, 176, 212, 0.06) 2px,
+          transparent 2px,
+          transparent 4px);
+      border: 2px solid var(--wood-mid);
+      margin-bottom: 0.8rem;
+      display: grid;
+      place-items: center;
+      font-family: var(--font-pixel);
+      font-size: 1rem;
+      color: var(--accent-glow);
+      letter-spacing: 0.06em;
+    }
+
+    .help-step {
+      font-family: var(--font-pixel);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .help-text {
+      font-family: var(--font-pixel);
+      font-size: 0.95rem;
+      color: var(--pixel-cream);
+      text-align: center;
+      line-height: 1.5;
+      max-width: 22rem;
+    }
+
+    /* ── HUD (live stats, below the frame) ─────────── */
+    .hud-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(1rem, 2.5vw, 2rem);
+      margin-top: clamp(1rem, 2vw, 1.6rem);
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 600ms;
+    }
+
+    .hud-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      font-family: var(--font-pixel);
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .hud-stat-icon {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+
+    .hud-stat-icon.coin {
+      background:
+        radial-gradient(circle at 35% 35%, var(--accent-glow) 0%, var(--accent-glow) 30%, var(--accent-gold) 30%, var(--accent-gold) 70%, var(--accent-ember) 70%);
+      border-radius: 50%;
+      box-shadow: inset 0 -2px 0 rgba(74, 50, 16, 0.5);
+    }
+
+    .hud-stat-icon.bobber {
+      background:
+        linear-gradient(0deg,
+          var(--terracotta) 0%,
+          var(--terracotta) 50%,
+          var(--accent-gold) 50%,
+          var(--accent-gold) 100%);
+      border: 1px solid var(--wood-deep);
+    }
+
+    .hud-stat-value {
+      color: var(--accent-glow);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+    }
+
+    .hud-stat-value.muted { color: var(--text-faint); }
+
+    .hud-divider {
+      width: 1px;
+      height: 1.2em;
+      background: var(--wood-mid);
+      opacity: 0.5;
+    }
+
+    /* ── Back Link ────────────────────────────────────── */
+    .back-link {
+      display: inline-block;
+      margin-top: clamp(1.5rem, 3vw, 2.5rem);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.25s ease;
+      animation: fadeSlideUp 700ms ease-out backwards;
+      animation-delay: 750ms;
+    }
+    .back-link:hover { color: var(--accent-gold); }
+
+    /* ── Settings Form Controls (pixel-art styled) ─────── */
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      padding: 0.45rem 0.2rem;
+      font-family: var(--font-pixel);
+      font-size: 0.95rem;
+      color: var(--pixel-cream);
+      letter-spacing: 0.04em;
+      border-bottom: 1px dashed rgba(160, 104, 40, 0.25);
+    }
+    .settings-row:last-of-type { border-bottom: none; }
+
+    .settings-row .label-text { flex: 1; text-align: left; }
+
+    /* Pixel checkbox: small wood box with gold check on tick */
+    .pixel-check {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--wood-deep);
+      border: 2px solid var(--wood-mid);
+      box-shadow: 0 0 0 1px var(--wood-deep) inset;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+      transition: background-color 0.1s steps(1);
+    }
+    .pixel-check:hover { border-color: var(--accent-gold); }
+    .pixel-check:checked {
+      background: var(--accent-ember);
+      border-color: var(--accent-glow);
+    }
+    .pixel-check:checked::before {
+      content: '';
+      position: absolute;
+      left: 2px;  top: 6px;
+      width: 3px; height: 3px;
+      background: var(--pixel-cream);
+      box-shadow:
+        3px 3px 0 var(--pixel-cream),
+        6px 0 0 var(--pixel-cream),
+        9px -3px 0 var(--pixel-cream),
+        12px -6px 0 var(--pixel-cream);
+    }
+
+    /* Pixel select: wood plank look with chunky chevron */
+    .pixel-select {
+      appearance: none;
+      -webkit-appearance: none;
+      font-family: var(--font-pixel);
+      font-size: 0.85rem;
+      color: var(--pixel-cream);
+      letter-spacing: 0.05em;
+      background-color: var(--wood-mid);
+      background-image:
+        linear-gradient(135deg, transparent 50%, var(--accent-glow) 50%),
+        linear-gradient(45deg, var(--accent-glow) 50%, transparent 50%);
+      background-position:
+        calc(100% - 12px) 50%,
+        calc(100% - 6px) 50%;
+      background-size: 6px 6px;
+      background-repeat: no-repeat;
+      border: 2px solid var(--wood-deep);
+      border-top-color: var(--wood-light);
+      border-left-color: var(--wood-mid);
+      padding: 0.3rem 1.6rem 0.3rem 0.6rem;
+      cursor: pointer;
+      text-shadow: 1px 1px 0 var(--wood-deep);
+      image-rendering: pixelated;
+    }
+    .pixel-select:hover { filter: brightness(1.1); }
+    .pixel-select option {
+      background: var(--wood-dark);
+      color: var(--pixel-cream);
+    }
+
+    /* Pixel range slider: chunky wood track with gold knob */
+    .pixel-range {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 7rem;
+      height: 14px;
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .pixel-range::-webkit-slider-runnable-track {
+      height: 6px;
+      background: var(--wood-deep);
+      border: 1px solid var(--wood-mid);
+      box-shadow: 0 0 0 1px var(--wood-deep) inset;
+    }
+    .pixel-range::-moz-range-track {
+      height: 6px;
+      background: var(--wood-deep);
+      border: 1px solid var(--wood-mid);
+      box-shadow: 0 0 0 1px var(--wood-deep) inset;
+    }
+    .pixel-range::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 10px;
+      height: 14px;
+      background: var(--accent-gold);
+      border: 1px solid var(--wood-deep);
+      box-shadow:
+        inset 1px 1px 0 var(--accent-glow),
+        inset -1px -1px 0 var(--accent-ember);
+      margin-top: -5px;
+      cursor: pointer;
+      image-rendering: pixelated;
+    }
+    .pixel-range::-moz-range-thumb {
+      width: 10px;
+      height: 14px;
+      background: var(--accent-gold);
+      border: 1px solid var(--wood-deep);
+      box-shadow:
+        inset 1px 1px 0 var(--accent-glow),
+        inset -1px -1px 0 var(--accent-ember);
+      cursor: pointer;
+    }
+    .pixel-range:hover::-webkit-slider-thumb { background: var(--accent-glow); }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 768px) {
+      .shop-grid { grid-template-columns: 1fr; }
+      .shop-card { padding: 0.7rem; }
+    }
+
+    @media (max-width: 480px) {
+      .page-content { padding-top: clamp(1rem, 3vh, 2rem); }
+      .panel { padding: 0.9rem 1.1rem; }
+      .catch-portrait { width: 144px; height: 108px; }
+      .hud-row { gap: 0.8rem; }
+      .hud-divider { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .title-prompt { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG noise filter (for site grain) -->
+  <svg style="position:absolute;width:0;height:0" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+    </filter>
+  </svg>
+
+  <header class="site-header">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="nav-link" style="--i:0" href="/">Home</a>
+      <a class="nav-link active" style="--i:1" href="/games/">Games</a>
+      <a class="nav-link" style="--i:2" href="/cookbook/">Cookbook</a>
+      <span class="nav-link coming-soon" style="--i:3">Music<span class="coming-soon-tag">soon</span></span>
+      <a class="nav-link" style="--i:5" href="/files/">Files</a>
+    </nav>
+  </header>
+
+  <main class="page-content">
+    <h1 class="page-title">Fishing</h1>
+    <p class="page-subtitle">Cast at dusk. Wait for the strike.</p>
+
+    <div class="game-frame" id="game-frame">
+      <canvas id="game-canvas" width="320" height="180" aria-label="Fishing scene"></canvas>
+
+      <!-- Title overlay (visible by default) -->
+      <div class="overlay title-overlay" id="title-overlay">
+        <div class="title-prompt">
+          Press <kbd>Space</kbd> or tap to cast
+        </div>
+      </div>
+
+      <!-- Pause overlay -->
+      <div class="overlay dim" id="pause-overlay" hidden>
+        <div class="panel">
+          <h2 class="panel-title">Paused</h2>
+          <div class="panel-row">
+            <button class="plank-btn primary" type="button" data-action="resume">Resume</button>
+            <button class="plank-btn" type="button" data-action="settings">Settings</button>
+            <button class="plank-btn" type="button" data-action="help">How to Play</button>
+            <button class="plank-btn" type="button" data-action="quit">Quit to Title</button>
+          </div>
+          <p class="panel-hint">Esc · P · Start to resume</p>
+        </div>
+      </div>
+
+      <!-- Catch reveal overlay -->
+      <div class="overlay dim" id="catch-overlay" hidden>
+        <div class="panel">
+          <div class="catch-portrait">
+            <canvas id="catch-portrait-canvas" width="80" height="60"></canvas>
+          </div>
+          <div class="catch-name" id="catch-name">Bluegill</div>
+          <div class="catch-meta">
+            <span id="catch-length">8.2"</span>
+            <span aria-hidden="true"> · </span>
+            <span id="catch-depth">depth 1</span>
+          </div>
+          <div class="catch-stars" id="catch-stars" aria-label="Rarity 2 of 5">★★☆☆☆</div>
+          <div class="catch-cash" id="catch-cash">24 coins</div>
+          <div class="panel-row horizontal">
+            <button class="plank-btn primary" type="button" data-action="continue">Continue</button>
+            <button class="plank-btn" type="button" data-action="copy-result">Copy result</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shop overlay (slides up from bottom) -->
+      <div class="overlay shop-overlay" id="shop-overlay" hidden>
+        <div class="shop-sheet">
+          <div class="shop-header">
+            <span class="shop-title">Shop</span>
+            <span class="shop-cash" id="shop-cash">128</span>
+          </div>
+          <div class="shop-grid">
+            <div class="shop-card">
+              <span class="shop-card-name">Rod</span>
+              <div class="shop-card-tier" aria-label="Tier 1 of 4">
+                <span class="tier-pip filled"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+              </div>
+              <p class="shop-card-effect">Wider catch-zone makes the reel forgiving.</p>
+              <div class="shop-card-buy">
+                <span class="shop-card-price">90</span>
+                <button class="plank-btn" type="button" data-action="buy-rod">Buy</button>
+              </div>
+            </div>
+            <div class="shop-card">
+              <span class="shop-card-name">Lure</span>
+              <div class="shop-card-tier" aria-label="Tier 1 of 4">
+                <span class="tier-pip filled"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+              </div>
+              <p class="shop-card-effect">Bias spawns toward rarer fish at depth.</p>
+              <div class="shop-card-buy">
+                <span class="shop-card-price">120</span>
+                <button class="plank-btn" type="button" data-action="buy-lure">Buy</button>
+              </div>
+            </div>
+            <div class="shop-card">
+              <span class="shop-card-name">Line</span>
+              <div class="shop-card-tier" aria-label="Tier 1 of 4">
+                <span class="tier-pip filled"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+                <span class="tier-pip"></span>
+              </div>
+              <p class="shop-card-effect">Higher tension capacity. Snaps less.</p>
+              <div class="shop-card-buy">
+                <span class="shop-card-price">75</span>
+                <button class="plank-btn" type="button" data-action="buy-line">Buy</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel-row horizontal" style="margin-top: 0.8rem;">
+            <button class="plank-btn primary" type="button" data-action="close-shop">Back to fishing</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help overlay -->
+      <div class="overlay dim" id="help-overlay" hidden>
+        <div class="panel">
+          <p class="help-step">Step 1 of 3</p>
+          <div class="help-illust">[ illustration: hold to charge ]</div>
+          <p class="help-text">Hold <kbd>Space</kbd> to charge your cast. Let go to send the bobber out.</p>
+          <div class="panel-row horizontal" style="margin-top: 0.9rem;">
+            <button class="plank-btn" type="button" data-action="help-skip">Skip</button>
+            <button class="plank-btn primary" type="button" data-action="help-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live HUD (game.js refreshHUD updates these on load + on every change) -->
+    <div class="hud-row">
+      <span class="hud-stat">
+        <span class="hud-stat-icon coin" aria-hidden="true"></span>
+        Cash <span class="hud-stat-value" id="hud-cash">0</span>
+      </span>
+      <span class="hud-divider" aria-hidden="true"></span>
+      <span class="hud-stat">
+        <span class="hud-stat-icon bobber" aria-hidden="true"></span>
+        Best <span class="hud-stat-value" id="hud-best">—</span>
+      </span>
+      <span class="hud-divider" aria-hidden="true"></span>
+      <span class="hud-stat">
+        Today's seed <span class="hud-stat-value muted" id="hud-seed">…</span>
+      </span>
+    </div>
+
+    <a class="back-link" href="/games/">&larr; Back to Games</a>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Chase's House</p>
+  </footer>
+
+  <script src="../shared/gamepad.js"></script>
+  <script src="audio.js"></script>
+  <script src="fish.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
