@@ -625,6 +625,43 @@ const RECIPES = [
     ],
     notes: 'A 2.3 lb roast needs about 2 to 2½ hours — start checking tenderness at the 2-hour mark. A 3 qt enameled dutch oven is sized right for this portion; never preheat it empty, and always lift rather than slide on glass cooktops.',
   },
+
+  // ──────────────────────────────────────────────────────────────
+  {
+    id: 'mississippi-pot-roast',
+    title: 'Crock Pot Mississippi Pot Roast',
+    blurb: "Brandie's slow-cooker chuck roast — a packet of ranch dressing mix, a packet of dry onion soup mix, a stick of butter, and a handful of pepperoncini. Eight hours later it shreds with a fork.",
+    author: 'Brandie @ The Country Cook',
+    category: 'Mains',
+    cuisine: 'American',
+    difficulty: 'Easy',
+    prepMin: 10,
+    cookMin: 480,
+    baseServings: 6,
+    rating: 5.0,
+    tags: ['beef', 'butter', 'pepper', 'onion'],
+    photo: 'images/mississippi-pot-roast/image1.png',
+    ingredients: [
+      { amount: 3,    unit: 'lb',     name: 'chuck roast' },
+      { amount: 2,    unit: 'tbsp',   name: 'olive oil or vegetable oil' },
+      { amount: 1,    unit: 'pinch',  name: 'salt and pepper, to taste' },
+      { amount: 1,    unit: 'packet', name: 'ranch dressing mix' },
+      { amount: 1,    unit: 'packet', name: 'dry onion soup mix' },
+      { amount: 0.5,  unit: 'cup',    name: 'salted butter (1 stick)' },
+      { amount: 8,    unit: '',       name: 'pepperoncini peppers' },
+    ],
+    steps: [
+      { title: 'Heat the skillet',              text: 'Heat a large skillet over high heat. Add {i:1} — you want it really hot so the beef sears quickly.' },
+      { title: 'Dry and season',                text: 'Pat both sides of {i:0} thoroughly dry with a paper towel and season with {i:2}. Once the skillet is nice and hot, add the roast.' },
+      { title: 'Sear both sides',               text: 'Sear undisturbed until a deep crust forms, about 2 to 3 minutes. Using tongs, flip and sear the other side another 2 to 3 minutes.' },
+      { title: 'Move to the cooker',            text: 'Transfer the seared roast to a 4- to 6-quart slow cooker. Sprinkle {i:3} and {i:4} evenly over the top.' },
+      { title: 'Crown with butter and peppers', text: 'Place {i:5} on top of the roast, then scatter {i:6} on and around the meat.' },
+      { title: 'Slow cook',                     text: 'Cover and cook on LOW for 8 hours.' },
+      { title: 'Shred',                         text: 'Take two forks and shred the meat right in the cooker, discarding any big fatty pieces. Stir the shredded beef through the buttery jus.' },
+      { title: 'Serve',                         text: 'Pile onto plates over mashed potatoes, or onto hard rolls with melted provolone or mozzarella.' },
+    ],
+    notes: "Brandie's tips: skip the browning step if you're in a rush — it still comes out tender. If you prefer, slice the peppers and stir them through the meat for an extra hit of tang. Use butter, not margarine. Sensitive to sodium? Swap in unsalted butter — the packets carry plenty on their own. Brandie says the leftovers on a sub roll with mozzarella and a few sliced peppers the next day are heavenly. Recipe from thecountrycook.net.",
+  },
 ];
 
 // Canonical ingredient tag vocabulary, grouped. Used for filter chips.
