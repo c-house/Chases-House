@@ -640,7 +640,7 @@ const RECIPES = [
     baseServings: 6,
     rating: 5.0,
     tags: ['beef', 'butter', 'pepper', 'onion'],
-    photo: 'images/mississippi-pot-roast/image1.jpg',
+    photo: 'images/mississippi-pot-roast/image1.png',
     ingredients: [
       { amount: 3,    unit: 'lb',     name: 'chuck roast' },
       { amount: 2,    unit: 'tbsp',   name: 'olive oil or vegetable oil' },
