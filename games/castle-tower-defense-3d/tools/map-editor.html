@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The Cartographer — CTD3 Map Editor</title>
+  <!--
+    ADR-029 Phase A1 — "The Cartographer"
+    Continuous-world waypoint editor for Castle Tower Defense 3D maps.
+    Self-contained: NO game runtime loaded; bakeMap+sampleOnPath inlined
+    from games/castle-tower-defense-3d/engine.js (provenance below).
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1a1410;
+      --ink-soft: #2d251c;
+      --ink-faint: #4a3f30;
+      --warm-stone: #e8d5a8;
+      --warm-paper: #f0e6d3;
+      --aged-gold: #c8943e;
+      --ember: #a06828;
+      --terracotta: #b05a3a;
+      --wine: #6e1f24;
+      --leaf: #5a7a3a;
+      --bg: #0a0a0b;
+
+      --canvas-plains:   #6a8447;
+      --canvas-forest:   #3e5a3a;
+      --canvas-mountain: #7b7a76;
+
+      --font-display: 'Fraunces', serif;
+      --font-body: 'Bricolage Grotesque', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--warm-stone);
+      font-family: var(--font-body);
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr 360px;
+      grid-template-rows: 56px 1fr;
+      grid-template-areas:
+        "topbar  topbar   topbar"
+        "meta    canvas   side";
+      height: 100vh;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────── */
+    .topbar {
+      grid-area: topbar;
+      display: flex; align-items: center;
+      padding: 0 1rem;
+      background: linear-gradient(to bottom, #1a1410, #0a0a0b);
+      border-bottom: 1px solid var(--ink-faint);
+      gap: 1rem;
+    }
+    .topbar h1 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--aged-gold);
+      margin: 0;
+    }
+    .topbar .sub {
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(232,213,168,0.55);
+    }
+    .topbar .tools { display: flex; gap: 0.4rem; margin-left: auto; }
+
+    .tool {
+      background: rgba(40,28,18,0.6);
+      border: 1px solid rgba(200,148,62,0.4);
+      color: var(--warm-stone);
+      font: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.5rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: border-color 200ms ease, background 200ms ease;
+      min-height: 36px;
+    }
+    .tool:hover { border-color: var(--aged-gold); }
+    .tool.active { background: var(--aged-gold); color: var(--ink); border-color: var(--aged-gold); }
+    .tool.warn { border-color: var(--terracotta); color: var(--terracotta); }
+    .tool.warn:hover { background: rgba(176,90,58,0.15); }
+
+    /* ── Meta panel (left) ───────────────────────────────────── */
+    .meta {
+      grid-area: meta;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #15110d;
+      border-right: 1px solid var(--ink-faint);
+    }
+    .meta h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--aged-gold);
+      margin: 0 0 0.6rem;
+    }
+    .meta label {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(232,213,168,0.55);
+      margin: 0.6rem 0 0.2rem;
+    }
+    .meta input, .meta textarea, .meta select {
+      width: 100%;
+      background: #0a0a0b;
+      border: 1px solid var(--ink-faint);
+      color: var(--warm-stone);
+      font: inherit;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 3px;
+    }
+    .meta input:focus, .meta textarea:focus, .meta select:focus {
+      outline: none;
+      border-color: var(--aged-gold);
+    }
+    .meta textarea {
+      min-height: 60px;
+      resize: vertical;
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+    }
+    .meta hr { border: none; border-top: 1px solid var(--ink-faint); margin: 1rem 0; }
+    .meta .help {
+      font-size: 0.75rem;
+      color: rgba(232,213,168,0.45);
+      line-height: 1.4;
+      margin: 0.5rem 0;
+    }
+    .meta .help code {
+      background: #0a0a0b;
+      padding: 1px 4px;
+      border-radius: 2px;
+      color: var(--aged-gold);
+      font-size: 0.8em;
+    }
+    .hint { font-weight: normal; text-transform: none; letter-spacing: normal; color: #8a7855; font-size: 0.7rem; }
+
+    /* ── Canvas (center) ─────────────────────────────────────── */
+    .canvas-wrap {
+      grid-area: canvas;
+      position: relative;
+      background: var(--ink);
+      overflow: hidden;
+    }
+    canvas#field {
+      display: block;
+      width: 100%; height: 100%;
+      cursor: crosshair;
+      background: var(--canvas-plains);
+      transition: background 400ms ease;
+    }
+    .canvas-wrap[data-theme="forest"]   #field { background: var(--canvas-forest); }
+    .canvas-wrap[data-theme="mountain"] #field { background: var(--canvas-mountain); }
+
+    .canvas-hud {
+      position: absolute;
+      pointer-events: none;
+      bottom: 0.5rem; left: 0.5rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.6);
+      background: rgba(0,0,0,0.4);
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+    }
+    .canvas-hud .v { color: var(--aged-gold); }
+
+    /* ── Side panel (right) ──────────────────────────────────── */
+    .side {
+      grid-area: side;
+      display: flex; flex-direction: column;
+      background: #15110d;
+      border-left: 1px solid var(--ink-faint);
+      overflow: hidden;
+    }
+    .side h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      color: var(--aged-gold);
+      margin: 0;
+      padding: 1rem 1rem 0.4rem;
+    }
+    .side .status {
+      padding: 0.6rem 1rem;
+      border-top: 1px solid var(--ink-faint);
+      border-bottom: 1px solid var(--ink-faint);
+      font-size: 0.85rem;
+    }
+    .status.ok  { color: var(--leaf); }
+    .status.bad { color: var(--terracotta); }
+    .status .label { font-weight: 600; display: inline; }
+    .status .detail { font-size: 0.78rem; opacity: 0.75; }
+    .status .reason { display: block; font-size: 0.78rem; opacity: 0.7; margin-top: 0.2rem; }
+
+    .side .actions {
+      padding: 0.6rem 1rem;
+      display: flex; gap: 0.4rem;
+      border-bottom: 1px solid var(--ink-faint);
+    }
+    .side .actions .tool { flex: 1; }
+
+    .side .preview {
+      flex: 1;
+      overflow: auto;
+      padding: 0.7rem 1rem 2rem;
+    }
+    .side .preview pre {
+      font-family: ui-monospace, monospace;
+      font-size: 0.74rem;
+      color: var(--warm-paper);
+      background: #0a0a0b;
+      padding: 0.7rem;
+      border-radius: 4px;
+      border: 1px solid var(--ink-faint);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-width: 100%;
+      overflow-x: hidden;
+      line-height: 1.4;
+    }
+
+    /* ── Small UI bits ───────────────────────────────────────── */
+    .row { display: flex; gap: 0.4rem; align-items: center; }
+    .row > * { flex: 1; }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background: rgba(200,148,62,0.15);
+      color: var(--aged-gold);
+      margin-left: 0.3rem;
+    }
+    .kbd {
+      display: inline-block;
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      padding: 1px 5px;
+      background: #0a0a0b;
+      border: 1px solid var(--ink-faint);
+      border-radius: 3px;
+      color: var(--warm-stone);
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <h1>The Cartographer</h1>
+    <span class="sub">CTD3 map editor · Phase A1</span>
+    <div class="tools" role="toolbar" aria-label="Active tool">
+      <button class="tool active" data-tool="path"   title="Path: click to add a waypoint, drag a waypoint to move, right-click on a waypoint to remove">Path <span class="kbd">1</span></button>
+      <button class="tool"        data-tool="castle" title="Castle: place the gate at the end of the path">Castle <span class="kbd">2</span></button>
+      <button class="tool"        data-tool="slot"   title="Slot+: place a build slot; right-click on a slot to remove">Slot <span class="kbd">3</span></button>
+      <button class="tool"        data-tool="move"   title="Move: drag any element to reposition">Move <span class="kbd">4</span></button>
+      <button class="tool warn"   data-action="clear" title="Clear the whole map">Clear</button>
+    </div>
+  </header>
+
+  <aside class="meta" aria-label="Map metadata">
+    <h2>Map Header</h2>
+    <label>Id <span class="hint">(unique slug)</span></label>
+    <input data-bind="id" value="new_map">
+    <label>Display name</label>
+    <input data-bind="displayName" value="The New Field">
+    <label>Roman <span class="hint">(subtitle)</span></label>
+    <input data-bind="roman" value="Field the Fourth">
+    <div class="row">
+      <div style="flex:2;">
+        <label>Chip text</label>
+        <input data-bind="chip" value="New Ground">
+      </div>
+      <div style="flex:1;">
+        <label>Chip kind</label>
+        <select data-bind="chipKind">
+          <option value=""></option>
+          <option value="gold">gold</option>
+          <option value="locked">locked</option>
+        </select>
+      </div>
+    </div>
+    <label>Description</label>
+    <textarea data-bind="description">A road through new country.</textarea>
+    <label>Theme</label>
+    <select data-bind="theme">
+      <option value="plains">plains</option>
+      <option value="forest">forest</option>
+      <option value="mountain">mountain</option>
+    </select>
+    <label>Unlock requirement <span class="hint">(stars)</span></label>
+    <input data-bind="unlockRequirement" value="0" type="number">
+    <hr>
+    <h2>Waves <span class="tag">passthrough</span></h2>
+    <p class="help">Wave editing is not in scope for v1. Paste a <code>waves</code> JSON array below or leave the default. The export will use this array verbatim.</p>
+    <textarea data-bind="wavesJson" style="min-height:140px;">[
+  { "enemies": [{ "type": "footman", "count": 6, "spacing": 700, "delay": 0 }], "reward": 18, "isBoss": false }
+]</textarea>
+  </aside>
+
+  <main class="canvas-wrap" data-theme="plains">
+    <canvas id="field"></canvas>
+    <div class="canvas-hud">world <span class="v" data-bind="cursorX">0.0</span>,<span class="v" data-bind="cursorZ">0.0</span></div>
+  </main>
+
+  <aside class="side" aria-label="Validation and export">
+    <h2>Status</h2>
+    <div class="status" data-bind="status">—</div>
+    <h2>Export</h2>
+    <div class="actions">
+      <button class="tool" data-action="validate">Re-validate</button>
+      <button class="tool active" data-action="copy">Copy JSON</button>
+    </div>
+    <div class="preview">
+      <pre data-bind="preview">(map preview)</pre>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ════════════════════════════════════════════════════════════
+  // Inlined from games/castle-tower-defense-3d/engine.js (lines 19–49).
+  // Canonical source: window.CTD3Engine.bakeMap / sampleOnPath.
+  // ADR-029 §5 dev-tool DRY exemption. Re-sync if engine.js changes.
+  // ════════════════════════════════════════════════════════════
+  function bakeMap(map) {
+    if (map._baked) return map;
+    const segs = [];
+    const cum = [];
+    let total = 0;
+    for (let i = 0; i < map.path.length - 1; i++) {
+      const a = map.path[i], b = map.path[i + 1];
+      const len = Math.hypot(b.x - a.x, b.z - a.z);
+      segs.push(len);
+      total += len;
+      cum.push(total);
+    }
+    map.segmentLengths = segs;
+    map.cumulativeLengths = cum;
+    map.totalLength = total;
+    map._baked = true;
+    return map;
+  }
+
+  // sampleOnPath kept here for parity / future use; not currently called by the
+  // editor's validation, but included so the inlined block matches the engine surface.
+  function sampleOnPath(map, t) {
+    const target = Math.max(0, Math.min(1, t)) * map.totalLength;
+    let i = 0;
+    while (i < map.cumulativeLengths.length && map.cumulativeLengths[i] < target) i++;
+    if (i >= map.path.length - 1) {
+      const last = map.path[map.path.length - 1];
+      return { x: last.x, z: last.z };
+    }
+    const segStart = i === 0 ? 0 : map.cumulativeLengths[i - 1];
+    const segLen = map.segmentLengths[i];
+    const localT = segLen > 0 ? (target - segStart) / segLen : 0;
+    const a = map.path[i], b = map.path[i + 1];
+    return { x: a.x + (b.x - a.x) * localT, z: a.z + (b.z - a.z) * localT };
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // World coordinates match games/castle-tower-defense-3d/maps.js.
+  // Approx range: x ∈ [-13, +13], z ∈ [-8, +8].
+  // ════════════════════════════════════════════════════════════
+  const WORLD_HALF_X = 14;
+  const WORLD_HALF_Z = 9;
+  const HANDLE_RADIUS_PX = 8;
+  const HIT_RADIUS_PX = 14;
+
+  const state = {
+    tool: 'path',
+    path: [
+      { x: -12, z: 4 },
+      { x: -4, z: 2 },
+      { x: 4, z: 0 },
+      { x: 11, z: -2 }
+    ],
+    castle: { x: 11, y: 0, z: -2 },
+    slots: [
+      { id: 's1', x: -6, z: 0 },
+      { id: 's2', x: 0, z: 4 },
+      { id: 's3', x: 6, z: -3 }
+    ],
+    slotCounter: 3,
+    meta: {
+      id: 'new_map',
+      displayName: 'The New Field',
+      roman: 'Field the Fourth',
+      chip: 'New Ground',
+      chipKind: '',
+      description: 'A road through new country.',
+      thumbIcon: 'map_plains',
+      unlockRequirement: 0,
+      theme: 'plains'
+    },
+    wavesJson: '',
+    drag: null,
+    cursor: { x: 0, z: 0 }
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const canvas = $('#field');
+  const ctx = canvas.getContext('2d');
+  const canvasWrap = $('.canvas-wrap');
+
+  function resizeCanvas() {
+    const r = canvasWrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(r.width * dpr);
+    canvas.height = Math.floor(r.height * dpr);
+    canvas.style.width = r.width + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    render();
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  function viewport() {
+    const r = canvas.getBoundingClientRect();
+    const sx = r.width  / (2 * WORLD_HALF_X);
+    const sz = r.height / (2 * WORLD_HALF_Z);
+    const scale = Math.min(sx, sz);
+    const cx = r.width / 2;
+    const cy = r.height / 2;
+    return { w: r.width, h: r.height, scale, cx, cy };
+  }
+
+  function worldToScreen(p) {
+    const vp = viewport();
+    return { x: vp.cx + p.x * vp.scale, y: vp.cy + p.z * vp.scale };
+  }
+  function screenToWorld(sx, sy) {
+    const vp = viewport();
+    return { x: (sx - vp.cx) / vp.scale, z: (sy - vp.cy) / vp.scale };
+  }
+
+  function render() {
+    const vp = viewport();
+    ctx.clearRect(0, 0, vp.w, vp.h);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    for (let xi = -WORLD_HALF_X; xi <= WORLD_HALF_X; xi += 2) {
+      const sx = vp.cx + xi * vp.scale;
+      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, vp.h); ctx.stroke();
+    }
+    for (let zi = -WORLD_HALF_Z; zi <= WORLD_HALF_Z; zi += 2) {
+      const sy = vp.cy + zi * vp.scale;
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.moveTo(vp.cx, 0); ctx.lineTo(vp.cx, vp.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, vp.cy); ctx.lineTo(vp.w, vp.cy); ctx.stroke();
+
+    if (state.path.length >= 2) {
+      ctx.strokeStyle = '#7a5a30';
+      ctx.lineWidth = Math.max(6, vp.scale * 1.4);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      const p0 = worldToScreen(state.path[0]);
+      ctx.moveTo(p0.x, p0.y);
+      for (let i = 1; i < state.path.length; i++) {
+        const p = worldToScreen(state.path[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = '#5d3a1a';
+      ctx.setLineDash([6, 8]);
+      ctx.globalAlpha = 0.4;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+
+    state.path.forEach((p, i) => {
+      const s = worldToScreen(p);
+      ctx.fillStyle = (i === 0) ? '#5a7a3a'
+                    : (i === state.path.length - 1) ? '#b05a3a'
+                    : '#c8943e';
+      ctx.strokeStyle = '#1a1410';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, HANDLE_RADIUS_PX, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#1a1410';
+      ctx.font = 'bold 10px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), s.x, s.y);
+    });
+
+    state.slots.forEach((sl) => {
+      const s = worldToScreen(sl);
+      ctx.fillStyle = 'rgba(155,144,128,0.85)';
+      ctx.strokeStyle = '#1a1410';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.rect(s.x - 12, s.y - 12, 24, 24);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#1a1410';
+      ctx.font = 'bold 10px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(sl.id, s.x, s.y);
+    });
+
+    {
+      const s = worldToScreen(state.castle);
+      ctx.fillStyle = '#cdb88d';
+      ctx.strokeStyle = '#1a1410';
+      ctx.lineWidth = 2;
+      const w = 22, h = 28;
+      ctx.beginPath();
+      ctx.rect(s.x - w/2, s.y - h/2, w, h);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#a08864';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(s.x - w/2 + i * (w/4) + 1, s.y - h/2 - 4, w/4 - 2, 5);
+      }
+    }
+  }
+
+  function pickAt(sx, sy) {
+    for (let i = state.path.length - 1; i >= 0; i--) {
+      const s = worldToScreen(state.path[i]);
+      if (Math.hypot(s.x - sx, s.y - sy) <= HIT_RADIUS_PX) return { kind: 'path', idx: i };
+    }
+    for (let i = state.slots.length - 1; i >= 0; i--) {
+      const s = worldToScreen(state.slots[i]);
+      if (Math.abs(s.x - sx) <= 14 && Math.abs(s.y - sy) <= 14) return { kind: 'slot', idx: i };
+    }
+    {
+      const s = worldToScreen(state.castle);
+      if (Math.abs(s.x - sx) <= 14 && Math.abs(s.y - sy) <= 18) return { kind: 'castle' };
+    }
+    return null;
+  }
+
+  function pointerInWorld(ev) {
+    const r = canvas.getBoundingClientRect();
+    const sx = ev.clientX - r.left;
+    const sy = ev.clientY - r.top;
+    return { sx, sy, ...screenToWorld(sx, sy) };
+  }
+
+  canvas.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    canvas.setPointerCapture(ev.pointerId);
+    const { sx, sy, x, z } = pointerInWorld(ev);
+
+    if (ev.button === 2) {
+      const hit = pickAt(sx, sy);
+      if (hit && hit.kind === 'path' && state.path.length > 2) {
+        state.path.splice(hit.idx, 1);
+      } else if (hit && hit.kind === 'slot') {
+        state.slots.splice(hit.idx, 1);
+      }
+      refresh();
+      return;
+    }
+
+    const tool = state.tool;
+    const hit = pickAt(sx, sy);
+
+    if (hit) {
+      state.drag = hit;
+      return;
+    }
+
+    if (tool === 'path') {
+      state.path.push({ x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) });
+      state.castle = { x: state.path[state.path.length - 1].x, y: 0, z: state.path[state.path.length - 1].z };
+    } else if (tool === 'castle') {
+      state.castle = { x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), y: 0, z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) };
+    } else if (tool === 'slot') {
+      state.slotCounter++;
+      state.slots.push({ id: 's' + state.slotCounter, x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) });
+    }
+    refresh();
+  });
+
+  canvas.addEventListener('pointermove', (ev) => {
+    const { x, z } = pointerInWorld(ev);
+    state.cursor.x = x;
+    state.cursor.z = z;
+    $('[data-bind="cursorX"]').textContent = x.toFixed(1);
+    $('[data-bind="cursorZ"]').textContent = z.toFixed(1);
+
+    if (state.drag) {
+      const cx = clamp(x, -WORLD_HALF_X, WORLD_HALF_X);
+      const cz = clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z);
+      if (state.drag.kind === 'path') {
+        state.path[state.drag.idx].x = cx;
+        state.path[state.drag.idx].z = cz;
+      } else if (state.drag.kind === 'slot') {
+        state.slots[state.drag.idx].x = cx;
+        state.slots[state.drag.idx].z = cz;
+      } else if (state.drag.kind === 'castle') {
+        state.castle.x = cx;
+        state.castle.z = cz;
+      }
+      render();
+    }
+  });
+
+  canvas.addEventListener('pointerup', () => {
+    if (state.drag) {
+      state.drag = null;
+      refresh();
+    }
+  });
+
+  canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  document.addEventListener('click', (ev) => {
+    const t = ev.target.closest('[data-tool]');
+    if (t) {
+      setTool(t.dataset.tool);
+      return;
+    }
+    const a = ev.target.closest('[data-action]');
+    if (a) handleAction(a.dataset.action);
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA' || ev.target.tagName === 'SELECT')) return;
+    const key = ev.key;
+    if (key === '1') setTool('path');
+    else if (key === '2') setTool('castle');
+    else if (key === '3') setTool('slot');
+    else if (key === '4') setTool('move');
+  });
+
+  function setTool(name) {
+    state.tool = name;
+    $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
+  }
+
+  function handleAction(name) {
+    if (name === 'clear') {
+      if (!confirm('Clear the entire map?')) return;
+      state.path = [];
+      state.slots = [];
+      state.slotCounter = 0;
+      refresh();
+    } else if (name === 'validate') {
+      refresh();
+    } else if (name === 'copy') {
+      const btn = document.querySelector('[data-action="copy"]');
+      navigator.clipboard.writeText(buildJsonString()).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1200);
+      }).catch(err => {
+        alert('Clipboard copy failed: ' + (err && err.message));
+      });
+    }
+  }
+
+  // Two-way meta bindings
+  $$('[data-bind]').forEach(el => {
+    const key = el.dataset.bind;
+    if (key === 'cursorX' || key === 'cursorZ' || key === 'status' || key === 'preview') return;
+    if (key === 'wavesJson') {
+      el.value = state.wavesJson || el.value;
+      state.wavesJson = el.value;
+      el.addEventListener('input', () => { state.wavesJson = el.value; refresh(); });
+      return;
+    }
+    if (state.meta[key] !== undefined) {
+      el.value = state.meta[key];
+      el.addEventListener('input', () => {
+        let v = el.value;
+        if (key === 'unlockRequirement') v = Math.max(0, parseInt(v, 10) || 0);
+        state.meta[key] = v;
+        if (key === 'theme') {
+          canvasWrap.dataset.theme = v;
+          state.meta.thumbIcon = 'map_' + v;
+        }
+        refresh();
+      });
+    }
+  });
+  canvasWrap.dataset.theme = state.meta.theme;
+
+  function buildExportMap() {
+    let waves;
+    try { waves = JSON.parse(state.wavesJson || '[]'); }
+    catch (e) { waves = []; }
+    const m = state.meta;
+    return {
+      id: m.id,
+      displayName: m.displayName,
+      roman: m.roman,
+      chip: m.chip,
+      chipKind: m.chipKind,
+      description: m.description,
+      thumbIcon: m.thumbIcon || ('map_' + m.theme),
+      unlockRequirement: m.unlockRequirement | 0,
+      theme: m.theme,
+      castle: { x: round1(state.castle.x), y: 0, z: round1(state.castle.z) },
+      path: state.path.map(p => ({ x: round1(p.x), z: round1(p.z) })),
+      buildSlots: state.slots.map(s => ({ id: s.id, x: round1(s.x), z: round1(s.z) })),
+      waves
+    };
+  }
+  function round1(v) { return Math.round(v * 10) / 10; }
+
+  function buildJsonString() {
+    return JSON.stringify(buildExportMap(), null, 2);
+  }
+
+  function validate() {
+    const m = buildExportMap();
+    if (!m.path || m.path.length < 2) return { ok: false, reason: 'path needs at least 2 waypoints' };
+    const probe = { ...m, path: m.path.map(p => ({ ...p })) };
+    bakeMap(probe);
+    if (probe.totalLength <= 0) return { ok: false, reason: 'zero-length path' };
+    const last = m.path[m.path.length - 1];
+    const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
+    if (dCastle > 1.5) return { ok: false, reason: 'castle is far from path end (' + dCastle.toFixed(1) + 'u)' };
+    try { JSON.parse(state.wavesJson || '[]'); }
+    catch (e) { return { ok: false, reason: 'waves JSON does not parse: ' + e.message }; }
+    if (m.buildSlots.length === 0) return { ok: false, reason: 'no build slots placed' };
+    return { ok: true, totalLength: probe.totalLength };
+  }
+
+  // Safe DOM construction for status updates (no innerHTML)
+  function setStatus(v) {
+    const el = $('[data-bind="status"]');
+    el.replaceChildren();
+    el.className = 'status ' + (v.ok ? 'ok' : 'bad');
+    const labelEl = document.createElement('strong');
+    labelEl.className = 'label';
+    labelEl.textContent = v.ok ? 'OK' : 'NOT READY';
+    el.appendChild(labelEl);
+    if (v.ok) {
+      const detail = document.createElement('span');
+      detail.className = 'detail';
+      detail.textContent = ' — ' + state.path.length + ' waypoints · length ' + v.totalLength.toFixed(1) + 'u · ' + state.slots.length + ' slots';
+      el.appendChild(detail);
+    } else {
+      const reason = document.createElement('span');
+      reason.className = 'reason';
+      reason.textContent = v.reason;
+      el.appendChild(reason);
+    }
+  }
+
+  function refresh() {
+    render();
+    setStatus(validate());
+    $('[data-bind="preview"]').textContent = buildJsonString();
+  }
+
+  resizeCanvas();
+  refresh();
+})();
+</script>
+
+</body>
+</html>

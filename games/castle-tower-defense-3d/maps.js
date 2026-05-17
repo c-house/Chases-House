@@ -130,7 +130,38 @@
     ]
   };
 
-  const MAPS = [ PLAINS, FOREST, MOUNTAIN ];
+  // ─── MAP 4 — Tidewater Bend ──────────────────────────────────
+  // Authored 2026-05-17 with The Cartographer (ADR-029 Phase A1).
+  // Editor export pasted here; only the `enemies/wave` helpers were
+  // applied to keep the rest of the file's style consistent.
+  const TIDEWATER = {
+    id: 'tidewater',
+    displayName: 'Tidewater Bend',
+    roman: 'Field the Fourth',
+    chip: 'River Pass',
+    chipKind: '',
+    description: 'The river winds slow under the trees. Mind the hidden trails.',
+    thumbIcon: 'map_forest',
+    unlockRequirement: 0,
+    theme: 'forest',
+    castle: { x: 10, y: 0, z: 1 },
+    path: [
+      { x: -12, z: 5 }, { x: -8, z: 3 }, { x: -4, z: -2 },
+      { x: 2, z: 0 }, { x: 6, z: -3 }, { x: 10, z: 1 }
+    ],
+    buildSlots: [
+      { id: 's1', x: -10, z: 6 }, { id: 's2', x: -6, z: -3 },
+      { id: 's3', x: 0, z: -3 },  { id: 's4', x: 4, z: 3 },
+      { id: 's5', x: 8, z: -5 }
+    ],
+    waves: [
+      wave([ g('footman', 6, 700, 0) ], 18),
+      wave([ g('footman', 5, 500, 0), g('runner', 3, 800, 4000) ], 22),
+      wave([ g('heavy', 3, 1300, 0), g('footman', 6, 500, 5000) ], 28)
+    ]
+  };
+
+  const MAPS = [ PLAINS, FOREST, MOUNTAIN, TIDEWATER ];
 
   function byId(id) { return MAPS.find(m => m.id === id) || null; }
 
