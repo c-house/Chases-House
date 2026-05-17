@@ -18,16 +18,27 @@
   // open mouth faces +x by default. Rotations confirmed via ?test=tile-debug.
   const DIR_ROTATION = { 'x+': 0, 'z+': Math.PI / 2, 'x-': Math.PI, 'z-': -Math.PI / 2 };
 
-  // Corner rotation table per ADR-030 §8 (prevDir → nextDir).
+  // Corner rotation table — derived empirically (ADR-030 §21 R1 visual gate).
+  // Kit's tile-corner-round.glb at rotation 0 has its path band in the NE
+  // quadrant: the curve connects the +x edge to the +z edge. Rotating the
+  // tile by +π/2 around +y moves the band so it connects +z edge to -x edge.
+  // For each (prevDir, nextDir) where prevDir = direction of travel INTO this
+  // cell and nextDir = direction of travel OUT, the corner's two open edges
+  // are -prevDir (entry from previous neighbor) and +nextDir (exit toward
+  // next neighbor). We pick the rotation whose path band matches those edges.
   const CORNER_ROTATION = {
+    // Path band at +x edge + +z edge → rotation 0
+    'x-|z+': 0,          // entered from +x neighbor, exit to +z neighbor
+    'z-|x+': 0,          // entered from +z neighbor, exit to +x neighbor
+    // Path band at +z edge + -x edge → rotation π/2
     'x+|z+': Math.PI / 2,
-    'x+|z-': -Math.PI / 2,
-    'x-|z+': Math.PI,
-    'x-|z-': 0,
-    'z+|x+': 0,
-    'z+|x-': -Math.PI / 2,
-    'z-|x+': Math.PI / 2,
-    'z-|x-': Math.PI
+    'z-|x-': Math.PI / 2,
+    // Path band at -x edge + -z edge → rotation π
+    'x+|z-': Math.PI,
+    'z+|x-': Math.PI,
+    // Path band at -z edge + +x edge → rotation -π/2 (= 3π/2)
+    'x-|z-': -Math.PI / 2,
+    'z+|x+': -Math.PI / 2
   };
 
   function dirOf(dx, dz) {
