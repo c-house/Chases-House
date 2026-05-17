@@ -410,6 +410,8 @@ function consumeEngineEvents(state) {
       window.CTD3Ui.flashWaveClear();
     } else if (ev.kind === 'phaseTransition') {
       window.CTD3Lighting.beginPhase(ev.to, 1200);
+    } else if (ev.kind === 'fire' && ev.towerId) {
+      window.CTD3Scene.flashTower(ev.towerId);
     }
   }
   state.events.length = 0;

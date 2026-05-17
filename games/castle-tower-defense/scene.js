@@ -7,6 +7,19 @@
    ═══════════════════════════════════════════════════════════════ */
 import * as THREE from 'three';
 
+// ─── Animation constants (ADR-030 Appendix A) ───────────────
+const MUZZLE_FLASH_MS = 80;
+const MUZZLE_FLASH_EMISSIVE_HEX = 0xc8943e;
+const MUZZLE_FLASH_INTENSITY = 0.6;
+const WARDEN_AURA_PERIOD_MS = 800;
+const WARDEN_AURA_SCALE_AMP = 0.05;
+const WARDEN_AURA_OPACITY_BASE = 0.5;
+const WARDEN_AURA_OPACITY_AMP = 0.15;
+const ENEMY_BOB_RATE_GROUND = 4;
+const ENEMY_BOB_RATE_FLYING = 1.6;
+const ENEMY_BOB_AMP_GROUND = 0.05;
+const ENEMY_BOB_AMP_FLYING = 0.18;
+
 let scene = null;
 let ground = null;
 let pathMesh = null;
@@ -17,12 +30,14 @@ let enemiesGroup = null;
 let projectilesGroup = null;
 let effectsGroup = null;
 let decalsGroup = null;
+let wardenAurasGroup = null;  // persistent — separate from decalsGroup (ADR-030 §12, CRIT-3)
 
 // Registries: id → THREE.Object3D
 const towerNodes = new Map();
 const enemyNodes = new Map();
 const projNodes  = new Map();
 const effectNodes = new Map();
+const wardenAuraNodes = new Map();  // tower.id → ring mesh (persistent across frames)
 
 // Raycaster + reusable plane intersection target
 const raycaster = new THREE.Raycaster();
@@ -48,6 +63,7 @@ function init() {
   projectilesGroup = new THREE.Group(); scene.add(projectilesGroup);
   effectsGroup     = new THREE.Group(); scene.add(effectsGroup);
   decalsGroup      = new THREE.Group(); scene.add(decalsGroup);
+  wardenAurasGroup = new THREE.Group(); scene.add(wardenAurasGroup);
 }
 
 function getScene() { return scene; }
@@ -139,6 +155,13 @@ function clearPlayfield() {
   projNodes.clear();
   effectNodes.clear();
   decalsGroup.clear();
+  // Persistent Warden aura registry (ADR-030 §12, CRIT-2)
+  wardenAuraNodes.forEach((node) => {
+    wardenAurasGroup.remove(node);
+    if (node.geometry) node.geometry.dispose();
+    if (node.material) node.material.dispose();
+  });
+  wardenAuraNodes.clear();
 }
 
 // ─── Entity sync (state diff → mesh transforms) ──────────────
@@ -147,11 +170,13 @@ function sync(state) {
   syncEnemies(state);
   syncProjectiles(state);
   syncEffects(state);
+  syncWardenAuras(state);
   syncDecals(state);
 }
 
 function syncTowers(state) {
   const seen = new Set();
+  const now = performance.now();
   for (const tw of state.towers) {
     seen.add(tw.id);
     let node = towerNodes.get(tw.id);
@@ -159,6 +184,8 @@ function syncTowers(state) {
       const meshId = `tower_${tw.type}_t${tw.tier + 1}`;
       node = window.CTD3Assets.getMesh(meshId);
       node.position.set(tw.x, 0, tw.z);
+      node.userData.meshId = meshId;
+      node.userData.towerId = tw.id;
       node.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       towerNodes.set(tw.id, node);
       towersGroup.add(node);
@@ -170,11 +197,17 @@ function syncTowers(state) {
         const fresh = window.CTD3Assets.getMesh(desiredMeshId);
         fresh.position.set(tw.x, 0, tw.z);
         fresh.userData.meshId = desiredMeshId;
+        fresh.userData.towerId = tw.id;
+        // Preserve any in-flight muzzle-flash deadline across tier swaps.
+        if (node.userData.flashUntilMs) fresh.userData.flashUntilMs = node.userData.flashUntilMs;
         fresh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         towerNodes.set(tw.id, fresh);
         towersGroup.add(fresh);
+        node = fresh;
       }
     }
+    // Muzzle flash via emissive pulse (ADR-030 §11.4).
+    applyMuzzleFlash(node, now);
   }
   // Remove vanished
   for (const [id, node] of towerNodes) {
@@ -185,8 +218,38 @@ function syncTowers(state) {
   }
 }
 
+function applyMuzzleFlash(node, now) {
+  const deadline = node.userData.flashUntilMs || 0;
+  const flashing = now < deadline;
+  node.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    // Skip materials lacking emissive (MeshBasicMaterial etc.)
+    if (!o.material.emissive) return;
+    if (!o.userData._origEmissiveCached) {
+      o.userData._origEmissiveHex = o.material.emissive.getHex();
+      o.userData._origEmissiveIntensity = o.material.emissiveIntensity ?? 0;
+      o.userData._origEmissiveCached = true;
+    }
+    if (flashing) {
+      o.material.emissive.setHex(MUZZLE_FLASH_EMISSIVE_HEX);
+      o.material.emissiveIntensity = MUZZLE_FLASH_INTENSITY;
+    } else {
+      o.material.emissive.setHex(o.userData._origEmissiveHex);
+      o.material.emissiveIntensity = o.userData._origEmissiveIntensity;
+    }
+  });
+}
+
+function flashTower(towerId) {
+  const node = towerNodes.get(towerId);
+  if (!node) return;
+  node.userData.flashUntilMs = performance.now() + MUZZLE_FLASH_MS;
+}
+
 function syncEnemies(state) {
   const seen = new Set();
+  const t = performance.now() / 1000;
+  const map = state.mapDef;
   for (const en of state.enemies) {
     seen.add(en.id);
     let node = enemyNodes.get(en.id);
@@ -194,17 +257,32 @@ function syncEnemies(state) {
       const meshId = `enemy_${en.type}`;
       node = window.CTD3Assets.getMesh(meshId);
       node.traverse(o => { if (o.isMesh) o.castShadow = true; });
+      // Per-enemy random bob offset (presentation only — never on engine entity, ADR-030 C-1).
+      node.userData.bobPhase = Math.random() * Math.PI * 2;
       enemyNodes.set(en.id, node);
       enemiesGroup.add(node);
     }
-    const yLift = (window.CTD3Entities.ENEMIES[en.type]?.isFlying) ? 1.2 : 0;
-    node.position.set(en.x, yLift, en.z);
-    // Hit-flash via vertex color tint (or scale pulse for placeholders)
-    if (en.hitFlashMs > 0) {
-      node.scale.setScalar(1.1);
+    const def = window.CTD3Entities.ENEMIES[en.type];
+    const isFlying = !!def?.isFlying;
+    const baseY = isFlying ? 1.2 : 0;
+    let bob;
+    if (isFlying) {
+      bob = Math.sin(t * ENEMY_BOB_RATE_FLYING + node.userData.bobPhase) * ENEMY_BOB_AMP_FLYING;
     } else {
-      node.scale.setScalar(1.0);
+      bob = Math.abs(Math.sin(t * ENEMY_BOB_RATE_GROUND + node.userData.bobPhase)) * ENEMY_BOB_AMP_GROUND;
     }
+    node.position.set(en.x, baseY + bob, en.z);
+    // Yaw toward direction of travel (lookahead along path)
+    if (map && map.totalLength > 0) {
+      const lookT = Math.min(1, en.pathT + 0.005);
+      const next = window.CTD3Engine.sampleOnPath(map, lookT);
+      const dx = next.x - en.x, dz = next.z - en.z;
+      if (dx !== 0 || dz !== 0) {
+        node.rotation.y = Math.atan2(dz, dx) + Math.PI;
+      }
+    }
+    // Hit-flash via scale pulse (preserves existing visual feedback).
+    node.scale.setScalar(en.hitFlashMs > 0 ? 1.1 : 1.0);
   }
   for (const [id, node] of enemyNodes) {
     if (!seen.has(id)) {
@@ -232,6 +310,10 @@ function syncProjectiles(state) {
       projectilesGroup.add(node);
     }
     node.position.set(pr.x, pr.y || 0.6, pr.z);
+    // Rotate toward velocity (Y-axis only — projectiles travel parallel to ground).
+    if (pr.vx !== 0 || pr.vz !== 0) {
+      node.rotation.y = Math.atan2(pr.vz, pr.vx);
+    }
   }
   for (const [id, node] of projNodes) {
     if (!seen.has(id)) {
@@ -275,15 +357,49 @@ function syncEffects(state) {
   }
 }
 
-// ─── Range/aura decals ───────────────────────────────────────
+// ─── Persistent Warden aura rings (ADR-030 §12) ──────────────
+// Built once per aura-behavior tower; pulsed in place each frame.
+function syncWardenAuras(state) {
+  const present = new Set();
+  for (const tw of state.towers) {
+    if (tw.behavior !== 'aura' || !(tw.auraRadius > 0)) continue;
+    present.add(tw.id);
+    let node = wardenAuraNodes.get(tw.id);
+    if (!node) {
+      const geo = new THREE.RingGeometry(tw.auraRadius * 0.97, tw.auraRadius, 48);
+      geo.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x9bb0d4,
+        transparent: true,
+        opacity: WARDEN_AURA_OPACITY_BASE,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      node = new THREE.Mesh(geo, mat);
+      node.position.set(tw.x, 0.05, tw.z);
+      node.userData.t0 = performance.now();
+      wardenAuraNodes.set(tw.id, node);
+      wardenAurasGroup.add(node);
+    }
+    const elapsed = performance.now() - node.userData.t0;
+    const phase = Math.sin(elapsed / WARDEN_AURA_PERIOD_MS);
+    node.scale.setScalar((1 - WARDEN_AURA_SCALE_AMP) + phase * WARDEN_AURA_SCALE_AMP);
+    node.material.opacity = WARDEN_AURA_OPACITY_BASE * ((1 - WARDEN_AURA_OPACITY_AMP) + phase * WARDEN_AURA_OPACITY_AMP);
+  }
+  // Remove rings for towers that were sold
+  for (const [id, node] of wardenAuraNodes) {
+    if (present.has(id)) continue;
+    wardenAurasGroup.remove(node);
+    if (node.geometry) node.geometry.dispose();
+    if (node.material) node.material.dispose();
+    wardenAuraNodes.delete(id);
+  }
+}
+
+// ─── Range/aura decals (transient — rebuilt each frame) ──────
+// Warden aura rings live in wardenAurasGroup (persistent), NOT here.
 function syncDecals(state) {
   decalsGroup.clear();
-  // Always-visible Warden aura rings
-  for (const tw of state.towers) {
-    if (tw.behavior === 'aura' && tw.auraRadius > 0) {
-      decalsGroup.add(makeRing(tw.x, tw.z, tw.auraRadius, 0x9bb0d4, 0.5));
-    }
-  }
   // Selected tower → range circle
   const sel = state.selectedTowerId && state.towers.find(t => t.id === state.selectedTowerId);
   if (sel && sel.behavior === 'projectile' && sel.range > 0) {
@@ -352,5 +468,6 @@ window.CTD3Scene = {
   init, getScene,
   paintTerrain, clearPlayfield,
   sync, raycastFromNormalizedPointer,
+  flashTower,
   setLowPowerShadows
 };

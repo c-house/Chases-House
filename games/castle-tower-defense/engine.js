@@ -350,7 +350,7 @@
       });
       state.projectiles.push(proj);
     }
-    state.events.push({ kind: 'fire', towerType: tw.type });
+    state.events.push({ kind: 'fire', towerType: tw.type, towerId: tw.id });
   }
 
   function leadTarget(map, tw, target, projSpeed) {
