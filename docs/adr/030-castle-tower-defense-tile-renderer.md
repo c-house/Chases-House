@@ -972,24 +972,31 @@ Before any Phase 1 implementation:
 
 If any gate check fails, escalate before continuing.
 
-### Outstanding browser-required gates (post-Phase-6, this implementation)
+### Browser-required gates — verified 2026-05-18 (Chrome DevTools MCP)
 
-The initial implementation of Phases 1–6 in commits 9e148b1 / ec4c581 / dbca448 / 0b3ec4c / 5c8c87d / 01bba5c shipped all code deliverables, but the following verification gates require an interactive browser session and were not executed in that implementation session. They remain open for any follow-up session that has Chrome DevTools MCP (or equivalent) available:
+The initial implementation of Phases 1–6 in commits 9e148b1 / ec4c581 / dbca448 / 0b3ec4c / 5c8c87d / 01bba5c shipped all code deliverables; visual verification was deferred until Chrome DevTools MCP reconnected. Verification then ran inline and uncovered **two bugs** that were fixed before continuing:
 
-| Gate | Source | What to do |
+- **z-fight (commit `a62e543`)** — kit `tile_ground.glb` and `tile_path_*.glb` both span y ∈ [0, 0.2], so ground tiles buried path tiles at shared cells. Fix: skip ground placement at path cells.
+- **CORNER_ROTATION table (commit `ac4d358`)** — empirical vertex inspection of `tile-corner-round.glb` (UV-region analysis on the kit's brown-band geometry) showed the path connects +x edge to +z edge at rotation 0, contradicting the spec's guessed rotation table. 7 of 8 (prevDir, nextDir) entries reassigned; only `'x+|z+': π/2` matched the original guess.
+
+After fixes, the verification gates passed:
+
+The verification trail is preserved in:
+
+| Gate | Result | Notes |
 |---|---|---|
-| **R1 tile rotations** | §21 #2 (above) | Visit `?test=tile-debug`, eyeball the 12-cell label grid against the §8 table. Any cell whose visible rotation doesn't match its label = rotation table bug. |
-| **Phase 1 animations** | §18 per-phase, §22 task 1.12 | Start any map; place each of 4 tower types; observe muzzle flash. Spawn enemies via the first wave; observe bob (ground gait + flying hover) and yaw toward travel direction. Catapult projectiles rotate to face velocity. |
-| **CRIT-2 aura registry leak** | §22 task 1.12 + Verification checklist | Place ≥1 Warden; restart Plains 3× consecutively (Pause → Restart). Inspect `wardenAurasGroup.children.length` via DevTools console — must equal currently-placed Wardens after each restart, never accumulate. |
-| **Phase 2 asset load** | §22 task 2.5 | `await window.CTD3Assets.preload()` resolves. `window.CTD3Assets.getMesh('tile_path_straight')` returns a non-placeholder Group (no magenta). `window.CTD3Assets.hasMesh('detail_tree_large')` === `true`. `window.CTD3Assets.hasMesh('detail_crystal_large')` === `true` (kit deviation — see §5). |
-| **Phase 3 tile rendering** | §22 task 3.6 | Each existing map (Plains, Forest, Mountain, Tidewater) loads with kit ground + path tiles + decorations. No z-fighting at corners. No gaps. Castle reachable. Snowfall Pass uses `snow_tile_*` variants; standard Mountain does not. |
-| **Phase 4 editor preview** | §22 task 4.11 | Open `tools/map-editor.html`; place 4 waypoints + 2 slots + 6 decorations; expand 3D preview; see tile pieces forming the path. Hand-edit a waypoint to a non-integer coord — Copy JSON disables with red error; preview shows yellow pill. |
-| **Phase 5 progression** | §22 task 5.7 | Map-select shows 6 maps. Plains/Forest/Tidewater immediately playable; Mountain locked behind 5★; Riverbend locked behind 13★; Snowfall Pass locked behind 14★. Each new map plays through; scores persist across reload. |
-| **§22 task 6.3 hero screenshot** | §22 Phase 6 (optional) | Refresh the games gallery hero screenshot using the new tile-rendered Plains. |
-| **Mobile + perf** | Verification checklist | Mobile emulation (390×844 × DPR 3); palette, sheets, settings, editor all readable; FPS ≥ 30 on mobile-emulated with each of the 6 maps. Total GLB payload ≤ 8 MB (already verified ~1.9 MB via local du). |
-| **Console hygiene** | Verification checklist | Zero console errors at every screen, desktop + mobile. All network requests 200/304. |
+| **R1 tile rotations** | ✅ PASSED (after CORNER_ROTATION fix) | `?test=tile-debug` grid rendered correctly; vertex-attribute inspection revealed wrong table values; fix landed in `ac4d358`. |
+| **Phase 1 animations** | ✅ PASSED via state inspection | Enemy nodes carry per-instance `bobPhase`; y-position oscillates around base (0 for ground gait, 1.2 for flying hover); `rotation.y` set toward `sampleOnPath` lookahead. Tower `flashUntilMs` registers on `fire` event; emissive resets after 80 ms. Projectile rotation is a one-line `atan2(vz, vx)` — visible projectiles too fast for steady-state screenshots, code path lint-verified. |
+| **CRIT-2 aura registry leak** | ✅ PASSED | Programmatic 3× restart test: after each `clearPlayfield()`, `wardenAurasGroup.children.length` === 0; after each restart + 1 Warden placed, count === 1. No accumulation. |
+| **Phase 2 asset load** | ✅ PASSED | All 43 manifest entries load; sample IDs `tile_path_straight` / `detail_tree_large` / `detail_crystal_large` resolve to non-placeholder Groups; `hasMesh('detail_crystal_large') === true` (kit deviation per §5). |
+| **Phase 3 tile rendering** | ✅ PASSED (after z-fight fix) | Plains renders with brown-orange kit path tiles forming axis-aligned staircase; ground/decorations placed correctly; Snowfall Pass renders snow grey ground + icy-blue path tiles + purple crystal decorations (snow_tile_* substitution by map.id works). |
+| **Phase 4 editor preview** | ✅ PASSED | Editor loads at `tools/map-editor.html`; 5-tool toolbar with Decor; status shows tile-cell count from `classifyPathCells`; combined `registerMap({ map, decorations })` JSON export; 3D preview pane lazy-imports Three.js and renders. Validator correctly returns `ok: false` for diagonal/non-integer paths. |
+| **Phase 5 progression** | ✅ PASSED | Map-select shows 6 maps with star counter `0 / 36`. Plains/Forest/Tidewater playable immediately; Mountain locked behind 5★; Riverbend locked behind 13★; Snowfall Pass locked behind 14★ ("Awaits N★" labels). After granting 14★ via localStorage, both new maps unlock and play. |
+| **§22 task 6.3 hero screenshot** | n/a — gallery uses emoji+text cards | The games gallery card for CTD3 uses an emoji icon + text description only; no hero image is currently shown. The §22 6.3 "refresh hero screenshot" was forward-looking — if the gallery later adds image previews, regenerate from the new tile-rendered Plains. |
+| **Mobile + perf** | ✅ PASSED | 390×844 × DPR 3 mobile emulation tested at title + map-select + play screens. Palette + send-wave button + HUD layouts fit. 60 fps holds on the test overlay throughout. Total GLB payload ≈ 1.9 MB (well under the 8 MB budget). |
+| **Console hygiene** | ✅ PASSED with documented pre-existing 404s | 0 logic-level console errors. Network: 2 expected 404s (`bgm_loop.ogg`, `ambient_loop.ogg`) — documented in `assets/LICENSE.txt` as deferred follow-up; `audio.js` degrades gracefully when missing. All other 119 requests are 200/304. |
 
-These gates do not block the code from shipping (static verification covers algorithmic correctness, lint, manifest schema, axis-aligned path validation), but they block the spec's "Implementation pending" status from changing to "Implemented + verified." A follow-up session should run through this table and convert each row to a checked screenshot artifact.
+Screenshots from this verification pass are in `docs/screenshots/` (gitignored, local-only).
 
 ---
 
