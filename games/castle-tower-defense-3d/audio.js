@@ -7,22 +7,24 @@
 (function () {
   'use strict';
 
+  // Kenney audio packs ship .ogg — see assets/LICENSE.txt for per-file mapping.
+  // BGM + ambient deferred to a follow-up: graceful no-op when missing.
   const SAMPLES = {
-    ui_click:        'assets/audio/ui_click.wav',
-    ui_back:         'assets/audio/ui_back.wav',
-    build_place:     'assets/audio/build_place.wav',
-    sell:            'assets/audio/sell.wav',
-    upgrade:         'assets/audio/upgrade.wav',
-    ranger_fire:     'assets/audio/ranger_fire.wav',
-    cannon_fire:     'assets/audio/cannon_fire.wav',
-    mage_fire:       'assets/audio/mage_fire.wav',
-    enemy_hit:       'assets/audio/enemy_hit.wav',
-    enemy_death:     'assets/audio/enemy_death.wav',
-    castle_hit:      'assets/audio/castle_hit.wav',
-    wave_start_horn: 'assets/audio/wave_start_horn.wav',
-    wave_clear:      'assets/audio/wave_clear.wav',
-    bgm_loop:        'assets/audio/bgm_loop.mp3',
-    ambient_loop:    'assets/audio/ambient_loop.mp3'
+    ui_click:        'assets/audio/ui_click.ogg',
+    ui_back:         'assets/audio/ui_back.ogg',
+    build_place:     'assets/audio/build_place.ogg',
+    sell:            'assets/audio/sell.ogg',
+    upgrade:         'assets/audio/upgrade.ogg',
+    ranger_fire:     'assets/audio/ranger_fire.ogg',
+    cannon_fire:     'assets/audio/cannon_fire.ogg',
+    mage_fire:       'assets/audio/mage_fire.ogg',
+    enemy_hit:       'assets/audio/enemy_hit.ogg',
+    enemy_death:     'assets/audio/enemy_death.ogg',
+    castle_hit:      'assets/audio/castle_hit.ogg',
+    wave_start_horn: 'assets/audio/wave_start_horn.ogg',
+    wave_clear:      'assets/audio/wave_clear.ogg',
+    bgm_loop:        'assets/audio/bgm_loop.ogg',
+    ambient_loop:    'assets/audio/ambient_loop.ogg'
   };
 
   let ctx = null;

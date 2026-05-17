@@ -41,16 +41,38 @@ MODELS — Kenney "Tower Defense Kit" 2.1
     castle.glb             → wood-structure-high.glb
 
 ----------------------------------------------------------------------
-AUDIO — pending Phase 1.7 audition
+AUDIO — Kenney audio packs (all CC0)
 ----------------------------------------------------------------------
-  Sources will be one or more of:
-    - Kenney audio packs (RPG Audio, UI Audio, Impact Sounds, Music Jingles) — CC0
-    - OpenGameArt.org (CC0 filtered)
-    - Freesound.org (CC0 filtered)
-    - Pixabay Music (per-track CC0 verification)
+  Source packs:
+    - https://kenney.nl/assets/ui-audio        (UI Audio, 50 files)
+    - https://kenney.nl/assets/interface-sounds (Interface Sounds)
+    - https://kenney.nl/assets/impact-sounds   (Impact Sounds, 130 files)
+    - https://kenney.nl/assets/rpg-audio       (RPG Audio, 50 files)
+    - https://kenney.nl/assets/music-jingles   (Music Jingles, 85 files)
+  License (all): CC0 1.0 Universal — http://creativecommons.org/publicdomain/zero/1.0/
+  Author: Kenney (www.kenney.nl)
 
-  Filter criteria documented in docs/adr/028-castle-tower-defense-3d.md §11.
-  Per-file source mapping to be added here as audio lands.
+  Per-file mapping (target → source pack: original filename):
+    ui_click.ogg        → interface-sounds: click_001.ogg
+    ui_back.ogg         → interface-sounds: back_001.ogg
+    build_place.ogg     → rpg-audio: bookPlace1.ogg
+    sell.ogg            → interface-sounds: drop_002.ogg
+    upgrade.ogg         → interface-sounds: confirmation_002.ogg
+    ranger_fire.ogg     → rpg-audio: knifeSlice.ogg
+    cannon_fire.ogg     → impact-sounds: impactBell_heavy_000.ogg
+    mage_fire.ogg       → rpg-audio: metalClick.ogg
+    enemy_hit.ogg       → impact-sounds: impactGeneric_light_002.ogg
+    enemy_death.ogg     → impact-sounds: impactBell_heavy_001.ogg
+    castle_hit.ogg      → impact-sounds: impactBell_heavy_002.ogg
+    wave_start_horn.ogg → music-jingles: Sax jingles/jingles_SAX00.ogg
+    wave_clear.ogg      → music-jingles: Pizzicato jingles/jingles_PIZZI00.ogg
+
+  Filter criteria: docs/adr/028-castle-tower-defense-3d.md §11. The
+  Pizzicato + Sax jingles (acoustic-led, modal major) satisfy "Stardew-warm";
+  Bell impacts give the cannon/castle their weight without being harsh.
+
+  BGM (bgm_loop) and ambient (ambient_loop) deferred to a follow-up
+  — audio.js degrades gracefully when missing.
 
 ----------------------------------------------------------------------
 ICONS (12, PNG, 64×64) — generated from this kit's tower meshes

@@ -112,6 +112,12 @@ async function start() {
 
   // Show title
   window.CTD3Ui.setScreen('title');
+
+  // ?test=1 overlay
+  if (new URLSearchParams(location.search).has('test')) {
+    const overlay = document.getElementById('test-overlay');
+    if (overlay) overlay.style.display = 'block';
+  }
 }
 
 function firstClickAudio() {
@@ -159,6 +165,53 @@ function wireDocument() {
     const actionEl = ev.target.closest('[data-action]');
     if (actionEl) { ev.preventDefault(); handleAction(actionEl.dataset.action, actionEl); }
   });
+  wireSettings();
+}
+
+function wireSettings() {
+  const settings = loadSettings();
+  const bind = (key) => document.querySelector(`[data-bind="${key}"]`);
+  const sliders = [
+    { slider: bind('slider-music'),   value: bind('value-music'),   key: 'musicVolume',   apply: window.CTD3Audio.setMusicVolume },
+    { slider: bind('slider-sfx'),     value: bind('value-sfx'),     key: 'sfxVolume',     apply: window.CTD3Audio.setSfxVolume },
+    { slider: bind('slider-ambient'), value: bind('value-ambient'), key: 'ambientVolume', apply: window.CTD3Audio.setAmbientVolume }
+  ];
+  sliders.forEach(({ slider, value, key, apply }) => {
+    if (!slider) return;
+    const initVal = Math.round((settings[key] ?? 0.5) * 100);
+    slider.value = String(initVal);
+    if (value) value.textContent = initVal + '%';
+    slider.addEventListener('input', () => {
+      const v = parseInt(slider.value, 10);
+      if (value) value.textContent = v + '%';
+      const s = loadSettings();
+      s[key] = v / 100;
+      saveSettings(s);
+      apply(v / 100);
+    });
+  });
+
+  const rm = document.querySelector('[data-bind="reduced-motion-toggle"]');
+  if (rm) {
+    rm.checked = !!settings.reducedMotion;
+    rm.addEventListener('change', () => {
+      const s = loadSettings();
+      s.reducedMotion = rm.checked;
+      saveSettings(s);
+      window.CTD3Ui.setReducedMotion(rm.checked);
+    });
+  }
+
+  const lp = document.querySelector('[data-bind="low-power-toggle"]');
+  if (lp) {
+    lp.checked = !!settings.lowPowerForced;
+    lp.addEventListener('change', () => {
+      const s = loadSettings();
+      s.lowPowerForced = lp.checked;
+      saveSettings(s);
+      window.CTD3Renderer.setLowPower(lp.checked);
+    });
+  }
 }
 
 function handleAction(name, el) {
@@ -177,6 +230,21 @@ function handleAction(name, el) {
     case 'dismiss-tutorial':       actions.dismissTutorial(); break;
     case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); break;
     case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); break;
+    case 'sheet-close':            window.CTD3Ui.closeSheets(); break;
+    case 'sheet-pick': {
+      const slotId = window.CTD3Ui.getSheetSlotId();
+      const towerType = el.dataset.tower;
+      if (slotId && towerType) actions.placeFromSheet(slotId, towerType);
+      break;
+    }
+    case 'test-grant-gold': if (window.CastleTowerDefense._test) window.CastleTowerDefense._test.grantGold(500); break;
+    case 'test-set-lives':  if (window.CastleTowerDefense._test && state) state.lives = Math.min(99, state.lives + 10); break;
+    case 'test-jump-last':
+      if (state) { state.waveIndex = state.waveTotal - 1; state.fsm = 'prepWave'; }
+      break;
+    case 'test-kill-all':
+      if (state) { state.enemies.forEach(en => { en.hp = 0; }); }
+      break;
   }
 }
 
@@ -196,27 +264,56 @@ const actions = {
       if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
       // 'invalid' and 'occupied' are silent
     } else {
-      window.CTD3Engine.selectSlot(state, slotId);
+      // No palette selection → open slot-select action sheet
+      const occupied = state.towers.some(t => t.slotId === slotId);
+      if (occupied) {
+        // Tap on occupied slot → open tower sheet instead
+        const tw = state.towers.find(t => t.slotId === slotId);
+        if (tw) {
+          window.CTD3Engine.selectTower(state, tw.id);
+          window.CTD3Ui.openTowerSheet(tw, state.gold);
+        }
+      } else {
+        window.CTD3Engine.selectSlot(state, slotId);
+        window.CTD3Ui.openSlotSheet(slotId, state.gold);
+      }
     }
   },
   selectTowerInstance(towerId) {
     if (!state) return;
     window.CTD3Engine.selectTower(state, towerId);
+    const tw = state.towers.find(t => t.id === towerId);
+    if (tw) window.CTD3Ui.openTowerSheet(tw, state.gold);
+  },
+  placeFromSheet(slotId, towerType) {
+    if (!state) return;
+    const result = window.CTD3Engine.place(state, slotId, towerType);
+    if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+    if (result === 'ok') window.CTD3Ui.closeSheets();
   },
   cancelSelection() {
     if (!state) return;
     window.CTD3Engine.setPaletteSelection(state, null);
     window.CTD3Engine.selectTower(state, null);
     state.hoverSlotId = null;
+    window.CTD3Ui.closeSheets();
   },
   upgrade() {
     if (!state || !state.selectedTowerId) return;
     const result = window.CTD3Engine.upgrade(state, state.selectedTowerId);
     if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+    if (result === 'ok') {
+      // Repaint the open tower sheet (if any) with the new tier's stats
+      const tw = state.towers.find(t => t.id === state.selectedTowerId);
+      if (tw && window.CTD3Ui.getActiveSheet() === 'tower') {
+        window.CTD3Ui.paintTowerSheet(tw, state.gold);
+      }
+    }
   },
   sell() {
     if (!state || !state.selectedTowerId) return;
-    window.CTD3Engine.sell(state, state.selectedTowerId);
+    const result = window.CTD3Engine.sell(state, state.selectedTowerId);
+    if (result === 'ok') window.CTD3Ui.closeSheets();
   },
   sendNextWave() {
     if (!state) return;
@@ -280,7 +377,29 @@ function tick(ts) {
 
   // Render every frame regardless of FSM (lets title screen show the scene)
   window.CTD3Renderer.renderFrame(window.CTD3Scene.getScene());
+  updateTestOverlay(dtRaw);
   requestAnimationFrame(tick);
+}
+
+const _fpsSmoothing = { samples: [], cap: 30 };
+function updateTestOverlay(dtMs) {
+  const overlay = document.getElementById('test-overlay');
+  if (!overlay || overlay.style.display === 'none') return;
+  _fpsSmoothing.samples.push(dtMs);
+  if (_fpsSmoothing.samples.length > _fpsSmoothing.cap) _fpsSmoothing.samples.shift();
+  const avg = _fpsSmoothing.samples.reduce((a, v) => a + v, 0) / _fpsSmoothing.samples.length;
+  const fps = Math.round(1000 / Math.max(0.1, avg));
+  const ft = avg.toFixed(1);
+  const set = (k, v) => {
+    const e = overlay.querySelector(`[data-bind="${k}"]`);
+    if (e) e.textContent = String(v);
+  };
+  set('test-fps', fps);
+  set('test-ft', ft);
+  set('test-low-power', window.CTD3Renderer.isLowPower() ? 'low' : 'norm');
+  set('test-towers',  state ? state.towers.length : 0);
+  set('test-enemies', state ? state.enemies.length : 0);
+  set('test-projs',   state ? state.projectiles.length : 0);
 }
 
 function consumeEngineEvents(state) {

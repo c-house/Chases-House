@@ -283,6 +283,72 @@
     .ctrl-btn.active { background: var(--aged-gold); color: var(--ink); }
     .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* ── Action sheets (ADR-028 §12 — mobile-first) ─────────────── */
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      z-index: 30;
+      background: rgba(40, 28, 18, 0.96);
+      border-top: 1px solid var(--aged-gold);
+      padding: 0.9rem 1rem 1.1rem;
+      color: var(--warm-stone);
+      transform: translateY(110%);
+      transition: transform var(--dur-snap) var(--ease-snap);
+      pointer-events: auto;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .sheet.open { transform: translateY(0); }
+    .sheet h3 {
+      font-family: var(--font-display, 'Fraunces'), serif;
+      font-size: 1.1rem; margin: 0 0 0.3rem; color: var(--aged-gold);
+    }
+    .sheet .sub {
+      font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(240,230,211,0.55); margin-bottom: 0.7rem;
+    }
+    .sheet .row {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: stretch;
+    }
+    .sheet .stats {
+      display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 0.8rem;
+      margin: 0.5rem 0 0.8rem;
+      font-size: 0.86rem;
+    }
+    .sheet .stats span:nth-child(odd) { color: rgba(240,230,211,0.65); }
+    .sheet .stats span:nth-child(even) { color: var(--warm-stone); font-weight: 600; }
+    .sheet .pip-row { display: inline-flex; gap: 4px; margin-left: 0.5rem; vertical-align: middle; }
+    .sheet .pip {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: rgba(232,213,168,0.2); border: 1px solid rgba(200,148,62,0.5);
+    }
+    .sheet .pip.filled { background: var(--aged-gold); border-color: var(--aged-gold); }
+    .sheet .close-x {
+      position: absolute; top: 0.5rem; right: 0.7rem;
+      background: transparent; border: none; color: rgba(240,230,211,0.6);
+      font-size: 1.3rem; cursor: pointer;
+      min-width: 32px; min-height: 32px;
+    }
+    /* Slot-select sheet: 4 tower picks in a row */
+    .sheet .picks {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;
+    }
+    .sheet .pick {
+      background: rgba(20, 14, 10, 0.7);
+      border: 1px solid rgba(200,148,62,0.4);
+      border-radius: 5px;
+      padding: 0.5rem 0.3rem;
+      color: var(--warm-stone);
+      cursor: pointer;
+      text-align: center;
+      font-family: inherit; font-size: 0.78rem;
+      min-height: 76px;
+    }
+    .sheet .pick img { width: 40px; height: 40px; display: block; margin: 0 auto; }
+    .sheet .pick .name { font-weight: 600; }
+    .sheet .pick .cost { color: var(--aged-gold); font-size: 0.74rem; }
+    .sheet .pick.disabled { opacity: 0.4; cursor: not-allowed; }
+    .sheet .pick:active { transform: scale(0.95); }
+
     /* ── Wave-clear flourish: gold-bar wipe (review m-2; no 3D bird) ── */
     .wave-clear-wipe {
       position: fixed; left: 0; right: 0; top: 50%;
@@ -304,6 +370,18 @@
 <body data-screen="loading">
 
   <a href="/games/" class="return-link">GAMES</a>
+
+  <!-- ── ?test=1 dev overlay (hidden unless URL has ?test=1) ───── -->
+  <div id="test-overlay" style="display:none;position:fixed;top:0.5rem;right:0.5rem;z-index:80;background:rgba(0,0,0,0.7);color:#9fe;font:11px/1.4 ui-monospace,monospace;padding:0.4rem 0.6rem;border:1px solid rgba(159,238,255,0.3);border-radius:4px;pointer-events:auto;max-width:200px;">
+    <div><span data-bind="test-fps">--</span> fps · <span data-bind="test-ft">--</span> ms</div>
+    <div><span data-bind="test-low-power">norm</span> · towers <span data-bind="test-towers">0</span> · enemies <span data-bind="test-enemies">0</span> · projs <span data-bind="test-projs">0</span></div>
+    <div style="margin-top:0.4rem;display:flex;gap:4px;flex-wrap:wrap;">
+      <button data-action="test-grant-gold" style="font:inherit;background:#1a1410;color:#9fe;border:1px solid #9fe;padding:2px 6px;cursor:pointer;border-radius:2px;">+500g</button>
+      <button data-action="test-set-lives" style="font:inherit;background:#1a1410;color:#9fe;border:1px solid #9fe;padding:2px 6px;cursor:pointer;border-radius:2px;">+10 lives</button>
+      <button data-action="test-jump-last" style="font:inherit;background:#1a1410;color:#9fe;border:1px solid #9fe;padding:2px 6px;cursor:pointer;border-radius:2px;">→ last wave</button>
+      <button data-action="test-kill-all" style="font:inherit;background:#1a1410;color:#9fe;border:1px solid #9fe;padding:2px 6px;cursor:pointer;border-radius:2px;">kill all</button>
+    </div>
+  </div>
 
   <!-- The single 3D canvas. -->
   <canvas id="canvas"></canvas>
@@ -378,6 +456,29 @@
     </div>
   </div>
 
+  <!-- ── Action sheets (ADR-028 §12) ──────────────────────────────
+       Sheets live OUTSIDE the .screen blocks so they remain visible
+       under play / tutorial. Visibility controlled by .open class. -->
+  <div class="sheet" id="sheet-slot" role="dialog" aria-label="Choose a tower">
+    <button class="close-x" data-action="sheet-close" aria-label="Close">×</button>
+    <h3>Place a tower</h3>
+    <div class="sub" data-bind="sheet-slot-id">Slot</div>
+    <div class="picks" data-bind="sheet-picks"></div>
+  </div>
+
+  <div class="sheet" id="sheet-tower" role="dialog" aria-label="Tower options">
+    <button class="close-x" data-action="sheet-close" aria-label="Close">×</button>
+    <h3 data-bind="sheet-tower-name">Tower</h3>
+    <div class="sub">
+      Tier <span class="pip-row" data-bind="sheet-tier-pips"></span>
+    </div>
+    <div class="stats" data-bind="sheet-stats"></div>
+    <div class="row">
+      <button class="btn primary" data-action="upgrade" data-bind="sheet-upgrade">Upgrade</button>
+      <button class="btn" data-action="sell" data-bind="sheet-sell">Sell</button>
+    </div>
+  </div>
+
   <!-- ── Pause ────────────────────────────────────────────────────── -->
   <div class="screen pause">
     <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
@@ -386,12 +487,24 @@
       <button class="btn" data-action="restart">Restart</button>
       <button class="btn" data-action="quit-to-map-select">Quit</button>
       <hr style="border-color:rgba(232,213,168,0.2);margin:1.2rem 0;">
-      <div style="text-align:left;font-size:0.84rem;color:rgba(240,230,211,0.7);">
-        <div data-bind="settings-music">Music: 40%</div>
-        <div data-bind="settings-sfx">SFX: 80%</div>
-        <div data-bind="settings-ambient">Ambient: 25%</div>
-        <div><label><input type="checkbox" data-bind="reduced-motion-toggle"> Reduced motion</label></div>
-        <div><label><input type="checkbox" data-bind="low-power-toggle"> Force low-power</label></div>
+      <div style="text-align:left;font-size:0.84rem;color:rgba(240,230,211,0.78);">
+        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+          <span style="flex:0 0 5.5rem;">Music</span>
+          <input type="range" min="0" max="100" step="1" data-bind="slider-music" style="flex:1;accent-color:var(--aged-gold);">
+          <span data-bind="value-music" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">40%</span>
+        </div>
+        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+          <span style="flex:0 0 5.5rem;">SFX</span>
+          <input type="range" min="0" max="100" step="1" data-bind="slider-sfx" style="flex:1;accent-color:var(--aged-gold);">
+          <span data-bind="value-sfx" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">80%</span>
+        </div>
+        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+          <span style="flex:0 0 5.5rem;">Ambient</span>
+          <input type="range" min="0" max="100" step="1" data-bind="slider-ambient" style="flex:1;accent-color:var(--aged-gold);">
+          <span data-bind="value-ambient" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">25%</span>
+        </div>
+        <div style="margin-top:0.7rem;"><label style="cursor:pointer;"><input type="checkbox" data-bind="reduced-motion-toggle" style="accent-color:var(--aged-gold);margin-right:0.4rem;"> Reduced motion</label></div>
+        <div style="margin-top:0.4rem;"><label style="cursor:pointer;"><input type="checkbox" data-bind="low-power-toggle" style="accent-color:var(--aged-gold);margin-right:0.4rem;"> Force low-power mode</label></div>
       </div>
     </div>
   </div>
@@ -415,8 +528,14 @@
   <!-- ── Tutorial popups (gated by ctd3:tutorialSeen) ────────────── -->
   <div class="screen tutorial">
     <div data-bind="tutorialPopup" style="background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:1rem 1.4rem;color:var(--warm-stone);max-width:380px;">
-      <p data-bind="tutorialText" style="margin:0 0 0.8rem;">—</p>
-      <button class="btn" data-action="dismiss-tutorial">Got it</button>
+      <p data-bind="tutorialText" style="margin:0 0 0.8rem;line-height:1.5;">
+        Welcome to the watch. The road runs left to right, and the keep stands at its end.
+        <br><br>
+        <strong>Tap a stone plinth</strong> to choose what tower to build there.
+        Place at least one tower, then tap <strong>▶ Send wave</strong> to call the first raiders.
+        Stand the gate.
+      </p>
+      <button class="btn primary" data-action="dismiss-tutorial">Begin the watch</button>
     </div>
   </div>
 

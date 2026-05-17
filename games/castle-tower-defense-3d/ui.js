@@ -13,6 +13,10 @@
   let totalStarsEl, maxStarsEl;
   let hudGold, hudLives, hudWaveNum, hudWaveOf;
   let nextWaveBtn, fastFwdBtn;
+  let sheetSlot, sheetTower, sheetSlotIdLabel, sheetPicks, sheetTowerName, sheetTierPips, sheetStats, sheetUpgradeBtn, sheetSellBtn;
+  let activeSheet = null;       // 'slot' | 'tower' | null
+  let sheetTargetSlotId = null; // for slot sheet
+  let sheetTargetTowerId = null;// for tower sheet
 
   // goldDeficitFlash — ui-local; decayed against performance.now() in update()
   // (NOT setTimeout — ADR-028 §C-3).
@@ -63,8 +67,118 @@
       bestScore:      $('[data-bind="bestScore"]')
     };
 
+    sheetSlot         = $('#sheet-slot');
+    sheetTower        = $('#sheet-tower');
+    sheetSlotIdLabel  = $('[data-bind="sheet-slot-id"]');
+    sheetPicks        = $('[data-bind="sheet-picks"]');
+    sheetTowerName    = $('[data-bind="sheet-tower-name"]');
+    sheetTierPips     = $('[data-bind="sheet-tier-pips"]');
+    sheetStats        = $('[data-bind="sheet-stats"]');
+    sheetUpgradeBtn   = $('[data-bind="sheet-upgrade"]');
+    sheetSellBtn      = $('[data-bind="sheet-sell"]');
+
     paintPalette();
     initialized = true;
+  }
+
+  // ─── Action sheets (ADR-028 §12) ─────────────────────────────
+  function openSlotSheet(slotId, gold) {
+    activeSheet = 'slot';
+    sheetTargetSlotId = slotId;
+    if (sheetSlotIdLabel) sheetSlotIdLabel.textContent = 'Slot ' + slotId;
+    paintSlotPicks(gold);
+    closeOtherSheets('slot');
+    if (sheetSlot) sheetSlot.classList.add('open');
+  }
+  function openTowerSheet(tower, gold) {
+    activeSheet = 'tower';
+    sheetTargetTowerId = tower.id;
+    paintTowerSheet(tower, gold);
+    closeOtherSheets('tower');
+    if (sheetTower) sheetTower.classList.add('open');
+  }
+  function closeSheets() {
+    activeSheet = null;
+    sheetTargetSlotId = null;
+    sheetTargetTowerId = null;
+    if (sheetSlot)  sheetSlot.classList.remove('open');
+    if (sheetTower) sheetTower.classList.remove('open');
+  }
+  function closeOtherSheets(keep) {
+    if (keep !== 'slot' && sheetSlot)  sheetSlot.classList.remove('open');
+    if (keep !== 'tower' && sheetTower) sheetTower.classList.remove('open');
+  }
+  function getActiveSheet() { return activeSheet; }
+  function getSheetSlotId() { return sheetTargetSlotId; }
+  function getSheetTowerId() { return sheetTargetTowerId; }
+
+  function paintSlotPicks(gold) {
+    if (!sheetPicks) return;
+    sheetPicks.replaceChildren();
+    ['ranger', 'catapult', 'mage', 'warden'].forEach(type => {
+      const def = window.CTD3Entities.TOWERS[type];
+      const cost = def.tiers[0].cost;
+      const aff = gold >= cost;
+      const img = el('img', { src: window.CTD3Assets.getIconUrl(type, 0), alt: def.name });
+      img.addEventListener('error', () => { img.style.opacity = '0.3'; });
+      const pick = el('button', {
+        class: 'pick' + (aff ? '' : ' disabled'),
+        'data-action': 'sheet-pick',
+        'data-tower': type
+      }, [
+        img,
+        el('div', { class: 'name' }, [def.name]),
+        el('div', { class: 'cost' }, [String(cost) + 'g'])
+      ]);
+      if (!aff) pick.disabled = true;
+      sheetPicks.appendChild(pick);
+    });
+  }
+
+  function paintTowerSheet(tower, gold) {
+    const def = window.CTD3Entities.TOWERS[tower.type];
+    const tier = def.tiers[tower.tier];
+    const nextTier = def.tiers[tower.tier + 1];
+    const sellValue = window.CTD3Entities.towerSellValue(tower.type, tower.tier);
+    if (sheetTowerName) sheetTowerName.textContent = def.name + ' Tower';
+
+    if (sheetTierPips) {
+      sheetTierPips.replaceChildren();
+      for (let i = 0; i < 3; i++) {
+        sheetTierPips.appendChild(el('span', { class: 'pip' + (i <= tower.tier ? ' filled' : '') }));
+      }
+    }
+
+    if (sheetStats) {
+      sheetStats.replaceChildren();
+      const rows = [];
+      if (tower.behavior === 'projectile') {
+        rows.push(['Damage', String(tower.damage)]);
+        rows.push(['Range',  String(tower.range)]);
+        rows.push(['Rate',   tower.fireRate.toFixed(1) + ' / s']);
+        if (tower.splashRadius) rows.push(['Splash', String(tower.splashRadius)]);
+        if (tower.chains)       rows.push(['Chains', String(tower.chains)]);
+      } else if (tower.behavior === 'aura') {
+        rows.push(['Aura',  String(tower.auraRadius)]);
+        rows.push(['Slow',  Math.round((1 - tower.auraSlowMult) * 100) + '%']);
+      }
+      rows.push(['Sell',   '+' + sellValue + 'g']);
+      rows.forEach(([k, v]) => {
+        sheetStats.appendChild(el('span', null, [k]));
+        sheetStats.appendChild(el('span', null, [v]));
+      });
+    }
+
+    if (sheetUpgradeBtn) {
+      if (nextTier) {
+        sheetUpgradeBtn.textContent = 'Upgrade · ' + nextTier.cost + 'g';
+        sheetUpgradeBtn.disabled = gold < nextTier.cost;
+      } else {
+        sheetUpgradeBtn.textContent = 'Maxed';
+        sheetUpgradeBtn.disabled = true;
+      }
+    }
+    if (sheetSellBtn) sheetSellBtn.textContent = 'Sell · +' + sellValue + 'g';
   }
 
   function setScreen(name) { body.setAttribute('data-screen', name); }
@@ -243,6 +357,9 @@
     flashWaveClear,
     setGoldFlash,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,
-    setLoadingProgress
+    setLoadingProgress,
+    openSlotSheet, openTowerSheet, closeSheets,
+    paintTowerSheet, paintSlotPicks,
+    getActiveSheet, getSheetSlotId, getSheetTowerId
   };
 })();
