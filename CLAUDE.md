@@ -114,6 +114,22 @@ Decision: [Proceed as planned / Refactor first / Descope]
 
 ---
 
+## Chrome DevTools MCP - Launch Command
+
+The user launches Chrome (not Claude) before MCP can attach. If
+`mcp__chrome-devtools__*` tools are absent from a session, ask the
+user to run:
+
+```
+"/c/Program Files/Google/Chrome/Application/chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\Users\chase\Projects\Web-DnD\chrome-mcp-profile" --no-first-run --no-default-browser-check --start-fullscreen --disable-session-crashed-bubble --hide-crash-restore-bubble
+```
+
+Notes: port `9222`. The `user-data-dir` lives under `Web-DnD/`
+(NOT this repo) — reused across the user's projects. Do not
+auto-launch Chrome from Claude; it's a shared-system side effect.
+
+---
+
 ## Chrome DevTools MCP - Testing Protocol
 
 After building any UI component, page, or user flow:

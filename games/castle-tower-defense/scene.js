@@ -111,35 +111,46 @@ function paintTerrain(map) {
   const groundId = isSnow ? 'snow_tile_ground' : 'tile_ground';
   const pathPrefix = isSnow ? 'snow_tile_path_' : 'tile_path_';
 
-  // 3. Ground: one InstancedMesh covering the bounds grid.
+  // 3a. Path: classify FIRST so we can skip ground placement under path cells
+  // (kit ground + path tiles share y-extent → z-fighting if stacked).
+  const result = window.CTD3TileGrid.classifyPathCells(map.path);
+  const pathCellSet = new Set();
+  if (!result.ok) {
+    console.error('[scene] path invalid for', map.id, '—', result.error, result.badSegment);
+  } else {
+    for (const cell of result.cells) {
+      pathCellSet.add(cell.x + ',' + cell.z);
+    }
+  }
+
+  // 3b. Ground: one InstancedMesh covering bounds, SKIPPING path cells.
   const w = maxX - minX + 1;
   const h = maxZ - minZ + 1;
   const totalCells = w * h;
   const handle = window.CTD3Assets.getInstanced(groundId, totalCells);
-  const m = new THREE.Matrix4();
-  let i = 0;
+  const tmpMat = new THREE.Matrix4();
+  let placed = 0;
   for (let cz = minZ; cz <= maxZ; cz++) {
     for (let cx = minX; cx <= maxX; cx++) {
-      m.makeTranslation(cx, 0, cz);
-      handle.setMatrixAt(i, m);
-      i += 1;
+      if (pathCellSet.has(cx + ',' + cz)) continue;
+      tmpMat.makeTranslation(cx, 0, cz);
+      handle.setMatrixAt(placed, tmpMat);
+      placed += 1;
     }
   }
-  handle.setCount(totalCells);
+  handle.setCount(placed);
   handle.commit();
   handle.mesh.receiveShadow = true;
   groundInstancedMesh = handle.mesh;
   scene.add(groundInstancedMesh);
 
-  // 4. Path: classifyPathCells; on ok:false, log + skip path.
-  const result = window.CTD3TileGrid.classifyPathCells(map.path);
-  if (!result.ok) {
-    console.error('[scene] path invalid for', map.id, '—', result.error, result.badSegment);
-  } else {
+  // 4. Path: place kit path tiles at classified cells. y=0 (same elevation as
+  // ground tiles, no z-fight because ground is skipped at these cells).
+  if (result.ok) {
     for (const cell of result.cells) {
       const tileId = pathPrefix + cell.tileType.replace('tile_path_', '');
       const mesh = window.CTD3Assets.getMesh(tileId);
-      mesh.position.set(cell.x, 0.01, cell.z);
+      mesh.position.set(cell.x, 0, cell.z);
       mesh.rotation.y = cell.rotation;
       mesh.traverse(o => { if (o.isMesh) { o.receiveShadow = true; } });
       pathGroup.add(mesh);
