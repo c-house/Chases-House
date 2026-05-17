@@ -24,10 +24,10 @@ Sections §6 and §7 (WFC + tile model) remain in the document for historical co
 ADR-028 deferred a map editor as out of scope to ship the 3D rewrite. The 3D base game now exists (Phases 0–1, Phase 2 foundation committed). The user surfaced a proven WFC implementation in `Web-DnD` — a sibling project with a fully-engineered, extraction-friendly WFC core in TypeScript. That changes the cost calculus: a procedural editor is closer to reach than it was at ADR-028 time.
 
 ### What's already in the game
-- 3 hand-authored maps in [games/castle-tower-defense-3d/maps.js](../../games/castle-tower-defense-3d/maps.js) — Plains, Forest, Mountain.
+- 3 hand-authored maps in [games/castle-tower-defense/maps.js](../../games/castle-tower-defense/maps.js) — Plains, Forest, Mountain.
 - Each map carries a `path: Array<{x, z}>` polyline (~8–13 waypoints), `buildSlots`, `castle`, `theme`, and a `waves` array.
-- The engine consumes the polyline via [`bakeMap` and `sampleOnPath`](../../games/castle-tower-defense-3d/engine.js) — segment lengths + linear interpolation along path-t.
-- A tool-page precedent exists at [tools/bake-icons.html](../../games/castle-tower-defense-3d/tools/bake-icons.html) (one-shot, self-contained, no game runtime loaded).
+- The engine consumes the polyline via [`bakeMap` and `sampleOnPath`](../../games/castle-tower-defense/engine.js) — segment lengths + linear interpolation along path-t.
+- A tool-page precedent exists at [tools/bake-icons.html](../../games/castle-tower-defense/tools/bake-icons.html) (one-shot, self-contained, no game runtime loaded).
 
 ### Scope statement
 The user's clarifying answer "Both, in phases" means the editor will eventually be player-accessible. **This ADR scopes Phase A — the dev tool — only.** Phase B (player-accessible Workshop UI, `ctd3:userMaps`, shareable maps, daily-seed mode) is a follow-up ADR contingent on Phase A shipping. The user's "Both, in phases" should NOT be read as approval of any specific Phase B features.
@@ -88,11 +88,11 @@ This section ships regardless of §4's outcome.
 ### File manifest
 
 ```
-games/castle-tower-defense-3d/tools/
+games/castle-tower-defense/tools/
 └── map-editor.html              NEW — top-down grid canvas, palette, pin tools, export
 ```
 
-That is the entire file set for Phase A1. The editor is a single self-contained HTML page mirroring [bake-icons.html](../../games/castle-tower-defense-3d/tools/bake-icons.html)'s pattern — no game runtime, no module dependencies on `engine.js`/`scene.js`/`ui.js`. Inlines the ~30 LOC of `bakeMap` + `sampleOnPath` with a provenance comment (see §5.5).
+That is the entire file set for Phase A1. The editor is a single self-contained HTML page mirroring [bake-icons.html](../../games/castle-tower-defense/tools/bake-icons.html)'s pattern — no game runtime, no module dependencies on `engine.js`/`scene.js`/`ui.js`. Inlines the ~30 LOC of `bakeMap` + `sampleOnPath` with a provenance comment (see §5.5).
 
 ### Editor internal state (NOT exported, NOT persisted)
 
@@ -176,7 +176,7 @@ Validation runs on the *derived polyline*, not the tile grid. Tile-grid sanity (
 
 ### Export format (drop-in compatible with `maps.js`)
 
-The export produces the exact `Map` shape consumed by [engine.js:bakeMap](../../games/castle-tower-defense-3d/engine.js):
+The export produces the exact `Map` shape consumed by [engine.js:bakeMap](../../games/castle-tower-defense/engine.js):
 
 ```ts
 {
@@ -234,7 +234,7 @@ If §4's justification criteria are met, this section's content lands in the acc
 ### File manifest (additional)
 
 ```
-games/castle-tower-defense-3d/tools/
+games/castle-tower-defense/tools/
 └── wfc.js                       NEW — plain-JS port of Web-DnD WFC core
 ```
 
@@ -372,7 +372,7 @@ The brainstorm cannot proceed to Accepted until these are answered:
 
 ### Recommended spike *(only if §4 = "yes")*
 
-**A single self-contained HTML page** at `games/castle-tower-defense-3d/tools/wfc-spike.html` (no external dependencies beyond a local `wfc.js`). It runs WFC on a 10×10 grid with the 5–6 tile vocabulary from §7 and the `P/G` socket alphabet, verifies the result contains at least one entry→exit connected path, and reports total time.
+**A single self-contained HTML page** at `games/castle-tower-defense/tools/wfc-spike.html` (no external dependencies beyond a local `wfc.js`). It runs WFC on a 10×10 grid with the 5–6 tile vocabulary from §7 and the `P/G` socket alphabet, verifies the result contains at least one entry→exit connected path, and reports total time.
 
 **Gate:** the spike must produce a connected path in **under 1 second** on a mid-range laptop. If it doesn't, the WFC approach is unworkable for CTD3's editor and §4 must flip to "no."
 
@@ -384,7 +384,7 @@ The spike is the only WFC deliverable before any UI work. If it fails the gate, 
 
 ### Phase A1 — Manual editor baseline (ships regardless of §4)
 
-- [ ] **A1.1** Author `games/castle-tower-defense-3d/tools/map-editor.html` shell mirroring `bake-icons.html` structure (importmap if needed, inline CSS, no game runtime).
+- [ ] **A1.1** Author `games/castle-tower-defense/tools/map-editor.html` shell mirroring `bake-icons.html` structure (importmap if needed, inline CSS, no game runtime).
 - [ ] **A1.2** Top-down 2D canvas with grid rendering (HTML5 canvas; one tile = N pixels). Resolution toggle (configurable grid dimensions in a header panel).
 - [ ] **A1.3** Tile palette UI: row of buttons sourced from the §7 catalog. Active-tile state. Click-to-paint, right-click-to-clear interactions.
 - [ ] **A1.4** Pin tools UI: `[Entry] [Exit] [Slot+]` buttons + pin overlays on the canvas.
@@ -440,10 +440,10 @@ For the brainstorm reader to follow up:
 - [docs/adr/028-castle-tower-defense-3d.md](028-castle-tower-defense-3d.md) §7 (first-caller precedent), §8 m-5 (tile grid NOT in runtime Map shape), §18 (out-of-scope source for this ADR)
 
 **CTD3 current state (Phase A1 touches none of these except read-only inlining):**
-- [games/castle-tower-defense-3d/maps.js](../../games/castle-tower-defense-3d/maps.js) — `Map` shape the editor exports against
-- [games/castle-tower-defense-3d/engine.js](../../games/castle-tower-defense-3d/engine.js) — `bakeMap` and `sampleOnPath` (lines 19–49) — source of the editor's inlined utilities
-- [games/castle-tower-defense-3d/scene.js](../../games/castle-tower-defense-3d/scene.js) — `paintTerrain`, the ribbon-mesh renderer that consumes the polyline at runtime (R1 risk surface)
-- [games/castle-tower-defense-3d/tools/bake-icons.html](../../games/castle-tower-defense-3d/tools/bake-icons.html) — tool-page pattern precedent
+- [games/castle-tower-defense/maps.js](../../games/castle-tower-defense/maps.js) — `Map` shape the editor exports against
+- [games/castle-tower-defense/engine.js](../../games/castle-tower-defense/engine.js) — `bakeMap` and `sampleOnPath` (lines 19–49) — source of the editor's inlined utilities
+- [games/castle-tower-defense/scene.js](../../games/castle-tower-defense/scene.js) — `paintTerrain`, the ribbon-mesh renderer that consumes the polyline at runtime (R1 risk surface)
+- [games/castle-tower-defense/tools/bake-icons.html](../../games/castle-tower-defense/tools/bake-icons.html) — tool-page pattern precedent
 
 **Web-DnD WFC reference (Phase A2 ONLY; read-only refs):**
 - `C:\Users\chase\Projects\Web-DnD\packages\engine\src\maps\wfc\wfc-grid.ts`

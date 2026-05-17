@@ -7,7 +7,7 @@
     ADR-029 Phase A1 — "The Cartographer"
     Continuous-world waypoint editor for Castle Tower Defense 3D maps.
     Self-contained: NO game runtime loaded; bakeMap+sampleOnPath inlined
-    from games/castle-tower-defense-3d/engine.js (provenance below).
+    from games/castle-tower-defense/engine.js (provenance below).
   -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -347,7 +347,7 @@
   'use strict';
 
   // ════════════════════════════════════════════════════════════
-  // Inlined from games/castle-tower-defense-3d/engine.js (lines 19–49).
+  // Inlined from games/castle-tower-defense/engine.js (lines 19–49).
   // Canonical source: window.CTD3Engine.bakeMap / sampleOnPath.
   // ADR-029 §5 dev-tool DRY exemption. Re-sync if engine.js changes.
   // ════════════════════════════════════════════════════════════
@@ -388,7 +388,7 @@
   }
 
   // ════════════════════════════════════════════════════════════
-  // World coordinates match games/castle-tower-defense-3d/maps.js.
+  // World coordinates match games/castle-tower-defense/maps.js.
   // Approx range: x ∈ [-13, +13], z ∈ [-8, +8].
   // ════════════════════════════════════════════════════════════
   const WORLD_HALF_X = 14;

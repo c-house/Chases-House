@@ -1,440 +1,453 @@
 /* ═══════════════════════════════════════════════════════════════
-   Castle Tower Defense — game.js
-   Boot module: owns FSM, rAF tick loop, document event delegation,
-   localStorage persistence (via SharedStorage), audio bring-up.
+   Castle Tower Defense 3D — game.js
+   Boot, FSM, rAF tick, event delegation, audio bring-up.
+   Module-typed so it executes AFTER assets/renderer/scene/lighting
+   modules have populated their window globals. ADR-028 §7, §8, §15.
    Public surface: window.CastleTowerDefense.start()
-
-   LOCALSTORAGE: uses window.SharedStorage from /games/shared/storage.js.
-   ADR-023 §13 flagged a future shared helper; ADR-028 Phase 0 extracted
-   it. This file is the first caller migrated to it.
    ═══════════════════════════════════════════════════════════════ */
-(function () {
-  'use strict';
 
-  const FIXED_STEP_MS = 1000 / 60;
+const FIXED_STEP_MS = 1000 / 60;
+const KEYS = {
+  scores:        'ctd3:scores',
+  settings:      'ctd3:settings',
+  tutorialSeen:  'ctd3:tutorialSeen'
+};
+const SETTINGS_DEFAULTS = {
+  musicVolume: 0.40, sfxVolume: 0.80, ambientVolume: 0.25,
+  musicMuted: false, sfxMuted: false,
+  reducedMotion: false, lowPowerForced: false
+};
 
-  let state = null;
-  let running = false;
-  let lastTs = 0;
-  let accumulator = 0;
-  let goldDeficitFlashUntil = 0;
+let state = null;
+let running = false;
+let lastTs = 0;
+let accumulator = 0;
 
-  // ─── Persistence ─────────────────────────────────────────────
-  const KEYS = {
-    scores:        'ctd:scores',
-    settings:      'ctd:settings',
-    tutorialSeen:  'ctd:tutorialSeen'
-  };
+// ─── Persistence (via SharedStorage) ─────────────────────────
+function loadScores()   { return window.SharedStorage.safeGet(KEYS.scores, {}); }
+function saveScores(s)  { window.SharedStorage.safeSet(KEYS.scores, s); }
+function loadSettings() {
+  return Object.assign({}, SETTINGS_DEFAULTS, window.SharedStorage.safeGet(KEYS.settings, {}));
+}
+function saveSettings(s) { window.SharedStorage.safeSet(KEYS.settings, s); }
+function tutorialSeen()    { return !!window.SharedStorage.safeGet(KEYS.tutorialSeen, false); }
+function markTutorialSeen() { window.SharedStorage.safeSet(KEYS.tutorialSeen, true); }
 
-  const SETTINGS_DEFAULTS = { musicVolume: 0.4, sfxVolume: 0.8, musicMuted: false, sfxMuted: false, reducedMotion: false };
+function totalStars() {
+  const all = loadScores();
+  let n = 0;
+  Object.values(all).forEach(map => Object.values(map).forEach(d => { n += d.stars || 0; }));
+  return n;
+}
+function isMapUnlocked(mapId) {
+  const map = window.CTD3Maps.byId(mapId);
+  return totalStars() >= (map ? map.unlockRequirement : 0);
+}
+function isHardUnlocked(_mapId) {
+  // 2 difficulties only — both available if map is unlocked. Kept for API parity.
+  return true;
+}
+function commitResult(mapId, difficulty, stars, score) {
+  const all = loadScores();
+  const cur = (all[mapId] && all[mapId][difficulty]) || { stars: 0, bestScore: 0 };
+  if (stars > cur.stars || (stars === cur.stars && score > cur.bestScore)) {
+    all[mapId] = all[mapId] || {};
+    all[mapId][difficulty] = {
+      stars: Math.max(cur.stars, stars),
+      bestScore: Math.max(cur.bestScore, score)
+    };
+    saveScores(all);
+  }
+  return (all[mapId] && all[mapId][difficulty] && all[mapId][difficulty].bestScore) || score;
+}
 
-  function loadScores() {
-    return window.SharedStorage.safeGet(KEYS.scores, {});
-  }
-  function saveScores(scores) {
-    window.SharedStorage.safeSet(KEYS.scores, scores);
-  }
-  function loadSettings() {
-    return Object.assign({}, SETTINGS_DEFAULTS, window.SharedStorage.safeGet(KEYS.settings, {}));
-  }
-  function saveSettings(s) {
-    window.SharedStorage.safeSet(KEYS.settings, s);
-  }
-  function tutorialSeen() {
-    // Boolean coercion is back-compat: old pre-SharedStorage data stored the raw
-    // string '1' (not JSON-encoded). JSON.parse('1') returns the number 1 which
-    // is also truthy. New writes store boolean true. Both coerce correctly.
-    return !!window.SharedStorage.safeGet(KEYS.tutorialSeen, false);
-  }
-  function markTutorialSeen() {
-    window.SharedStorage.safeSet(KEYS.tutorialSeen, true);
-  }
+// ─── Boot ────────────────────────────────────────────────────
+async function start() {
+  // Renderer + scene + lighting first
+  const canvas = document.getElementById('canvas');
+  window.CTD3Renderer.init(canvas);
+  window.CTD3Scene.init();
+  window.CTD3Lighting.init(window.CTD3Scene.getScene());
 
-  function totalStars() {
-    const all = loadScores();
-    let n = 0;
-    Object.values(all).forEach(map => Object.values(map).forEach(d => n += d.stars || 0));
-    return n;
-  }
-  function isMapUnlocked(mapId) {
-    const map = window.CTDMaps.byId(mapId);
-    return totalStars() >= (map ? map.unlockRequirement : 0);
-  }
-  function isHardUnlocked(mapId) {
-    const all = loadScores();
-    return ((all[mapId] && all[mapId].normal && all[mapId].normal.stars) || 0) >= 3;
-  }
-  function commitResult(mapId, difficulty, stars, score) {
-    const all = loadScores();
-    const cur = (all[mapId] && all[mapId][difficulty]) || { stars: 0, bestScore: 0 };
-    if (stars > cur.stars || (stars === cur.stars && score > cur.bestScore)) {
-      all[mapId] = all[mapId] || {};
-      all[mapId][difficulty] = {
-        stars: Math.max(cur.stars, stars),
-        bestScore: Math.max(cur.bestScore, score)
-      };
-      saveScores(all);
-    }
-    return (all[mapId] && all[mapId][difficulty] && all[mapId][difficulty].bestScore) || score;
-  }
+  // Low-power wiring
+  window.CTD3Renderer.onLowPowerChange((on) => window.CTD3Scene.setLowPowerShadows(on));
 
-  // ─── Boot ────────────────────────────────────────────────────
-  function start() {
-    window.CTDRender.init();
+  // UI
+  window.CTD3Ui.init();
 
-    // Initial settings → audio + render
-    const settings = loadSettings();
-    window.CTDAudio.setMusicVolume(settings.musicVolume);
-    window.CTDAudio.setSfxVolume(settings.sfxVolume);
-    window.CTDAudio.setMusicMuted(settings.musicMuted);
-    window.CTDAudio.setSfxMuted(settings.sfxMuted);
-    window.CTDRender.setReducedMotion(settings.reducedMotion);
-    syncSettingsControls(settings);
+  // Settings → audio + render
+  const settings = loadSettings();
+  window.CTD3Audio.setMusicVolume(settings.musicVolume);
+  window.CTD3Audio.setSfxVolume(settings.sfxVolume);
+  window.CTD3Audio.setAmbientVolume(settings.ambientVolume);
+  window.CTD3Audio.setMusicMuted(settings.musicMuted);
+  window.CTD3Audio.setSfxMuted(settings.sfxMuted);
+  window.CTD3Ui.setReducedMotion(settings.reducedMotion);
+  if (settings.lowPowerForced) window.CTD3Renderer.setLowPower(true);
 
-    window.CTDInput.init({
-      getState: () => state,
-      actions: actions
+  // Input
+  window.CTD3Input.init({ getState: () => state, actions });
+
+  // Event delegation
+  wireDocument();
+
+  // First-load notice (for users with old 2D scores)
+  window.CTD3Ui.showFirstLoadNoticeIfNeeded();
+
+  // Asset preload (graceful when manifest missing)
+  window.CTD3Ui.setLoadingProgress(20, 'Loading scene…');
+  await window.CTD3Assets.preload();
+  window.CTD3Ui.setLoadingProgress(100, 'Ready');
+
+  // Pre-paint map-select
+  refreshMapSelect();
+
+  // First-click audio unlock
+  document.addEventListener('click', firstClickAudio, { once: true });
+
+  // Begin idle render loop (renders the canvas even on title screen)
+  running = true;
+  lastTs = performance.now();
+  requestAnimationFrame(tick);
+
+  // Show title
+  window.CTD3Ui.setScreen('title');
+
+  // ?test=1 overlay
+  if (new URLSearchParams(location.search).has('test')) {
+    const overlay = document.getElementById('test-overlay');
+    if (overlay) overlay.style.display = 'block';
+  }
+}
+
+function firstClickAudio() {
+  window.CTD3Audio.ensure();
+  window.CTD3Audio.resume();
+  const s = loadSettings();
+  if (!s.musicMuted) {
+    window.CTD3Audio.startBGM();
+    window.CTD3Audio.startAmbient();
+  }
+}
+
+function refreshMapSelect() {
+  window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+}
+
+// ─── FSM transitions ─────────────────────────────────────────
+function go(screen) {
+  window.CTD3Ui.setScreen(screen);
+  if (screen === 'map-select') refreshMapSelect();
+}
+
+function startMap(mapId, difficulty) {
+  if (!isMapUnlocked(mapId)) return;
+  const useTutorial = !tutorialSeen() && mapId === 'plains';
+  state = window.CTD3Engine.createState(mapId, difficulty, { tutorial: useTutorial });
+  window.CTD3Scene.clearPlayfield();
+  window.CTD3Scene.paintTerrain(state.mapDef);
+  window.CTD3Ui.update(state);
+  window.CTD3Ui.setScreen(state.tutorialActive ? 'tutorial' : 'play');
+  window.CTD3Lighting.beginPhase('prepWave', 600);
+}
+
+function backToMapSelect() {
+  state = null;
+  window.CTD3Scene.clearPlayfield();
+  go('map-select');
+}
+
+// ─── Document event delegation ──────────────────────────────
+function wireDocument() {
+  document.addEventListener('click', (ev) => {
+    const goEl = ev.target.closest('[data-go]');
+    if (goEl) { ev.preventDefault(); go(goEl.dataset.go); return; }
+    const actionEl = ev.target.closest('[data-action]');
+    if (actionEl) { ev.preventDefault(); handleAction(actionEl.dataset.action, actionEl); }
+  });
+  wireSettings();
+}
+
+function wireSettings() {
+  const settings = loadSettings();
+  const bind = (key) => document.querySelector(`[data-bind="${key}"]`);
+  const sliders = [
+    { slider: bind('slider-music'),   value: bind('value-music'),   key: 'musicVolume',   apply: window.CTD3Audio.setMusicVolume },
+    { slider: bind('slider-sfx'),     value: bind('value-sfx'),     key: 'sfxVolume',     apply: window.CTD3Audio.setSfxVolume },
+    { slider: bind('slider-ambient'), value: bind('value-ambient'), key: 'ambientVolume', apply: window.CTD3Audio.setAmbientVolume }
+  ];
+  sliders.forEach(({ slider, value, key, apply }) => {
+    if (!slider) return;
+    const initVal = Math.round((settings[key] ?? 0.5) * 100);
+    slider.value = String(initVal);
+    if (value) value.textContent = initVal + '%';
+    slider.addEventListener('input', () => {
+      const v = parseInt(slider.value, 10);
+      if (value) value.textContent = v + '%';
+      const s = loadSettings();
+      s[key] = v / 100;
+      saveSettings(s);
+      apply(v / 100);
     });
+  });
 
-    wireDocument();
-
-    // hydrate map-select up front so it's ready when user navigates there
-    refreshMapSelect();
-
-    // first-click audio unlock + BGM bring-up
-    document.addEventListener('click', firstClickAudioBoot, { once: true });
-
-    // begin idle tick (drives gamepad polling on title/map-select too)
-    running = true;
-    lastTs = performance.now();
-    requestAnimationFrame(tick);
+  const rm = document.querySelector('[data-bind="reduced-motion-toggle"]');
+  if (rm) {
+    rm.checked = !!settings.reducedMotion;
+    rm.addEventListener('change', () => {
+      const s = loadSettings();
+      s.reducedMotion = rm.checked;
+      saveSettings(s);
+      window.CTD3Ui.setReducedMotion(rm.checked);
+    });
   }
 
-  function firstClickAudioBoot() {
-    window.CTDAudio.ensure();
-    window.CTDAudio.resume();
-    const settings = loadSettings();
-    if (!settings.musicMuted) window.CTDAudio.startBGM();
+  const lp = document.querySelector('[data-bind="low-power-toggle"]');
+  if (lp) {
+    lp.checked = !!settings.lowPowerForced;
+    lp.addEventListener('change', () => {
+      const s = loadSettings();
+      s.lowPowerForced = lp.checked;
+      saveSettings(s);
+      window.CTD3Renderer.setLowPower(lp.checked);
+    });
   }
+}
 
-  function syncSettingsControls(settings) {
-    const rm = document.getElementById('rmToggle');
-    if (rm) {
-      rm.classList.toggle('on', settings.reducedMotion);
-      rm.setAttribute('aria-pressed', String(settings.reducedMotion));
+function handleAction(name, el) {
+  switch (name) {
+    case 'show-help':                                                                break;  // no-op stub for v1
+    case 'select-tower':           if (state) actions.selectTower(el.dataset.tower); break;
+    case 'upgrade':                actions.upgrade(); break;
+    case 'sell':                   actions.sell(); break;
+    case 'send-next-wave':         actions.sendNextWave(); break;
+    case 'toggle-fast-forward':    actions.toggleFastForward(); break;
+    case 'pause':                  actions.pause(); break;
+    case 'resume':                 actions.resume(); break;
+    case 'restart':                actions.restart(); break;
+    case 'play-again':             actions.restart(); break;
+    case 'quit-to-map-select':     backToMapSelect(); break;
+    case 'dismiss-tutorial':       actions.dismissTutorial(); break;
+    case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); break;
+    case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); break;
+    case 'sheet-close':            window.CTD3Ui.closeSheets(); break;
+    case 'sheet-pick': {
+      const slotId = window.CTD3Ui.getSheetSlotId();
+      const towerType = el.dataset.tower;
+      if (slotId && towerType) actions.placeFromSheet(slotId, towerType);
+      break;
     }
-    const sliders = document.querySelectorAll('.pause-settings .slider-row');
-    if (sliders.length >= 1) {
-      const music = sliders[0].querySelector('input[type="range"]');
-      if (music) {
-        music.value = String(Math.round(settings.musicVolume * 100));
-        sliders[0].querySelector('.v').textContent = String(music.value);
-      }
-    }
-    if (sliders.length >= 2) {
-      const sfx = sliders[1].querySelector('input[type="range"]');
-      if (sfx) {
-        sfx.value = String(Math.round(settings.sfxVolume * 100));
-        sliders[1].querySelector('.v').textContent = String(sfx.value);
-      }
-    }
+    case 'test-grant-gold': if (window.CastleTowerDefense._test) window.CastleTowerDefense._test.grantGold(500); break;
+    case 'test-set-lives':  if (window.CastleTowerDefense._test && state) state.lives = Math.min(99, state.lives + 10); break;
+    case 'test-jump-last':
+      if (state) { state.waveIndex = state.waveTotal - 1; state.fsm = 'prepWave'; }
+      break;
+    case 'test-kill-all':
+      if (state) { state.enemies.forEach(en => { en.hp = 0; }); }
+      break;
   }
+}
 
-  function refreshMapSelect() {
-    window.CTDRender.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
-  }
-
-  // ─── FSM transitions ─────────────────────────────────────────
-  function go(screen) {
-    window.CTDRender.setScreen(screen);
-    if (screen === 'map-select') refreshMapSelect();
-  }
-
-  function startMap(mapId, difficulty) {
-    const map = window.CTDMaps.byId(mapId);
-    if (!map) return;
-    if (!isMapUnlocked(mapId)) return;
-    if (difficulty === 'hard' && !isHardUnlocked(mapId)) return;
-    const useTutorial = !tutorialSeen() && mapId === 'plains';
-    state = window.CTDEngine.createState(mapId, difficulty, { tutorial: useTutorial });
-    window.CTDRender.clearPlayfield();
-    window.CTDRender.paintTerrain(state);
-    window.CTDRender.updateHUD(state);
-    if (state.tutorialActive) {
-      window.CTDRender.setScreen('tutorial');
+// ─── Actions bag ─────────────────────────────────────────────
+const actions = {
+  go,
+  selectTower(type) {
+    if (!state) return;
+    window.CTD3Engine.setPaletteSelection(state, type);
+    window.CTD3Audio.play('ui_click', { gain: 0.5 });
+  },
+  selectSlot(slotId) {
+    if (!state) return;
+    if (state.paletteSelection) {
+      const result = window.CTD3Engine.place(state, slotId, state.paletteSelection);
+      // Engine return enum caller contract (ADR-028 §8)
+      if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+      // 'invalid' and 'occupied' are silent
     } else {
-      window.CTDRender.setScreen('play');
-    }
-  }
-
-  function backToMapSelect() {
-    state = null;
-    window.CTDRender.clearPlayfield();
-    go('map-select');
-  }
-
-  // ─── Document event delegation ───────────────────────────────
-  function wireDocument() {
-    document.addEventListener('click', (ev) => {
-      const goEl = ev.target.closest('[data-go]');
-      if (goEl) {
-        ev.preventDefault();
-        go(goEl.dataset.go);
-        return;
-      }
-      const actionEl = ev.target.closest('[data-action]');
-      if (actionEl) {
-        ev.preventDefault();
-        handleAction(actionEl.dataset.action, actionEl, ev);
-      }
-    });
-
-    // Pause settings sliders
-    const sliders = document.querySelectorAll('.pause-settings .slider-row');
-    if (sliders[0]) {
-      const r = sliders[0].querySelector('input[type="range"]');
-      if (r) r.addEventListener('input', () => {
-        const v = parseInt(r.value, 10) / 100;
-        const s = loadSettings(); s.musicVolume = v; saveSettings(s);
-        window.CTDAudio.setMusicVolume(v);
-        sliders[0].querySelector('.v').textContent = r.value;
-      });
-    }
-    if (sliders[1]) {
-      const r = sliders[1].querySelector('input[type="range"]');
-      if (r) r.addEventListener('input', () => {
-        const v = parseInt(r.value, 10) / 100;
-        const s = loadSettings(); s.sfxVolume = v; saveSettings(s);
-        window.CTDAudio.setSfxVolume(v);
-        sliders[1].querySelector('.v').textContent = r.value;
-      });
-    }
-  }
-
-  function handleAction(name, el, ev) {
-    switch (name) {
-      case 'select-tower':
-        if (state) actions.selectTower(el.dataset.tower);
-        break;
-      case 'select-slot':
-        if (state) actions.selectSlot(el.dataset.slotId);
-        break;
-      case 'select-tower-instance': {
-        if (!state) return;
-        const node = ev.target.closest('[data-tower-id]');
-        if (node) actions.selectTowerInstance(node.dataset.towerId);
-        break;
-      }
-      case 'upgrade':       actions.upgrade(); break;
-      case 'sell':          actions.sell(); break;
-      case 'send-next-wave': actions.sendNextWave(); break;
-      case 'toggle-fast-forward': actions.toggleFastForward(); break;
-      case 'pause':         actions.pause(); break;
-      case 'resume':        actions.resume(); break;
-      case 'restart':       actions.restart(); break;
-      case 'play-again':    actions.restart(); break;
-      case 'next-map':      actions.nextMap(); break;
-      case 'quit-to-map-select': backToMapSelect(); break;
-      case 'dismiss-tutorial': actions.dismissTutorial(); break;
-      case 'start-map':     startMap(el.dataset.mapId, el.dataset.difficulty || 'normal'); break;
-      case 'show-help':     document.body.classList.add('show-help'); break;
-      case 'dismiss-help':  document.body.classList.remove('show-help'); break;
-    }
-    // Reduced-motion toggle button
-    if (el.id === 'rmToggle') {
-      const on = document.body.classList.toggle('reduced-motion');
-      window.CTDRender.setReducedMotion(on);
-      const s = loadSettings(); s.reducedMotion = on; saveSettings(s);
-    }
-  }
-
-  // ─── Action handlers (mutate state through engine) ──────────
-  const actions = {
-    go,
-    selectTower(type) {
-      if (!state) return;
-      window.CTDEngine.setPaletteSelection(state, type);
-      window.CTDAudio.play('ui_click', { gain: 0.5 });
-    },
-    selectSlot(slotId) {
-      if (!state) return;
-      // If a palette tower is selected, attempt placement.
-      if (state.paletteSelection) {
-        const ok = window.CTDEngine.place(state, slotId, state.paletteSelection);
-        if (!ok) goldDeficitFlashUntil = performance.now() + 800;
+      // No palette selection → open slot-select action sheet
+      const occupied = state.towers.some(t => t.slotId === slotId);
+      if (occupied) {
+        // Tap on occupied slot → open tower sheet instead
+        const tw = state.towers.find(t => t.slotId === slotId);
+        if (tw) {
+          window.CTD3Engine.selectTower(state, tw.id);
+          window.CTD3Ui.openTowerSheet(tw, state.gold);
+        }
       } else {
-        window.CTDEngine.selectSlot(state, slotId);
-      }
-    },
-    selectTowerInstance(towerId) {
-      if (!state) return;
-      window.CTDEngine.selectTower(state, towerId);
-    },
-    upgrade() {
-      if (!state || !state.selectedTowerId) return;
-      window.CTDEngine.upgrade(state, state.selectedTowerId);
-    },
-    sell() {
-      if (!state || !state.selectedTowerId) return;
-      window.CTDEngine.sell(state, state.selectedTowerId);
-    },
-    sendNextWave() {
-      if (!state) return;
-      window.CTDEngine.sendNextWave(state);
-    },
-    toggleFastForward() {
-      if (!state) return;
-      window.CTDEngine.setFastForward(state);
-      const btn = document.querySelector('[data-action="toggle-fast-forward"]');
-      if (btn) btn.classList.toggle('active', state.fastForward);
-    },
-    pause() {
-      if (!state) return;
-      if (state.fsm === 'wonRun' || state.fsm === 'lostRun') return;
-      window.CTDRender.setScreen('pause');
-    },
-    resume() {
-      if (!state) return;
-      if (state.tutorialActive && state.tutorialStep !== 'done') {
-        window.CTDRender.setScreen('tutorial');
-      } else {
-        window.CTDRender.setScreen('play');
-      }
-    },
-    restart() {
-      if (!state) return;
-      const m = state.mapId, d = state.difficulty;
-      startMap(m, d);
-    },
-    nextMap() {
-      if (!state) return;
-      const idx = window.CTDMaps.MAPS.findIndex(x => x.id === state.mapId);
-      const next = window.CTDMaps.MAPS[idx + 1];
-      if (next && isMapUnlocked(next.id)) startMap(next.id, state.difficulty);
-      else backToMapSelect();
-    },
-    dismissTutorial() {
-      if (!state) return;
-      state.tutorialStep = 'done';
-      state.tutorialActive = false;
-      markTutorialSeen();
-      window.CTDRender.setScreen('play');
-    },
-    cyclePalette(dir) {
-      if (!state) return;
-      const order = ['archer', 'cannon', 'mage', 'frost'];
-      const cur = state.paletteSelection;
-      let i = cur ? order.indexOf(cur) : -1;
-      i = (i + dir + order.length) % order.length;
-      window.CTDEngine.setPaletteSelection(state, order[i]);
-    },
-    gamepadConfirm() {
-      if (!state) return;
-      // If hovering a slot and palette selected → place. Else if hovering a tower → select.
-      if (state.hoverSlotId) {
-        actions.selectSlot(state.hoverSlotId);
-      }
-    },
-    gamepadCancel() {
-      if (!state) return;
-      window.CTDEngine.setPaletteSelection(state, null);
-      window.CTDEngine.selectTower(state, null);
-    }
-  };
-
-  // ─── Tick ────────────────────────────────────────────────────
-  function tick(ts) {
-    if (!running) return;
-    const dtRaw = Math.min(250, ts - lastTs);
-    lastTs = ts;
-    const screen = document.body.getAttribute('data-screen');
-    const isPlaying = (screen === 'play' || screen === 'tutorial');
-    const dt = dtRaw * (state && state.fastForward ? 2 : 1);
-
-    // poll gamepad regardless of screen (lets START trigger pause from any state)
-    if (state) window.CTDInput.pollGamepad(state, dtRaw);
-
-    if (isPlaying && state) {
-      accumulator += dt;
-      let steps = 0;
-      while (accumulator >= FIXED_STEP_MS && steps < 5) {
-        window.CTDEngine.step(state, FIXED_STEP_MS);
-        accumulator -= FIXED_STEP_MS;
-        steps++;
-      }
-      consumeEngineEvents(state);
-      window.CTDRender.syncEntities(state);
-      window.CTDRender.updateHUD(state);
-      // Game-over transition
-      if (state.fsm === 'wonRun' || state.fsm === 'lostRun') {
-        showGameOver(state);
-      }
-    } else {
-      accumulator = 0;
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  function consumeEngineEvents(state) {
-    if (!state.events.length) return;
-    // Audio
-    window.CTDAudio.flushEvents(state.events);
-    // Render flourishes
-    for (const ev of state.events) {
-      if (ev.kind === 'waveClear') {
-        const map = window.CTDMaps.byId(state.mapId);
-        const wave = map.waves[ev.waveIndex];
-        const label = wave && wave.isBoss ? 'The Warlord Falls' : 'Wave Cleared';
-        window.CTDRender.flashWaveClear(label);
-        window.CTDRender.flyBird();
-      } else if (ev.kind === 'castleHit') {
-        window.CTDInput.rumble({ duration: 240, strongMagnitude: 0.7, weakMagnitude: 0.4 });
-      } else if (ev.kind === 'fire') {
-        // gentle rumble pulse — only if not muted; already wrapped in input.rumble
-      } else if (ev.kind === 'victory') {
-        window.CTDInput.rumble({ duration: 600, strongMagnitude: 0.5, weakMagnitude: 0.7 });
-      } else if (ev.kind === 'defeat') {
-        window.CTDInput.rumble({ duration: 800, strongMagnitude: 0.9, weakMagnitude: 0.4 });
+        window.CTD3Engine.selectSlot(state, slotId);
+        window.CTD3Ui.openSlotSheet(slotId, state.gold);
       }
     }
-    state.events.length = 0;
+  },
+  selectTowerInstance(towerId) {
+    if (!state) return;
+    window.CTD3Engine.selectTower(state, towerId);
+    const tw = state.towers.find(t => t.id === towerId);
+    if (tw) window.CTD3Ui.openTowerSheet(tw, state.gold);
+  },
+  placeFromSheet(slotId, towerType) {
+    if (!state) return;
+    const result = window.CTD3Engine.place(state, slotId, towerType);
+    if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+    if (result === 'ok') window.CTD3Ui.closeSheets();
+  },
+  cancelSelection() {
+    if (!state) return;
+    window.CTD3Engine.setPaletteSelection(state, null);
+    window.CTD3Engine.selectTower(state, null);
+    state.hoverSlotId = null;
+    window.CTD3Ui.closeSheets();
+  },
+  upgrade() {
+    if (!state || !state.selectedTowerId) return;
+    const result = window.CTD3Engine.upgrade(state, state.selectedTowerId);
+    if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+    if (result === 'ok') {
+      // Repaint the open tower sheet (if any) with the new tier's stats
+      const tw = state.towers.find(t => t.id === state.selectedTowerId);
+      if (tw && window.CTD3Ui.getActiveSheet() === 'tower') {
+        window.CTD3Ui.paintTowerSheet(tw, state.gold);
+      }
+    }
+  },
+  sell() {
+    if (!state || !state.selectedTowerId) return;
+    const result = window.CTD3Engine.sell(state, state.selectedTowerId);
+    if (result === 'ok') window.CTD3Ui.closeSheets();
+  },
+  sendNextWave() {
+    if (!state) return;
+    window.CTD3Engine.sendNextWave(state);
+  },
+  toggleFastForward() {
+    if (!state) return;
+    window.CTD3Engine.setFastForward(state);
+  },
+  pause() {
+    if (!state) return;
+    if (state.fsm === 'wonRun' || state.fsm === 'lostRun') return;
+    window.CTD3Ui.setScreen('pause');
+  },
+  resume() {
+    if (!state) return;
+    window.CTD3Ui.setScreen(state.tutorialActive && state.tutorialStep !== 'done' ? 'tutorial' : 'play');
+  },
+  restart() {
+    if (!state) return;
+    const m = state.mapId, d = state.difficulty;
+    startMap(m, d);
+  },
+  dismissTutorial() {
+    if (!state) return;
+    state.tutorialStep = 'done';
+    state.tutorialActive = false;
+    markTutorialSeen();
+    window.CTD3Ui.setScreen('play');
   }
+};
 
-  function showGameOver(state) {
-    if (state._goSettled) return;
-    state._goSettled = true;
-    const won = state.fsm === 'wonRun';
-    const stars = window.CTDEngine.computeStars(state);
-    const score = window.CTDEngine.computeScore(state);
-    const mapDef = state.mapDef;
-    const best = won ? commitResult(state.mapId, state.difficulty, stars, score) : score;
-    window.CTDRender.fillGameOver({
-      won, stars, score, bestScore: Math.max(score, best),
-      mapName: mapDef.displayName,
-      difficulty: state.difficulty,
-      livesRemaining: state.lives,
-      startLives: state.startingLives
-    });
-    window.CTDRender.setScreen('game-over');
-  }
+// ─── Tick ────────────────────────────────────────────────────
+function tick(ts) {
+  if (!running) return;
+  const dtRaw = Math.min(250, ts - lastTs);
+  lastTs = ts;
+  const screen = document.body.getAttribute('data-screen');
+  const isPlaying = (screen === 'play' || screen === 'tutorial');
+  const dt = dtRaw * (state && state.fastForward ? 2 : 1);
 
-  // ─── Public surface ─────────────────────────────────────────
-  window.CastleTowerDefense = {
-    start,
-    // small testing helper, gated by ?test=1 in URL
-    _test: new URLSearchParams(location.search).has('test') ? {
-      getState: () => state,
-      setLives: (n) => { if (state) state.lives = n; },
-      grantGold: (n) => { if (state) state.gold += n; },
-      jumpToWave: (idx) => { if (state) { state.waveIndex = idx; state.fsm = 'prepWave'; state.earlyBonusEligible = true; } }
-    } : undefined
-  };
+  // Always-on
+  window.CTD3Lighting.update(dtRaw);
+  window.CTD3Renderer.trackFrame(dtRaw);
 
-  // Auto-boot
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
+  if (isPlaying && state) {
+    accumulator += dt;
+    let steps = 0;
+    while (accumulator >= FIXED_STEP_MS && steps < 5) {
+      window.CTD3Engine.step(state, FIXED_STEP_MS);
+      accumulator -= FIXED_STEP_MS;
+      steps++;
+    }
+    consumeEngineEvents(state);
+    window.CTD3Scene.sync(state);
+    window.CTD3Ui.update(state);
+    if (state.fsm === 'wonRun' || state.fsm === 'lostRun') showGameOver(state);
   } else {
-    start();
+    accumulator = 0;
   }
-})();
+
+  // Render every frame regardless of FSM (lets title screen show the scene)
+  window.CTD3Renderer.renderFrame(window.CTD3Scene.getScene());
+  updateTestOverlay(dtRaw);
+  requestAnimationFrame(tick);
+}
+
+const _fpsSmoothing = { samples: [], cap: 30 };
+function updateTestOverlay(dtMs) {
+  const overlay = document.getElementById('test-overlay');
+  if (!overlay || overlay.style.display === 'none') return;
+  _fpsSmoothing.samples.push(dtMs);
+  if (_fpsSmoothing.samples.length > _fpsSmoothing.cap) _fpsSmoothing.samples.shift();
+  const avg = _fpsSmoothing.samples.reduce((a, v) => a + v, 0) / _fpsSmoothing.samples.length;
+  const fps = Math.round(1000 / Math.max(0.1, avg));
+  const ft = avg.toFixed(1);
+  const set = (k, v) => {
+    const e = overlay.querySelector(`[data-bind="${k}"]`);
+    if (e) e.textContent = String(v);
+  };
+  set('test-fps', fps);
+  set('test-ft', ft);
+  set('test-low-power', window.CTD3Renderer.isLowPower() ? 'low' : 'norm');
+  set('test-towers',  state ? state.towers.length : 0);
+  set('test-enemies', state ? state.enemies.length : 0);
+  set('test-projs',   state ? state.projectiles.length : 0);
+}
+
+function consumeEngineEvents(state) {
+  if (!state.events.length) return;
+  window.CTD3Audio.flushEvents(state.events);
+  for (const ev of state.events) {
+    if (ev.kind === 'waveClear') {
+      window.CTD3Ui.flashWaveClear();
+    } else if (ev.kind === 'phaseTransition') {
+      window.CTD3Lighting.beginPhase(ev.to, 1200);
+    }
+  }
+  state.events.length = 0;
+}
+
+function showGameOver(state) {
+  if (state._goSettled) return;
+  state._goSettled = true;
+  const won = state.fsm === 'wonRun';
+  const stars = window.CTD3Engine.computeStars(state);
+  const score = window.CTD3Engine.computeScore(state);
+  const mapDef = state.mapDef;
+  const best = won ? commitResult(state.mapId, state.difficulty, stars, score) : score;
+  window.CTD3Ui.fillGameOver({
+    won, stars, score,
+    bestScore: Math.max(score, best),
+    mapName: mapDef.displayName,
+    difficulty: state.difficulty,
+    livesRemaining: state.lives,
+    startLives: state.startingLives
+  });
+  window.CTD3Ui.setScreen('game-over');
+}
+
+// ─── Public surface ──────────────────────────────────────────
+window.CastleTowerDefense = {
+  start,
+  _test: new URLSearchParams(location.search).has('test') ? {
+    getState: () => state,
+    setLives: (n) => { if (state) state.lives = n; },
+    grantGold: (n) => { if (state) state.gold += n; },
+    jumpToWave: (idx) => { if (state) { state.waveIndex = idx; state.fsm = 'prepWave'; } }
+  } : undefined
+};
+
+// Auto-boot
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', start);
+} else {
+  start();
+}

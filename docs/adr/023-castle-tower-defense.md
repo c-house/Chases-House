@@ -1,7 +1,16 @@
 # ADR-023: Castle Tower Defense
 
-**Status**: Accepted (Implemented)
-**Date**: 2026-04-24 (planning) → 2026-04-25 (implementation + verification)
+**Status**: Superseded by [ADR-028](028-castle-tower-defense-3d.md), 2026-05-17.
+**Date**: 2026-04-24 (planning) → 2026-04-25 (implementation + verification) → 2026-05-17 (superseded at cutover).
+
+> The 2D SVG-DOM Castle Tower Defense documented here shipped in v1 and ran
+> until ADR-028's 3D rewrite reached Phase 10 cutover. The new Three.js / Kenney
+> TD kit version replaced this implementation at the same `games/castle-tower-defense/`
+> slug; this ADR is preserved as historical record. The §13 KISS choices
+> (fixed paths, build slots, no runtime pathfinding) carried forward intact.
+> The SVG-DOM render layer was wholly replaced. Old `ctd:*` localStorage keys
+> are not migrated to `ctd3:*` by deliberate choice (different game shape).
+
 
 > ADR number: this slot was renumbered from `017` (originally claimed during planning) to `023` to avoid collisions with several other parallel branches that landed at `017` (asteroids, firebase-security, shared-leaderboard, underhearth, uno, yahtzee). The next free integer at sign-off was 023. Internal code references (e.g. the `localStorage` 7th-caller note in [game.js](../../games/castle-tower-defense/game.js)) point to ADR-023.
 

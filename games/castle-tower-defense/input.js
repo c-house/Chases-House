@@ -1,38 +1,37 @@
 /* ═══════════════════════════════════════════════════════════════
-   Castle Tower Defense — input.js
-   Owns keyboard listeners + gamepad cursor polling.
-   Pointer events are handled in game.js via document delegation
-   (since they target specific DOM elements with data-action attrs).
-   Exposes window.CTDInput.
+   Castle Tower Defense 3D — input.js
+   Pointer (mouse + touch), keyboard, gesture, raycast hit-test.
+   Gamepad is DELETED — no SharedGamepad usage. ADR-028 §7, §15.
+   Exposes window.CTD3Input.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const SG = () => window.SharedGamepad;
-
   let getStateFn = null;
-  let actions = null;     // bag of callbacks set up by game.js
+  let actions = null;
+  let canvas = null;
   let initialized = false;
 
-  // Gamepad
-  let activePadIndex = null;
-  let dpadCooldownMs = 0;
+  // Pinch state
+  const touches = new Map(); // pointerId → {x, y}
+  let pinchStartDist = 0;
+  let pinchStartZoom = 1;
 
-  // Keyboard map: key.toLowerCase() → action
-  const KEY_TO_TOWER = { '1': 'archer', '2': 'cannon', '3': 'mage', '4': 'frost' };
+  const KEY_TO_TOWER = { '1': 'ranger', '2': 'catapult', '3': 'mage', '4': 'warden' };
 
   function init(opts) {
     if (initialized) return;
     getStateFn = opts.getState;
     actions = opts.actions;
+    canvas = window.CTD3Renderer.getCanvas();
+    if (canvas) {
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointercancel', onPointerUp);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+    }
     document.addEventListener('keydown', onKey);
-    SG().init({
-      onConnect: (idx) => { if (activePadIndex == null) activePadIndex = idx; },
-      onDisconnect: (idx) => { if (activePadIndex === idx) activePadIndex = null; }
-    });
-    // pick first already-connected pad (if any)
-    const pads = SG().listGamepads();
-    if (pads.length) activePadIndex = pads[0].index;
     initialized = true;
   }
 
@@ -41,22 +40,15 @@
     if (!state) return;
     const screen = document.body.getAttribute('data-screen');
     const k = ev.key.toLowerCase();
-
     if (k === 'escape') {
       ev.preventDefault();
-      if (screen === 'play')  actions.pause();
+      if (screen === 'play') actions.pause();
       else if (screen === 'pause') actions.resume();
       else if (screen === 'map-select') actions.go('title');
       return;
     }
-
-    // play-screen-only keys
     if (screen === 'play') {
-      if (KEY_TO_TOWER[k]) {
-        ev.preventDefault();
-        actions.selectTower(KEY_TO_TOWER[k]);
-        return;
-      }
+      if (KEY_TO_TOWER[k]) { ev.preventDefault(); actions.selectTower(KEY_TO_TOWER[k]); return; }
       if (k === 'u') { ev.preventDefault(); actions.upgrade(); return; }
       if (k === 's') { ev.preventDefault(); actions.sell();    return; }
       if (k === 'n') { ev.preventDefault(); actions.sendNextWave(); return; }
@@ -67,81 +59,71 @@
     }
   }
 
-  // ─── Gamepad polling (call each tick from game.js) ───────────
-  function pollGamepad(state, dtMs) {
-    if (activePadIndex == null) return;
-    const sg = SG();
-    const B = sg.BUTTONS;
-    const screen = document.body.getAttribute('data-screen');
+  function pointerToNDC(ev) {
+    const r = canvas.getBoundingClientRect();
+    const nx = ((ev.clientX - r.left) / r.width) * 2 - 1;
+    const ny = -((ev.clientY - r.top) / r.height) * 2 + 1;
+    return { nx, ny };
+  }
 
-    // Edge-triggered button presses
-    if (sg.consumeButtonPress(activePadIndex, B.START)) {
-      if (screen === 'play')       actions.pause();
-      else if (screen === 'pause') actions.resume();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.A)) {
-      if (screen === 'play') actions.gamepadConfirm();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.B)) {
-      if (screen === 'play') actions.gamepadCancel();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.X)) {
-      if (screen === 'play') actions.upgrade();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.Y)) {
-      if (screen === 'play') actions.sell();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.LB)) {
-      if (screen === 'play') actions.cyclePalette(-1);
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.RB)) {
-      if (screen === 'play') actions.cyclePalette(1);
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.RT)) {
-      if (screen === 'play') actions.toggleFastForward();
-    }
-    if (sg.consumeButtonPress(activePadIndex, B.LT)) {
-      if (screen === 'play') actions.sendNextWave();
+  function onPointerDown(ev) {
+    ev.preventDefault();
+    canvas.setPointerCapture(ev.pointerId);
+    touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+
+    if (touches.size === 2) {
+      // Start pinch
+      const pts = [...touches.values()];
+      pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchStartZoom = window.CTD3Renderer.getZoom();
+      return;
     }
 
-    // D-pad / stick — move cursor (snap-to-nearest-slot)
-    if (screen !== 'play') return;
-    if (dpadCooldownMs > 0) { dpadCooldownMs -= dtMs; return; }
-    const dir = sg.getDirection(activePadIndex);
-    if (dir) {
-      moveCursor(state, dir);
-      dpadCooldownMs = 180;
+    // Single tap → raycast → action
+    const state = getStateFn();
+    if (!state || document.body.getAttribute('data-screen') !== 'play') return;
+    const { nx, ny } = pointerToNDC(ev);
+    const hit = window.CTD3Scene.raycastFromNormalizedPointer(nx, ny);
+    if (!hit) return;
+    if (hit.kind === 'slot') actions.selectSlot(hit.id);
+    else if (hit.kind === 'tower') actions.selectTowerInstance(hit.id);
+    else if (hit.kind === 'empty') actions.cancelSelection();
+  }
+
+  function onPointerMove(ev) {
+    if (!touches.has(ev.pointerId)) return;
+    touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+
+    if (touches.size === 2 && pinchStartDist > 0) {
+      const pts = [...touches.values()];
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const ratio = d / pinchStartDist;
+      window.CTD3Renderer.setZoom(pinchStartZoom * ratio);
+      return;
+    }
+
+    // Single-pointer hover → update hoverSlotId
+    if (touches.size !== 1) return;
+    const state = getStateFn();
+    if (!state || document.body.getAttribute('data-screen') !== 'play') return;
+    const { nx, ny } = pointerToNDC(ev);
+    const hit = window.CTD3Scene.raycastFromNormalizedPointer(nx, ny);
+    if (hit && hit.kind === 'slot') state.hoverSlotId = hit.id;
+    else state.hoverSlotId = null;
+  }
+
+  function onPointerUp(ev) {
+    touches.delete(ev.pointerId);
+    if (touches.size < 2) {
+      pinchStartDist = 0;
     }
   }
 
-  function moveCursor(state, dir) {
-    const map = state.mapDef;
-    if (!map) return;
-    const cx = state.cursor.x, cy = state.cursor.y;
-    const candidates = map.buildSlots.filter(s => {
-      const dx = s.x - cx, dy = s.y - cy;
-      switch (dir) {
-        case 'up':    return dy < -10 && Math.abs(dx) < Math.abs(dy);
-        case 'down':  return dy > 10  && Math.abs(dx) < Math.abs(dy);
-        case 'left':  return dx < -10 && Math.abs(dy) < Math.abs(dx);
-        case 'right': return dx > 10  && Math.abs(dy) < Math.abs(dx);
-      }
-      return false;
-    });
-    if (!candidates.length) return;
-    candidates.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
-    const target = candidates[0];
-    state.cursor.x = target.x;
-    state.cursor.y = target.y;
-    state.hoverSlotId = target.id;
+  function onWheel(ev) {
+    ev.preventDefault();
+    const delta = -ev.deltaY * 0.001;
+    window.CTD3Renderer.setZoom(window.CTD3Renderer.getZoom() * (1 + delta));
   }
 
-  function rumble(opts) {
-    if (activePadIndex == null) return;
-    SG().rumble(activePadIndex, opts);
-  }
-
-  function getActivePadIndex() { return activePadIndex; }
-
-  window.CTDInput = { init, pollGamepad, rumble, getActivePadIndex };
+  window.CTD3Input = { init };
 })();

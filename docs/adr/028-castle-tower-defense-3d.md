@@ -1,7 +1,22 @@
 # ADR-028 — Castle Tower Defense 3D
 
-**Status:** Accepted (planning), 2026-05-16. Implementation pending.
-**Supersedes:** [ADR-023](023-castle-tower-defense.md) at cutover (see §15).
+**Status:** Accepted, 2026-05-16. Implemented + cutover complete 2026-05-17.
+**Supersedes:** [ADR-023](023-castle-tower-defense.md).
+
+> ## Cutover note (2026-05-17)
+> Phases 0 through 10 landed. The 2D `games/castle-tower-defense/` was deleted
+> and the 3D folder renamed into the same slug at this commit. ADR-023 is
+> marked Superseded. Documentation cross-references (ADR-029, map-editor.html,
+> shared/storage.js) were updated to the new path. The new game runs at
+> `/games/castle-tower-defense/` and is the canonical implementation.
+>
+> Notes on what shipped vs. spec:
+> - Phase 1.7 audio: 13 SFX from Kenney CC0 packs landed; BGM + ambient
+>   loops deferred (audio.js degrades gracefully when missing).
+> - Phase 9.5 real-device mobile test: covered via Chrome DevTools MCP at
+>   390×844 (deviceScaleFactor=3, mobile, touch); a real-phone LAN-devserver
+>   test is still recommended before the next public deploy.
+> - All §C/§M review findings landed as code (verified at each phase).
 
 > This is the hardened spec for the 3D re-architecture of `games/castle-tower-defense/`. It encodes decisions from two adversarial reviews and is intended to be mechanically transcribable into code: file paths, data shapes with types, function signatures, and a granular task list. Where this spec and ADR-023 conflict, this spec wins.
 
@@ -166,10 +181,10 @@ game ─→ engine ─→ entities, maps
 ## 5. File manifest
 
 ### New game (the 3D version)
-All under `games/castle-tower-defense-3d/` until cutover; renamed to `games/castle-tower-defense/` at merge.
+All under `games/castle-tower-defense/` until cutover; renamed to `games/castle-tower-defense/` at merge.
 
 ```
-games/castle-tower-defense-3d/
+games/castle-tower-defense/
 ├── index.html              page shell, importmap, inline CSS, <script> tags in dep order
 ├── game.js                 boot, FSM, rAF tick, event delegation, persistence
 ├── engine.js               pure sim — tower behavior dispatch, projectile sim, wave manager
@@ -887,7 +902,7 @@ Manual override via Settings → "Force low-power mode" → `ctd3:settings.lowPo
 
 1. `npx serve -p 3003` (or `python -m http.server 3003`) from repo root.
 2. Find dev machine's LAN IP (e.g. `192.168.1.42`).
-3. On phone, navigate to `http://192.168.1.42:3003/games/castle-tower-defense-3d/`.
+3. On phone, navigate to `http://192.168.1.42:3003/games/castle-tower-defense/`.
 4. Test on **at least one real mid-range Android** (≥ 3 years old). Measure FPS via the built-in `?test=1` overlay (added in Phase 9; see task list).
 5. Verify perf trigger fires correctly when forced (simulate via DevTools CPU throttling).
 6. Verify touch tap-targets ≥ 44 px.
@@ -961,7 +976,7 @@ Phases 1–9 land on `refactor/castle-tower-defense-3d`. Reviewed iteratively bu
 
 ### Cutover (Phase 10, single atomic PR)
 1. Delete `games/castle-tower-defense/` entirely.
-2. Move `games/castle-tower-defense-3d/` → `games/castle-tower-defense/`.
+2. Move `games/castle-tower-defense/` → `games/castle-tower-defense/`.
 3. Update `games/index.html` gallery card with new hero screenshot.
 4. Mark ADR-023 as "Status: Superseded by ADR-028" with a one-paragraph context note.
 5. Add bidirectional link.
@@ -1083,7 +1098,7 @@ Items explicitly NOT in v1, with origin (R = review, P = pillar, A = author):
 - [ ] **1.8** Produce `assets/MANIFEST.json` listing every model + icon + audio that will ship. This file is the Phase 1 deliverable.
 
 ### Phase 2 — Foundation
-- [ ] **2.1** Create `games/castle-tower-defense-3d/` directory. Author `index.html` shell: HTML doctype, `<meta viewport>`, font preconnect (Fraunces + Bricolage), `<script type="importmap">` with pinned Three.js URL, inline CSS skeleton with site tokens.
+- [ ] **2.1** Create `games/castle-tower-defense/` directory. Author `index.html` shell: HTML doctype, `<meta viewport>`, font preconnect (Fraunces + Bricolage), `<script type="importmap">` with pinned Three.js URL, inline CSS skeleton with site tokens.
 - [ ] **2.2** Stub all 11 JS module files with the IIFE pattern and empty `window.CTD3<Module>` exports. Wire `<script>` tags in dep order in `index.html`.
 - [ ] **2.3** Commit Kenney GLBs (per `MANIFEST.json`) to `assets/models/`. Commit CC0 audio to `assets/audio/`. Commit `assets/LICENSE.txt` with per-file source attribution.
 - [ ] **2.4** Build `tools/bake-icons.html` per §10 workflow. Bake 12 icons. Commit PNGs to `assets/icons/`. Commit the tool. Commit `assets/README.txt` documenting the workflow.
@@ -1140,7 +1155,7 @@ Items explicitly NOT in v1, with origin (R = review, P = pillar, A = author):
 
 ### Phase 10 — Cutover
 - [ ] **10.1** Delete `games/castle-tower-defense/` (the 2D version) entirely.
-- [ ] **10.2** Rename `games/castle-tower-defense-3d/` → `games/castle-tower-defense/`.
+- [ ] **10.2** Rename `games/castle-tower-defense/` → `games/castle-tower-defense/`.
 - [ ] **10.3** Update `games/index.html` gallery card: new hero screenshot captured from the running 3D game (during Phase 9 verification).
 - [ ] **10.4** Mark ADR-023 `Status: Superseded by ADR-028`. Add one-paragraph context note + bidirectional link.
 - [ ] **10.5** Final verification: re-run §13 protocol against the renamed slug.
