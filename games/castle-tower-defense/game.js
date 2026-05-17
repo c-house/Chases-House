@@ -118,6 +118,26 @@ async function start() {
     const overlay = document.getElementById('test-overlay');
     if (overlay) overlay.style.display = 'block';
   }
+
+  // ?test=tile-debug — R1 visual gate (ADR-030 §21). Bypass normal map
+  // flow and render the tile-rotation reference grid near the origin.
+  // Path tile assets are background-loaded after critical preload, so we
+  // paint once on onReady (placeholders if not yet cached) then refresh
+  // a few times until the meshes have actually been parsed in.
+  if ((new URLSearchParams(location.search).get('test') || '') === 'tile-debug') {
+    window.CTD3Assets.onReady(() => {
+      window.CTD3Scene.paintTileDebug();
+      window.CTD3Ui.setScreen('play');
+      // Repaint with real meshes as background fetches complete.
+      let attempts = 0;
+      const refresh = () => {
+        attempts += 1;
+        window.CTD3Scene.paintTileDebug();
+        if (attempts < 8) setTimeout(refresh, 500);
+      };
+      setTimeout(refresh, 400);
+    });
+  }
 }
 
 function firstClickAudio() {

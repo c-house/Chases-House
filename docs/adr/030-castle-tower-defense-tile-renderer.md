@@ -964,13 +964,32 @@ Before any Phase 1 implementation:
 
 1. **Verify kit inventory:** confirm at `C:/Users/chase/Downloads/kenney_tower-defense-kit/Models/GLB format/` that all 23 GLBs listed in §22 task 2.1 exist. Specifically check for `detail-crystal-large.glb` (should be ABSENT — confirms MAJ-2 scale fallback is needed) and for the snow-tile and tile-river variants needed.
 
-2. **Run `?test=tile-debug` page** (built as part of Phase 1, but separately verifiable):
+2. **Run `?test=tile-debug` page**:
    - Load tile-grid.js's self-test by visiting `index.html?tile-grid-test=1`. Console logs 4 test results (3 ok:false cases + 1 ok:true case).
-   - Visually render one of each tile (tile_path_straight, tile_path_corner_round, tile_path_end_round) at known rotations (0, π/2, π, 3π/2) near the origin. Confirm Kenney's front-axis convention matches the rotation table in §8.
+   - Visit `index.html?test=tile-debug` — `scene.paintTileDebug()` renders one of each tile (straight, corner_round, end_round) at the 4 cardinal rotations near the origin, with text labels above each tile naming the rotation in units of π. Confirm Kenney's front-axis convention matches the rotation lookup table in §8. Magenta cubes for the first ~2 s on a cold load (background-fetch race) — a self-rescheduling repaint refreshes the grid up to 8× over 4 s so the real meshes appear once cached.
 
 3. **Confirm Three.js version compatibility:** the importmap pins `three@0.170.0`. Open `tools/bake-icons.html` to verify Three.js still loads from unpkg without 404. (Sanity check; should be no-op since ADR-028 already verified this.)
 
 If any gate check fails, escalate before continuing.
+
+### Outstanding browser-required gates (post-Phase-6, this implementation)
+
+The initial implementation of Phases 1–6 in commits 9e148b1 / ec4c581 / dbca448 / 0b3ec4c / 5c8c87d / 01bba5c shipped all code deliverables, but the following verification gates require an interactive browser session and were not executed in that implementation session. They remain open for any follow-up session that has Chrome DevTools MCP (or equivalent) available:
+
+| Gate | Source | What to do |
+|---|---|---|
+| **R1 tile rotations** | §21 #2 (above) | Visit `?test=tile-debug`, eyeball the 12-cell label grid against the §8 table. Any cell whose visible rotation doesn't match its label = rotation table bug. |
+| **Phase 1 animations** | §18 per-phase, §22 task 1.12 | Start any map; place each of 4 tower types; observe muzzle flash. Spawn enemies via the first wave; observe bob (ground gait + flying hover) and yaw toward travel direction. Catapult projectiles rotate to face velocity. |
+| **CRIT-2 aura registry leak** | §22 task 1.12 + Verification checklist | Place ≥1 Warden; restart Plains 3× consecutively (Pause → Restart). Inspect `wardenAurasGroup.children.length` via DevTools console — must equal currently-placed Wardens after each restart, never accumulate. |
+| **Phase 2 asset load** | §22 task 2.5 | `await window.CTD3Assets.preload()` resolves. `window.CTD3Assets.getMesh('tile_path_straight')` returns a non-placeholder Group (no magenta). `window.CTD3Assets.hasMesh('detail_tree_large')` === `true`. `window.CTD3Assets.hasMesh('detail_crystal_large')` === `true` (kit deviation — see §5). |
+| **Phase 3 tile rendering** | §22 task 3.6 | Each existing map (Plains, Forest, Mountain, Tidewater) loads with kit ground + path tiles + decorations. No z-fighting at corners. No gaps. Castle reachable. Snowfall Pass uses `snow_tile_*` variants; standard Mountain does not. |
+| **Phase 4 editor preview** | §22 task 4.11 | Open `tools/map-editor.html`; place 4 waypoints + 2 slots + 6 decorations; expand 3D preview; see tile pieces forming the path. Hand-edit a waypoint to a non-integer coord — Copy JSON disables with red error; preview shows yellow pill. |
+| **Phase 5 progression** | §22 task 5.7 | Map-select shows 6 maps. Plains/Forest/Tidewater immediately playable; Mountain locked behind 5★; Riverbend locked behind 13★; Snowfall Pass locked behind 14★. Each new map plays through; scores persist across reload. |
+| **§22 task 6.3 hero screenshot** | §22 Phase 6 (optional) | Refresh the games gallery hero screenshot using the new tile-rendered Plains. |
+| **Mobile + perf** | Verification checklist | Mobile emulation (390×844 × DPR 3); palette, sheets, settings, editor all readable; FPS ≥ 30 on mobile-emulated with each of the 6 maps. Total GLB payload ≤ 8 MB (already verified ~1.9 MB via local du). |
+| **Console hygiene** | Verification checklist | Zero console errors at every screen, desktop + mobile. All network requests 200/304. |
+
+These gates do not block the code from shipping (static verification covers algorithmic correctness, lint, manifest schema, axis-aligned path validation), but they block the spec's "Implementation pending" status from changing to "Implemented + verified." A follow-up session should run through this table and convert each row to a checked screenshot artifact.
 
 ---
 

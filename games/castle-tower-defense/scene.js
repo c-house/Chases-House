@@ -528,10 +528,92 @@ function setLowPowerShadows(on) {
   });
 }
 
+// ─── ?test=tile-debug visual gate (ADR-030 §21 R1 mitigation) ───
+// Renders one of each path tile at the 4 cardinal rotations near the
+// origin with a text label showing rotation in units of π. Verifies
+// empirically that Kenney's GLB front-axis convention matches
+// CTD3TileGrid's rotation lookup table. Run via:
+//   /games/castle-tower-defense/?test=tile-debug
+// The grid expected:
+//   row z=2  : tile_path_straight @ 0, π/2, π, 3π/2
+//   row z=0  : tile_path_corner_round @ 0, π/2, π, 3π/2
+//   row z=-2 : tile_path_end_round @ 0, π/2, π, 3π/2
+// Visual confirmation closes R1.
+function paintTileDebug() {
+  if (!scene) return;
+  // Hide the green ground; surface gets crowded otherwise.
+  if (ground) ground.visible = true;
+  pathGroup.clear();
+  decorationsGroup.clear();
+  slotsGroup.clear();
+  towersGroup.clear();
+  enemiesGroup.clear();
+
+  const ROTATIONS = [
+    { r: 0,                 label: '0' },
+    { r: Math.PI / 2,       label: 'π/2' },
+    { r: Math.PI,           label: 'π' },
+    { r: -Math.PI / 2,      label: '-π/2' }
+  ];
+  const ROWS = [
+    { z:  2, tileId: 'tile_path_straight',     name: 'straight' },
+    { z:  0, tileId: 'tile_path_corner_round', name: 'corner_round' },
+    { z: -2, tileId: 'tile_path_end_round',    name: 'end_round' }
+  ];
+
+  for (const row of ROWS) {
+    for (let i = 0; i < ROTATIONS.length; i++) {
+      const x = -3 + i * 2;  // columns at x = -3, -1, 1, 3
+      const mesh = window.CTD3Assets.getMesh(row.tileId);
+      mesh.position.set(x, 0.01, row.z);
+      mesh.rotation.y = ROTATIONS[i].r;
+      pathGroup.add(mesh);
+      // Label: a small canvas-texture plane above the tile.
+      const tex = makeLabelTexture(row.name.split('_')[0] + ' ' + ROTATIONS[i].label);
+      const labelGeo = new THREE.PlaneGeometry(1.4, 0.4);
+      const labelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+      const label = new THREE.Mesh(labelGeo, labelMat);
+      label.position.set(x, 0.6, row.z + 0.7);
+      label.rotation.x = -Math.PI / 2;
+      pathGroup.add(label);
+    }
+  }
+  // Origin reference cube (so "front of +x" is unambiguous).
+  const oGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+  const oMat = new THREE.MeshBasicMaterial({ color: 0xff0066 });
+  const o = new THREE.Mesh(oGeo, oMat);
+  o.position.set(0, 0.5, 5);
+  pathGroup.add(o);
+  // Arrow ahead of origin marker pointing +x — the kit's default front for straight tiles.
+  const aGeo = new THREE.ConeGeometry(0.2, 0.6, 4);
+  aGeo.rotateZ(-Math.PI / 2);
+  const aMat = new THREE.MeshBasicMaterial({ color: 0xc8943e });
+  const arrow = new THREE.Mesh(aGeo, aMat);
+  arrow.position.set(0.6, 0.5, 5);
+  pathGroup.add(arrow);
+}
+
+function makeLabelTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const cx = canvas.getContext('2d');
+  cx.fillStyle = 'rgba(20,15,10,0.85)';
+  cx.fillRect(0, 0, canvas.width, canvas.height);
+  cx.fillStyle = '#c8943e';
+  cx.font = 'bold 28px monospace';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 window.CTD3Scene = {
   init, getScene,
   paintTerrain, clearPlayfield,
   sync, raycastFromNormalizedPointer,
   flashTower,
+  paintTileDebug,
   setLowPowerShadows
 };
