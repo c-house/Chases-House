@@ -1,13 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════
    Castle Tower Defense — game.js
    Boot module: owns FSM, rAF tick loop, document event delegation,
-   localStorage persistence, audio bring-up.
+   localStorage persistence (via SharedStorage), audio bring-up.
    Public surface: window.CastleTowerDefense.start()
 
-   LOCALSTORAGE NOTE: This is the 7th caller of localStorage in the
-   chases.house codebase (after crossword, jeopardy×2, pacman, snake,
-   sudoku). ADR-023 §13 flagged a future shared helper at this point.
-   Recommend a follow-up ADR to extract a typed key/value helper.
+   LOCALSTORAGE: uses window.SharedStorage from /games/shared/storage.js.
+   ADR-023 §13 flagged a future shared helper; ADR-028 Phase 0 extracted
+   it. This file is the first caller migrated to it.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -27,25 +26,29 @@
     tutorialSeen:  'ctd:tutorialSeen'
   };
 
+  const SETTINGS_DEFAULTS = { musicVolume: 0.4, sfxVolume: 0.8, musicMuted: false, sfxMuted: false, reducedMotion: false };
+
   function loadScores() {
-    try { return JSON.parse(localStorage.getItem(KEYS.scores)) || {}; } catch (e) { return {}; }
+    return window.SharedStorage.safeGet(KEYS.scores, {});
   }
   function saveScores(scores) {
-    try { localStorage.setItem(KEYS.scores, JSON.stringify(scores)); } catch (e) {}
+    window.SharedStorage.safeSet(KEYS.scores, scores);
   }
   function loadSettings() {
-    try {
-      return Object.assign(
-        { musicVolume: 0.4, sfxVolume: 0.8, musicMuted: false, sfxMuted: false, reducedMotion: false },
-        JSON.parse(localStorage.getItem(KEYS.settings)) || {}
-      );
-    } catch (e) {
-      return { musicVolume: 0.4, sfxVolume: 0.8, musicMuted: false, sfxMuted: false, reducedMotion: false };
-    }
+    return Object.assign({}, SETTINGS_DEFAULTS, window.SharedStorage.safeGet(KEYS.settings, {}));
   }
-  function saveSettings(s) { try { localStorage.setItem(KEYS.settings, JSON.stringify(s)); } catch (e) {} }
-  function tutorialSeen() { try { return localStorage.getItem(KEYS.tutorialSeen) === '1'; } catch (e) { return false; } }
-  function markTutorialSeen() { try { localStorage.setItem(KEYS.tutorialSeen, '1'); } catch (e) {} }
+  function saveSettings(s) {
+    window.SharedStorage.safeSet(KEYS.settings, s);
+  }
+  function tutorialSeen() {
+    // Boolean coercion is back-compat: old pre-SharedStorage data stored the raw
+    // string '1' (not JSON-encoded). JSON.parse('1') returns the number 1 which
+    // is also truthy. New writes store boolean true. Both coerce correctly.
+    return !!window.SharedStorage.safeGet(KEYS.tutorialSeen, false);
+  }
+  function markTutorialSeen() {
+    window.SharedStorage.safeSet(KEYS.tutorialSeen, true);
+  }
 
   function totalStars() {
     const all = loadScores();
