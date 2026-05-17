@@ -456,4 +456,47 @@ For the brainstorm reader to follow up:
 
 ---
 
-*End of ADR-029 (Brainstorm draft).*
+## Phase A2 — Decoration palette + 3D preview + single-paste export (2026-05-18)
+
+**Status:** Accepted. Specified in [ADR-030](030-castle-tower-defense-tile-renderer.md) §13 and implemented per ADR-030 §22 Phase 4.
+
+> Phase A1 (Cartographer baseline) shipped in this ADR. Phase A2 extends the editor in three coordinated ways and reverses two prior decisions. The substance lives in ADR-030; this section documents the reversal and the cross-reference.
+
+### Reversed decisions
+
+**§10 "no 3D preview" — REVERSED.** The user explicitly requested a 3D preview when prompted on ADR-030's planning. Phase A2 implements a 3D preview pane as an opt-in collapsible sidebar with **lazy-imported Three.js + GLTFLoader**, preserving §5's self-contained spirit (the editor remains fully functional without the preview expanded; Three.js is fetched on-demand, not on page load). The preview reuses the runtime's path-cell classifier via the shared `tile-grid.js` utility introduced in ADR-030 §4 — same algorithm, zero drift risk.
+
+**§5 dev-tool DRY exemption — NARROWED.** The exemption for inlining `bakeMap` + `sampleOnPath` (per §5's "no game runtime") remains in force for those two utilities. For the tile-classification algorithm, ADR-030 extracts a new shared file (`games/castle-tower-defense/tile-grid.js`) that the editor loads via classic `<script src="../tile-grid.js">`. The editor still does not import from `engine.js` / `scene.js` / `ui.js`. The new shared utility is a third pattern alongside `gamepad.js` and `storage.js` in the site's `window.<X>` IIFE registry — pure function, no DOM, no Three.js, no state.
+
+### Added scope
+
+1. **5th tool — Decor** (kbd `5`). Click in canvas to place a decoration at the cursor (free-form, not snapped); right-click to remove. Active decoration type chosen from the palette.
+2. **Decoration palette** — 3 buttons next to the toolbar: Tree (`#4a7a3a`), Rocks (`#8a7a6a`), Crystal (`#7ab8d4`). Hex values explicit to avoid clashes with existing canvas colors. Large variants exposed via the `size: 'normal' | 'large'` field on the decoration shape (kit ships `tree_large` + `rocks_large`; runtime applies ×1.5 scale fallback for the absent `crystal_large` per ADR-030 §5).
+3. **3D preview pane** — collapsible right sidebar (~300×220 px). On expand, lazy-imports Three.js + GLTFLoader, then renders the current map's path + decorations using the same `CTD3TileGrid.classifyPathCells` the runtime uses. Debounced re-render at 150 ms. On a diagonal/invalid segment, shows a yellow pill ("Path has diagonals — snap segments to single-axis steps (segment N)") instead of throwing.
+4. **Single combined JSON export** — Copy JSON outputs a single `registerMap({ map: {...}, decorations: [...] });` block. User pastes once at the bottom of `maps.js`. Preserves E1 ("paste once"). The `registerMap` helper in `maps.js` (ADR-030 §14) splits the combined shape: `combined.map` → `MAPS.push(...)`, `combined.decorations` → `window.CTD3Decorations[combined.map.id]`. **No `decorations` field is added to the runtime Map shape** — ADR-028 §6 m-5 preserved.
+5. **Export validator** — `buildExportMap()` runs `classifyPathCells(state.path)` first. On `ok: false`, the Copy JSON button is disabled with a red inline error showing `result.error` and highlighting `result.badSegment.i` on the 2D canvas. Slots are validated for integer coords in parallel. Decorations are exempt.
+6. **Visual snap** — Path tool + Slot tool snap clicks to nearest integer world coord (always-on, no toggle exposed). Decor tool stays click-precision (decorations don't drive the tile renderer).
+7. **`<head>` script order** — `<script src="../tile-grid.js">` is placed immediately after the importmap and BEFORE any inline `<script>` block. A `<!-- ORDER MATTERS -->` comment in the source documents the constraint. `window.CTD3TileGrid` must be defined before the inline editor IIFE or the 3D preview's lazy import runs.
+
+### Phase A2 acceptance criteria
+
+Concrete checklist lives in ADR-030 §22 task 4 (4.1 through 4.11). At a high level:
+- All A1 features still work (decoration palette doesn't break path/slot/move tools).
+- New maps authored in A2 round-trip through `registerMap` paste with no drift.
+- 3D preview matches the runtime's `paintTerrain` output for the same map (same `tile-grid.js` algorithm).
+- Editor loads with `tools/map-editor.html` URL, no extra setup; preview is opt-in.
+
+### Phase A2 closes
+
+- ADR-029 §10 "no 3D preview" — closed/reversed.
+- ADR-030 review-#1 M-6 (3D preview justification) — closed.
+- ADR-030 review-#2 MAJ-3 (two-paste workflow) — closed via single combined export.
+- ADR-030 review-#2 MAJ-4 (script timing) — closed via explicit `<head>` order with comment.
+
+### Phase A2 leaves open
+
+- WFC procedural generation (was the original Phase A2 in this ADR). Re-deferred. The "WFC" rubric is now a hypothetical Phase A3 if ever pursued; no commitment.
+
+---
+
+*End of ADR-029.*

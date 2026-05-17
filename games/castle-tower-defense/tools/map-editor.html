@@ -8,7 +8,18 @@
     Continuous-world waypoint editor for Castle Tower Defense 3D maps.
     Self-contained: NO game runtime loaded; bakeMap+sampleOnPath inlined
     from games/castle-tower-defense/engine.js (provenance below).
+
+    ADR-029 Phase A2 (ADR-030 §13):
+    Decor tool, 3D preview pane, single-paste registerMap export.
+    ORDER MATTERS: tile-grid.js must define window.CTD3TileGrid BEFORE
+    the inline IIFE that reads it, and the importmap must be parsed
+    BEFORE any dynamic import('three') call from the preview.
   -->
+  <script type="importmap">
+  { "imports": { "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+                 "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/" } }
+  </script>
+  <script src="../tile-grid.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..600&display=swap" rel="stylesheet">
@@ -29,6 +40,13 @@
       --canvas-plains:   #6a8447;
       --canvas-forest:   #3e5a3a;
       --canvas-mountain: #7b7a76;
+
+      /* Decoration palette colors (ADR-030 §13 MIN-2 — distinct from
+         existing canvas colors: slot grey #9b9080, waypoint gold #c8943e,
+         spawn green #5a7a3a). */
+      --decor-tree:    #4a7a3a;
+      --decor-rocks:   #8a7a6a;
+      --decor-crystal: #7ab8d4;
 
       --font-display: 'Fraunces', serif;
       --font-body: 'Bricolage Grotesque', system-ui, sans-serif;
@@ -264,6 +282,113 @@
       color: var(--warm-stone);
       margin: 0 2px;
     }
+
+    /* Decoration palette row (below toolbar, only visible when Decor active) */
+    .decor-palette {
+      display: none;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      background: rgba(40,28,18,0.4);
+      border-bottom: 1px solid var(--ink-faint);
+    }
+    .decor-palette.visible { display: flex; }
+    .decor-palette .swatch {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+      border: 1px solid #1a1410;
+    }
+    .decor-palette .tool[data-decor="tree"]    .swatch { background: var(--decor-tree); }
+    .decor-palette .tool[data-decor="rocks"]   .swatch { background: var(--decor-rocks); }
+    .decor-palette .tool[data-decor="crystal"] .swatch { background: var(--decor-crystal); }
+
+    /* Yellow error pill over canvas (path-invalid feedback — ADR-030 §13) */
+    .canvas-pill {
+      position: absolute;
+      top: 0.5rem; left: 50%;
+      transform: translateX(-50%);
+      padding: 0.4rem 0.8rem;
+      background: rgba(40,28,18,0.92);
+      border: 1px solid var(--aged-gold);
+      border-radius: 4px;
+      color: var(--aged-gold);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      max-width: 80%;
+      text-align: center;
+      display: none;
+    }
+    .canvas-pill.visible { display: block; }
+
+    /* Status bar: red error variant (export validator — ADR-030 §13). */
+    .side .actions .tool.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: var(--ink-faint);
+    }
+    .side .actions .tool.disabled:hover { background: rgba(40,28,18,0.6); }
+
+    /* 3D Preview pane (collapsible — ADR-030 §13). */
+    .preview-pane {
+      border-bottom: 1px solid var(--ink-faint);
+      background: #15110d;
+    }
+    .preview-pane .header {
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--aged-gold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .preview-pane .chev::before { content: '▸'; transition: transform 200ms; display: inline-block; }
+    .preview-pane.open .chev::before { transform: rotate(90deg); }
+    .preview-pane .body {
+      display: none;
+      padding: 0 1rem 0.8rem;
+    }
+    .preview-pane.open .body { display: block; }
+    .preview-pane canvas {
+      display: block;
+      width: 100%;
+      height: 220px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 4px;
+      background: #0a0a0b;
+    }
+    .preview-pane .loading {
+      padding: 0.6rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: rgba(232,213,168,0.55);
+      display: none;
+    }
+    .preview-pane.loading .loading { display: block; }
+    .preview-pane.loading canvas { display: none; }
+    .preview-pill {
+      position: absolute;
+      top: 8px; left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 10px;
+      background: rgba(40,28,18,0.92);
+      border: 1px solid var(--aged-gold);
+      border-radius: 3px;
+      color: var(--aged-gold);
+      font-size: 0.72rem;
+      pointer-events: none;
+      display: none;
+      max-width: 80%;
+      text-align: center;
+    }
+    .preview-pill.visible { display: block; }
+    .preview-pane .body { position: relative; }
   </style>
 </head>
 <body>
@@ -274,13 +399,21 @@
     <h1>The Cartographer</h1>
     <span class="sub">CTD3 map editor · Phase A1</span>
     <div class="tools" role="toolbar" aria-label="Active tool">
-      <button class="tool active" data-tool="path"   title="Path: click to add a waypoint, drag a waypoint to move, right-click on a waypoint to remove">Path <span class="kbd">1</span></button>
-      <button class="tool"        data-tool="castle" title="Castle: place the gate at the end of the path">Castle <span class="kbd">2</span></button>
-      <button class="tool"        data-tool="slot"   title="Slot+: place a build slot; right-click on a slot to remove">Slot <span class="kbd">3</span></button>
-      <button class="tool"        data-tool="move"   title="Move: drag any element to reposition">Move <span class="kbd">4</span></button>
+      <button class="tool active" data-tool="path"   title="Path: click to add a waypoint, drag a waypoint to move, right-click on a waypoint to remove. Snaps to integer coords.">Path <span class="kbd">1</span></button>
+      <button class="tool"        data-tool="castle" title="Castle: place the gate at the end of the path. Snaps to integer coords.">Castle <span class="kbd">2</span></button>
+      <button class="tool"        data-tool="slot"   title="Slot+: place a build slot; right-click on a slot to remove. Snaps to integer coords.">Slot <span class="kbd">3</span></button>
+      <button class="tool"        data-tool="move"   title="Move: drag any element to reposition. Path/Slot/Castle drags snap to integers; decorations stay free-form.">Move <span class="kbd">4</span></button>
+      <button class="tool"        data-tool="decor"  title="Decor: click to place a decoration; right-click on a decoration to remove. Free-form coords (no grid snap).">Decor <span class="kbd">5</span></button>
       <button class="tool warn"   data-action="clear" title="Clear the whole map">Clear</button>
     </div>
   </header>
+
+  <div class="decor-palette" id="decor-palette" role="toolbar" aria-label="Decoration type">
+    <button class="tool active" data-decor="tree"    title="Tree (small or large)"><span class="swatch"></span>Tree</button>
+    <button class="tool"        data-decor="rocks"   title="Rocks (small or large)"><span class="swatch"></span>Rocks</button>
+    <button class="tool"        data-decor="crystal" title="Crystal (small or large)"><span class="swatch"></span>Crystal</button>
+    <button class="tool" data-decor-size="normal" style="flex:0 0 auto;">Size: <span data-bind="decorSize">normal</span></button>
+  </div>
 
   <aside class="meta" aria-label="Map metadata">
     <h2>Map Header</h2>
@@ -324,16 +457,27 @@
 
   <main class="canvas-wrap" data-theme="plains">
     <canvas id="field"></canvas>
+    <div class="canvas-pill" data-bind="canvas-pill"></div>
     <div class="canvas-hud">world <span class="v" data-bind="cursorX">0.0</span>,<span class="v" data-bind="cursorZ">0.0</span></div>
   </main>
 
   <aside class="side" aria-label="Validation and export">
     <h2>Status</h2>
     <div class="status" data-bind="status">—</div>
+
+    <div class="preview-pane" id="preview-pane">
+      <div class="header" data-action="toggle-preview"><span class="chev"></span>3D Preview</div>
+      <div class="body">
+        <canvas id="preview-canvas"></canvas>
+        <div class="preview-pill" data-bind="preview-pill"></div>
+        <div class="loading">Loading preview…</div>
+      </div>
+    </div>
+
     <h2>Export</h2>
     <div class="actions">
       <button class="tool" data-action="validate">Re-validate</button>
-      <button class="tool active" data-action="copy">Copy JSON</button>
+      <button class="tool active" data-action="copy" data-bind="copy-button">Copy JSON</button>
     </div>
     <div class="preview">
       <pre data-bind="preview">(map preview)</pre>
@@ -400,16 +544,19 @@
     tool: 'path',
     path: [
       { x: -12, z: 4 },
+      { x: -4, z: 4 },
       { x: -4, z: 2 },
-      { x: 4, z: 0 },
-      { x: 11, z: -2 }
+      { x: 11, z: 2 }
     ],
-    castle: { x: 11, y: 0, z: -2 },
+    castle: { x: 11, y: 0, z: 2 },
     slots: [
       { id: 's1', x: -6, z: 0 },
-      { id: 's2', x: 0, z: 4 },
-      { id: 's3', x: 6, z: -3 }
+      { id: 's2', x: 0, z: 5 },
+      { id: 's3', x: 6, z: -2 }
     ],
+    decorations: [],                 // ADR-030 §13 — paintDecorations source
+    decorBrush: 'tree',              // active decoration palette type
+    decorBrushSize: 'normal',        // 'normal' | 'large'
     slotCounter: 3,
     meta: {
       id: 'new_map',
@@ -426,6 +573,18 @@
     drag: null,
     cursor: { x: 0, z: 0 }
   };
+
+  // ── Snap policy (ADR-030 §13). Path / Slot / Castle / Move snap waypoints
+  // to integer coords; Decor stays free-form (decoration positions don't
+  // drive the tile renderer).
+  function snapForTool(tool, kind) {
+    if (tool === 'decor') return (v) => v;
+    if (kind === 'decoration') return (v) => v;
+    return (v) => Math.round(v);
+  }
+
+  // Decoration color lookup for canvas dot rendering (matches CSS custom props).
+  const DECOR_HEX = { tree: '#4a7a3a', rocks: '#8a7a6a', crystal: '#7ab8d4' };
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
@@ -536,6 +695,18 @@
       ctx.fillText(sl.id, s.x, s.y);
     });
 
+    // Decoration dots (ADR-030 §13)
+    state.decorations.forEach((d) => {
+      const s = worldToScreen(d);
+      ctx.fillStyle = DECOR_HEX[d.type.replace(/^detail_/, '').replace(/_large$/, '')] || '#999';
+      ctx.strokeStyle = '#1a1410';
+      ctx.lineWidth = 1;
+      const r = (d.size === 'large') ? 7 : 5;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    });
+
     {
       const s = worldToScreen(state.castle);
       ctx.fillStyle = '#cdb88d';
@@ -560,6 +731,10 @@
     for (let i = state.slots.length - 1; i >= 0; i--) {
       const s = worldToScreen(state.slots[i]);
       if (Math.abs(s.x - sx) <= 14 && Math.abs(s.y - sy) <= 14) return { kind: 'slot', idx: i };
+    }
+    for (let i = state.decorations.length - 1; i >= 0; i--) {
+      const s = worldToScreen(state.decorations[i]);
+      if (Math.hypot(s.x - sx, s.y - sy) <= 10) return { kind: 'decoration', idx: i };
     }
     {
       const s = worldToScreen(state.castle);
@@ -586,6 +761,8 @@
         state.path.splice(hit.idx, 1);
       } else if (hit && hit.kind === 'slot') {
         state.slots.splice(hit.idx, 1);
+      } else if (hit && hit.kind === 'decoration') {
+        state.decorations.splice(hit.idx, 1);
       }
       refresh();
       return;
@@ -600,13 +777,33 @@
     }
 
     if (tool === 'path') {
-      state.path.push({ x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) });
-      state.castle = { x: state.path[state.path.length - 1].x, y: 0, z: state.path[state.path.length - 1].z };
+      const snap = snapForTool(tool, 'path');
+      const nx = snap(clamp(x, -WORLD_HALF_X, WORLD_HALF_X));
+      const nz = snap(clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z));
+      state.path.push({ x: nx, z: nz });
+      state.castle = { x: nx, y: 0, z: nz };
     } else if (tool === 'castle') {
-      state.castle = { x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), y: 0, z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) };
+      const snap = snapForTool(tool, 'castle');
+      state.castle = {
+        x: snap(clamp(x, -WORLD_HALF_X, WORLD_HALF_X)),
+        y: 0,
+        z: snap(clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z))
+      };
     } else if (tool === 'slot') {
+      const snap = snapForTool(tool, 'slot');
       state.slotCounter++;
-      state.slots.push({ id: 's' + state.slotCounter, x: clamp(x, -WORLD_HALF_X, WORLD_HALF_X), z: clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z) });
+      state.slots.push({
+        id: 's' + state.slotCounter,
+        x: snap(clamp(x, -WORLD_HALF_X, WORLD_HALF_X)),
+        z: snap(clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z))
+      });
+    } else if (tool === 'decor') {
+      // Free-form: no snap. Decoration coords don't drive the renderer.
+      const cx = clamp(x, -WORLD_HALF_X, WORLD_HALF_X);
+      const cz = clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z);
+      const dec = { type: 'detail_' + state.decorBrush, x: round1(cx), z: round1(cz) };
+      if (state.decorBrushSize === 'large') dec.size = 'large';
+      state.decorations.push(dec);
     }
     refresh();
   });
@@ -619,8 +816,10 @@
     $('[data-bind="cursorZ"]').textContent = z.toFixed(1);
 
     if (state.drag) {
-      const cx = clamp(x, -WORLD_HALF_X, WORLD_HALF_X);
-      const cz = clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z);
+      // Drag snaps follow the moved element's class (ADR-030 §13 — decorations free-form).
+      const snap = snapForTool(state.tool, state.drag.kind);
+      const cx = snap(clamp(x, -WORLD_HALF_X, WORLD_HALF_X));
+      const cz = snap(clamp(z, -WORLD_HALF_Z, WORLD_HALF_Z));
       if (state.drag.kind === 'path') {
         state.path[state.drag.idx].x = cx;
         state.path[state.drag.idx].z = cz;
@@ -630,6 +829,9 @@
       } else if (state.drag.kind === 'castle') {
         state.castle.x = cx;
         state.castle.z = cz;
+      } else if (state.drag.kind === 'decoration') {
+        state.decorations[state.drag.idx].x = cx;
+        state.decorations[state.drag.idx].z = cz;
       }
       render();
     }
@@ -663,12 +865,31 @@
     else if (key === '2') setTool('castle');
     else if (key === '3') setTool('slot');
     else if (key === '4') setTool('move');
+    else if (key === '5') setTool('decor');
   });
 
   function setTool(name) {
     state.tool = name;
     $$('[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
+    const palette = document.getElementById('decor-palette');
+    if (palette) palette.classList.toggle('visible', name === 'decor');
   }
+
+  // Decoration palette swatch + size selection
+  document.addEventListener('click', (ev) => {
+    const d = ev.target.closest('[data-decor]');
+    if (d) {
+      state.decorBrush = d.dataset.decor;
+      $$('[data-decor]').forEach(b => b.classList.toggle('active', b.dataset.decor === state.decorBrush));
+      return;
+    }
+    const sz = ev.target.closest('[data-decor-size]');
+    if (sz) {
+      state.decorBrushSize = state.decorBrushSize === 'normal' ? 'large' : 'normal';
+      const span = sz.querySelector('[data-bind="decorSize"]');
+      if (span) span.textContent = state.decorBrushSize;
+    }
+  });
 
   function handleAction(name) {
     if (name === 'clear') {
@@ -676,11 +897,21 @@
       state.path = [];
       state.slots = [];
       state.slotCounter = 0;
+      state.decorations = [];
       refresh();
     } else if (name === 'validate') {
       refresh();
     } else if (name === 'copy') {
-      const btn = document.querySelector('[data-action="copy"]');
+      const v = validate();
+      if (!v.ok) {
+        // Validation gate (ADR-030 §13 M-5) — refuse to export invalid maps.
+        const btn = document.querySelector('[data-bind="copy-button"]');
+        const orig = btn.textContent;
+        btn.textContent = 'Fix path first';
+        setTimeout(() => { btn.textContent = orig; }, 1200);
+        return;
+      }
+      const btn = document.querySelector('[data-bind="copy-button"]');
       navigator.clipboard.writeText(buildJsonString()).then(() => {
         const orig = btn.textContent;
         btn.textContent = 'Copied!';
@@ -688,6 +919,13 @@
       }).catch(err => {
         alert('Clipboard copy failed: ' + (err && err.message));
       });
+    } else if (name === 'toggle-preview') {
+      const pane = document.getElementById('preview-pane');
+      if (!pane) return;
+      pane.classList.toggle('open');
+      if (pane.classList.contains('open') && typeof window.__cartographerPreviewExpand === 'function') {
+        window.__cartographerPreviewExpand();
+      }
     }
   }
 
@@ -722,6 +960,8 @@
     try { waves = JSON.parse(state.wavesJson || '[]'); }
     catch (e) { waves = []; }
     const m = state.meta;
+    // Path / slots / castle: integer-snapped at edit time, but round once more
+    // here for safety against any drift.
     return {
       id: m.id,
       displayName: m.displayName,
@@ -732,31 +972,60 @@
       thumbIcon: m.thumbIcon || ('map_' + m.theme),
       unlockRequirement: m.unlockRequirement | 0,
       theme: m.theme,
-      castle: { x: round1(state.castle.x), y: 0, z: round1(state.castle.z) },
-      path: state.path.map(p => ({ x: round1(p.x), z: round1(p.z) })),
-      buildSlots: state.slots.map(s => ({ id: s.id, x: round1(s.x), z: round1(s.z) })),
+      castle: { x: Math.round(state.castle.x), y: 0, z: Math.round(state.castle.z) },
+      path: state.path.map(p => ({ x: Math.round(p.x), z: Math.round(p.z) })),
+      buildSlots: state.slots.map(s => ({ id: s.id, x: Math.round(s.x), z: Math.round(s.z) })),
       waves
     };
   }
   function round1(v) { return Math.round(v * 10) / 10; }
 
+  // Build the combined JSON for a single paste into maps.js (ADR-030 §13, MAJ-3).
+  function buildCombinedExport() {
+    return {
+      map: buildExportMap(),
+      decorations: state.decorations.map(d => {
+        const o = { type: d.type, x: round1(d.x), z: round1(d.z) };
+        if (typeof d.rotation === 'number') o.rotation = +d.rotation.toFixed(2);
+        if (d.size === 'large') o.size = 'large';
+        return o;
+      })
+    };
+  }
+
+  // Output format: `registerMap({ map: ..., decorations: ... });` (ADR-030 §13).
   function buildJsonString() {
-    return JSON.stringify(buildExportMap(), null, 2);
+    const combined = buildCombinedExport();
+    const mapJson = JSON.stringify(combined.map, null, 2);
+    const decoJson = JSON.stringify(combined.decorations, null, 2);
+    return 'registerMap({\n  map: ' + mapJson.replace(/\n/g, '\n  ') + ',\n  decorations: ' + decoJson.replace(/\n/g, '\n  ') + '\n});';
   }
 
   function validate() {
     const m = buildExportMap();
     if (!m.path || m.path.length < 2) return { ok: false, reason: 'path needs at least 2 waypoints' };
+    // Tile-grid validation (axis-aligned, integer coords). Never throws.
+    const tg = window.CTD3TileGrid.classifyPathCells(m.path);
+    if (!tg.ok) {
+      return {
+        ok: false,
+        reason: tg.error + (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : ''),
+        badSegment: tg.badSegment || null
+      };
+    }
     const probe = { ...m, path: m.path.map(p => ({ ...p })) };
     bakeMap(probe);
     if (probe.totalLength <= 0) return { ok: false, reason: 'zero-length path' };
     const last = m.path[m.path.length - 1];
     const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
     if (dCastle > 1.5) return { ok: false, reason: 'castle is far from path end (' + dCastle.toFixed(1) + 'u)' };
+    if (!m.buildSlots.every(s => Number.isInteger(s.x) && Number.isInteger(s.z))) {
+      return { ok: false, reason: 'slot has non-integer coords' };
+    }
     try { JSON.parse(state.wavesJson || '[]'); }
     catch (e) { return { ok: false, reason: 'waves JSON does not parse: ' + e.message }; }
     if (m.buildSlots.length === 0) return { ok: false, reason: 'no build slots placed' };
-    return { ok: true, totalLength: probe.totalLength };
+    return { ok: true, totalLength: probe.totalLength, cellCount: tg.cells.length };
   }
 
   // Safe DOM construction for status updates (no innerHTML)
@@ -771,7 +1040,7 @@
     if (v.ok) {
       const detail = document.createElement('span');
       detail.className = 'detail';
-      detail.textContent = ' — ' + state.path.length + ' waypoints · length ' + v.totalLength.toFixed(1) + 'u · ' + state.slots.length + ' slots';
+      detail.textContent = ' — ' + state.path.length + ' waypoints · ' + v.cellCount + ' tile cells · ' + state.slots.length + ' slots · ' + state.decorations.length + ' decorations';
       el.appendChild(detail);
     } else {
       const reason = document.createElement('span');
@@ -781,14 +1050,280 @@
     }
   }
 
+  // Canvas pill — yellow warning over the field when path validation fails.
+  function setCanvasPill(v) {
+    const pill = document.querySelector('[data-bind="canvas-pill"]');
+    if (!pill) return;
+    if (!v.ok && v.badSegment) {
+      pill.textContent = 'Path has diagonals — snap segments to single-axis steps (segment ' + v.badSegment.i + ')';
+      pill.classList.add('visible');
+    } else {
+      pill.classList.remove('visible');
+    }
+  }
+
+  // Copy button — disabled when validation fails (ADR-030 §13 M-5).
+  function setCopyButtonEnabled(enabled) {
+    const btn = document.querySelector('[data-bind="copy-button"]');
+    if (!btn) return;
+    btn.classList.toggle('disabled', !enabled);
+    btn.title = enabled ? 'Copy registerMap({...}) statement for paste into maps.js' : 'Path validation failed — fix errors before exporting.';
+  }
+
+  // Debounced 3D preview refresh (~150 ms — ADR-030 §13).
+  let previewRefreshTimer = null;
+  function schedulePreviewRefresh() {
+    if (previewRefreshTimer) clearTimeout(previewRefreshTimer);
+    previewRefreshTimer = setTimeout(() => {
+      previewRefreshTimer = null;
+      if (typeof window.__cartographerPreviewRefresh === 'function') {
+        window.__cartographerPreviewRefresh(state);
+      }
+    }, 150);
+  }
+
   function refresh() {
     render();
-    setStatus(validate());
+    const v = validate();
+    setStatus(v);
+    setCanvasPill(v);
+    setCopyButtonEnabled(v.ok);
     $('[data-bind="preview"]').textContent = buildJsonString();
+    schedulePreviewRefresh();
   }
 
   resizeCanvas();
   refresh();
+})();
+</script>
+
+<!--
+  ADR-029 Phase A2 / ADR-030 §13 — 3D preview pane.
+  Lazy-imports three + GLTFLoader on first expand, then renders an
+  orthographic top-down view of the current state using the SHARED
+  window.CTD3TileGrid utility (prevents preview/runtime drift —
+  review-#1 C-2).
+  Module-typed so dynamic import('three') resolves the importmap.
+-->
+<script type="module">
+(function () {
+  'use strict';
+
+  let three = null;       // loaded lazily on first expand
+  let GLTFLoader = null;
+  let scene = null;
+  let camera = null;
+  let renderer = null;
+  let pathGroup = null;
+  let decorGroup = null;
+  let slotsGroup = null;
+  let castleMesh = null;
+  let groundGroup = null;
+  let meshCache = new Map();   // tile/decoration id → GLTF scene
+  let initialized = false;
+  let loadingMeshes = new Set();
+  let pendingRefreshState = null;
+  const ASSET_DIR = '../assets/';
+
+  function pill(msg, visible) {
+    const el = document.querySelector('[data-bind="preview-pill"]');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('visible', !!visible);
+  }
+
+  async function ensureThree() {
+    if (three) return;
+    const pane = document.getElementById('preview-pane');
+    pane.classList.add('loading');
+    const slowTimer = setTimeout(() => { /* visible after 500 ms */ }, 500);
+    try {
+      const T = await import('three');
+      const { GLTFLoader: G } = await import('three/addons/loaders/GLTFLoader.js');
+      three = T;
+      GLTFLoader = G;
+      clearTimeout(slowTimer);
+    } catch (e) {
+      console.error('[preview] failed to load three.js:', e);
+      pill('Preview unavailable (three.js failed to load)', true);
+      pane.classList.remove('loading');
+      throw e;
+    }
+    pane.classList.remove('loading');
+  }
+
+  function ensureScene() {
+    if (initialized) return;
+    const canvas = document.getElementById('preview-canvas');
+    if (!canvas) return;
+    const w = canvas.clientWidth || 300;
+    const h = canvas.clientHeight || 220;
+    renderer = new three.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);
+    renderer.setClearColor(0x0a0a0b, 1);
+
+    scene = new three.Scene();
+    scene.background = new three.Color(0x6a8447);
+
+    // Orthographic ¾ top-down (same vibe as the runtime camera).
+    const viewSize = 16;
+    const aspect = w / h;
+    camera = new three.OrthographicCamera(
+      -viewSize * aspect, viewSize * aspect, viewSize, -viewSize, 0.1, 100
+    );
+    camera.position.set(18, 22, 18);
+    camera.lookAt(0, 0, 0);
+
+    const light = new three.DirectionalLight(0xffffff, 1.0);
+    light.position.set(10, 18, 10);
+    scene.add(light);
+    scene.add(new three.AmbientLight(0xffffff, 0.55));
+
+    groundGroup = new three.Group(); scene.add(groundGroup);
+    pathGroup = new three.Group(); scene.add(pathGroup);
+    decorGroup = new three.Group(); scene.add(decorGroup);
+    slotsGroup = new three.Group(); scene.add(slotsGroup);
+
+    initialized = true;
+  }
+
+  function loadMesh(id) {
+    if (meshCache.has(id)) return Promise.resolve(meshCache.get(id));
+    if (loadingMeshes.has(id)) return Promise.resolve(null);
+    loadingMeshes.add(id);
+    return new Promise((resolve) => {
+      new GLTFLoader().load(
+        ASSET_DIR + 'models/' + id + '.glb',
+        (gltf) => { meshCache.set(id, gltf.scene); loadingMeshes.delete(id); resolve(gltf.scene); },
+        undefined,
+        (err) => {
+          console.warn('[preview] missing mesh', id, err && err.message);
+          loadingMeshes.delete(id);
+          resolve(null);
+        }
+      );
+    });
+  }
+
+  async function refresh(state) {
+    pendingRefreshState = state;
+    const pane = document.getElementById('preview-pane');
+    if (!pane || !pane.classList.contains('open')) return;
+    if (!three) return; // preview not yet loaded
+    if (!initialized) ensureScene();
+
+    // Bounds
+    const path = state.path || [];
+    const slots = state.slots || [];
+    const decs = state.decorations || [];
+    const castle = state.castle || { x: 0, z: 0 };
+    let minX = 0, maxX = 0, minZ = 0, maxZ = 0;
+    const include = (p) => {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
+    };
+    [...path, castle, ...slots].forEach(include);
+    minX = Math.floor(minX) - 4; maxX = Math.ceil(maxX) + 4;
+    minZ = Math.floor(minZ) - 4; maxZ = Math.ceil(maxZ) + 4;
+
+    // Theme variants — match runtime convention (snow override by future map.id).
+    const isSnow = (state.meta && state.meta.id === 'snowfall_pass');
+    const groundId = isSnow ? 'snow_tile_ground' : 'tile_ground';
+    const pathPrefix = isSnow ? 'snow_tile_path_' : 'tile_path_';
+
+    // Clear groups (preserve cache).
+    [groundGroup, pathGroup, decorGroup, slotsGroup].forEach(g => g.clear());
+    if (castleMesh) { scene.remove(castleMesh); castleMesh = null; }
+
+    // Path classification — yellow pill on failure, render bare ground.
+    const tg = window.CTD3TileGrid.classifyPathCells(path);
+    if (!tg.ok) {
+      pill('Path has diagonals — snap segments to single-axis steps' + (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : ''), true);
+    } else {
+      pill('', false);
+    }
+
+    // Ground tiles — one cloned instance per cell (preview-scale; runtime
+    // uses an InstancedMesh).
+    const groundMesh = await loadMesh(groundId);
+    if (groundMesh) {
+      for (let cz = minZ; cz <= maxZ; cz++) {
+        for (let cx = minX; cx <= maxX; cx++) {
+          const node = groundMesh.clone(true);
+          node.position.set(cx, 0, cz);
+          groundGroup.add(node);
+        }
+      }
+    }
+
+    // Path tiles
+    if (tg.ok) {
+      for (const cell of tg.cells) {
+        const tileId = pathPrefix + cell.tileType.replace('tile_path_', '');
+        const mesh = await loadMesh(tileId);
+        if (!mesh) continue;
+        const node = mesh.clone(true);
+        node.position.set(cell.x, 0.01, cell.z);
+        node.rotation.y = cell.rotation;
+        pathGroup.add(node);
+      }
+    }
+
+    // Decorations
+    for (const d of decs) {
+      const baseId = d.type;
+      const largeId = baseId + '_large';
+      const wantLarge = d.size === 'large';
+      let id = wantLarge ? largeId : baseId;
+      let mesh = await loadMesh(id);
+      if (!mesh && wantLarge) {
+        mesh = await loadMesh(baseId);
+      }
+      if (!mesh) continue;
+      const node = mesh.clone(true);
+      node.position.set(d.x, 0, d.z);
+      node.rotation.y = (typeof d.rotation === 'number') ? d.rotation : (Math.random() * Math.PI * 2);
+      if (wantLarge && id !== largeId) node.scale.setScalar(1.5);
+      decorGroup.add(node);
+    }
+
+    // Slot plinths — small grey boxes (no kit mesh).
+    for (const s of slots) {
+      const geo = new three.BoxGeometry(1.2, 0.2, 1.2);
+      const mat = new three.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.85 });
+      const m = new three.Mesh(geo, mat);
+      m.position.set(s.x, 0.1, s.z);
+      slotsGroup.add(m);
+    }
+
+    // Castle — kit mesh
+    const c = await loadMesh('castle');
+    if (c) {
+      castleMesh = c.clone(true);
+      castleMesh.position.set(castle.x, 0, castle.z);
+      scene.add(castleMesh);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  // Public hooks invoked by the main IIFE.
+  window.__cartographerPreviewRefresh = function (state) {
+    // If preview was never expanded, no work to do.
+    if (!three) { pendingRefreshState = state; return; }
+    refresh(state).catch(e => console.error('[preview] refresh failed:', e));
+  };
+
+  window.__cartographerPreviewExpand = async function () {
+    try {
+      await ensureThree();
+      ensureScene();
+      if (pendingRefreshState) {
+        refresh(pendingRefreshState);
+      }
+    } catch (e) { /* pill already shown */ }
+  };
 })();
 </script>
 
