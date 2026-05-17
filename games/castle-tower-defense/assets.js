@@ -112,6 +112,19 @@ function getMesh(id) {
   return makePlaceholderMesh();
 }
 
+// True iff the asset manifest declares this id.
+// Synchronous. Used by scene.paintDecorations to choose between _large mesh
+// swap and a 1.5× scale fallback (ADR-030 §6, MAJ-2).
+//
+// Manifest-only — NOT cache presence. preload()'s critical path covers only
+// the first 10 entries (towers); tile + decoration meshes background-load,
+// so cache presence is non-deterministic at the moment paintDecorations runs.
+// "Does the kit ship this id?" is the actual question for the dispatch.
+function hasMesh(id) {
+  if (!manifest || !manifest.length) return false;
+  return manifest.some(m => m.id === id);
+}
+
 // Minimal InstancedMesh handle (capacity-bounded).
 function getInstanced(id, capacity) {
   const group = cache.get(id);
@@ -168,6 +181,6 @@ function fireReady() {
 }
 
 window.CTD3Assets = {
-  preload, getMesh, getInstanced, getIconUrl, getMaterialAtlas,
+  preload, getMesh, hasMesh, getInstanced, getIconUrl, getMaterialAtlas,
   isReady, onReady
 };

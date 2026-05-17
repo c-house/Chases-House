@@ -19,5 +19,34 @@
   { "id": "enemy_skirmisher", "role": "enemy", "kind": "mesh", "path": "models/enemy_skirmisher.glb" },
   { "id": "enemy_captain",    "role": "enemy", "kind": "mesh", "path": "models/enemy_captain.glb" },
 
-  { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" }
+  { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" },
+
+  { "id": "tile_ground",             "role": "tile", "kind": "mesh", "path": "models/tile_ground.glb" },
+  { "id": "tile_ground_dirt",        "role": "tile", "kind": "mesh", "path": "models/tile_ground_dirt.glb" },
+  { "id": "tile_path_straight",      "role": "tile", "kind": "mesh", "path": "models/tile_path_straight.glb" },
+  { "id": "tile_path_corner_round",  "role": "tile", "kind": "mesh", "path": "models/tile_path_corner_round.glb" },
+  { "id": "tile_path_corner_inner",  "role": "tile", "kind": "mesh", "path": "models/tile_path_corner_inner.glb" },
+  { "id": "tile_path_corner_outer",  "role": "tile", "kind": "mesh", "path": "models/tile_path_corner_outer.glb" },
+  { "id": "tile_path_end",           "role": "tile", "kind": "mesh", "path": "models/tile_path_end.glb" },
+  { "id": "tile_path_end_round",     "role": "tile", "kind": "mesh", "path": "models/tile_path_end_round.glb" },
+
+  { "id": "snow_tile_ground",            "role": "tile", "kind": "mesh", "path": "models/snow_tile_ground.glb" },
+  { "id": "snow_tile_path_straight",     "role": "tile", "kind": "mesh", "path": "models/snow_tile_path_straight.glb" },
+  { "id": "snow_tile_path_corner_round", "role": "tile", "kind": "mesh", "path": "models/snow_tile_path_corner_round.glb" },
+  { "id": "snow_tile_path_end_round",    "role": "tile", "kind": "mesh", "path": "models/snow_tile_path_end_round.glb" },
+  { "id": "snow_tile_crystal",           "role": "tile", "kind": "mesh", "path": "models/snow_tile_crystal.glb" },
+
+  { "id": "tile_river_straight", "role": "tile", "kind": "mesh", "path": "models/tile_river_straight.glb" },
+  { "id": "tile_river_corner",   "role": "tile", "kind": "mesh", "path": "models/tile_river_corner.glb" },
+  { "id": "tile_river_bridge",   "role": "tile", "kind": "mesh", "path": "models/tile_river_bridge.glb" },
+
+  { "id": "detail_tree",          "role": "decoration", "kind": "mesh", "path": "models/detail_tree.glb" },
+  { "id": "detail_tree_large",    "role": "decoration", "kind": "mesh", "path": "models/detail_tree_large.glb" },
+  { "id": "detail_rocks",         "role": "decoration", "kind": "mesh", "path": "models/detail_rocks.glb" },
+  { "id": "detail_rocks_large",   "role": "decoration", "kind": "mesh", "path": "models/detail_rocks_large.glb" },
+  { "id": "detail_crystal",       "role": "decoration", "kind": "mesh", "path": "models/detail_crystal.glb" },
+  { "id": "detail_crystal_large", "role": "decoration", "kind": "mesh", "path": "models/detail_crystal_large.glb" },
+
+  { "id": "spawn_round", "role": "spawn", "kind": "mesh", "path": "models/spawn_round.glb" },
+  { "id": "tile_spawn",  "role": "spawn", "kind": "mesh", "path": "models/tile_spawn.glb" }
 ]

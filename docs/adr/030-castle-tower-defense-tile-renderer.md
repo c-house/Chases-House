@@ -163,10 +163,10 @@ type Decoration = {
 };
 ```
 
-**`size: 'large'` lookup rules (review-#2 MAJ-2):**
-- For `detail_tree` and `detail_rocks`: kit ships `${type}_large.glb`; scene uses `assets.getMesh(`${type}_large`)`.
-- For `detail_crystal`: kit does NOT ship a `_large` variant; scene uses `assets.getMesh('detail_crystal')` then `node.scale.setScalar(1.5)`.
-- Logic: `scene.paintDecorations` calls `assets.hasMesh(`${type}_large`)`. True → mesh swap. False → base mesh + 1.5× scale.
+**`size: 'large'` lookup rules:**
+- Kit ships `_large` for all 3 decoration types (tree, rocks, crystal) — verified during Phase 2 kit ingestion. The `detail_crystal_large.glb` predicted absent in the original review-#2 MAJ-2 finding IS present in the kit; the deviation is recorded in the Phase 2 commit.
+- Logic: `scene.paintDecorations` calls `assets.hasMesh(`${type}_large`)`. True → mesh swap (`assets.getMesh(`${type}_large`)`). False → base mesh + `scale.setScalar(1.5)` (defensive fallback for hypothetical future decorations whose `_large` variant is missing).
+- `hasMesh` checks manifest membership only — NOT cache presence. preload()'s critical path covers only the first 10 manifest entries (towers); tile and decoration meshes background-load, so cache presence is non-deterministic when paintDecorations runs. The dispatch's actual question is "does the kit ship this id?", and manifest membership answers it correctly.
 
 ### Runtime-private decoration registry
 ```ts
@@ -253,9 +253,11 @@ GRID_SIZE: 1                                     // world units per tile; consta
 ### `assets.js` → `window.CTD3Assets` (additive)
 ```js
 hasMesh(id: string): boolean
-  // True iff the asset manifest contains an entry with this id AND
-  // the parsed mesh is in the cache. Synchronous. Used by scene to
-  // decide mesh-swap vs scale-fallback for `_large` decorations.
+  // True iff the asset manifest declares this id (manifest membership only —
+  // NOT cache presence; tile + decoration meshes background-load, so cache
+  // state is non-deterministic when paintDecorations runs).
+  // Synchronous. Used by scene to decide mesh-swap vs scale-fallback for
+  // `_large` decorations.
 ```
 
 All other `CTD3Assets` methods unchanged from ADR-028 §7.
@@ -499,7 +501,10 @@ paintDecorations(mapId):
                ? `${decoration.type}_large`
                : decoration.type
     if (decoration.size === 'large' && !assets.hasMesh(targetId)):
-      // _large not in kit; fall back to scaling the base mesh
+      // Defensive fallback: scale base mesh when kit lacks `_large` variant.
+      // As of Phase 2 the kit ships `_large` for all 3 decoration types
+      // (tree, rocks, crystal), so this branch is currently dead. Kept as
+      // a safety net for hypothetical future decoration types.
       node = assets.getMesh(decoration.type).clone()
       node.scale.setScalar(1.5)
     else:
@@ -930,7 +935,7 @@ Carried from the plan, with origin (R = review, A = author):
 - `decoration.rotation` exposed in editor UI (A — runtime randomizes; authors can hand-edit if needed).
 - `theme: 'winter'` enum value (R C-3 — snow selection is by `map.id`, not theme).
 - Separate `decorations.js` file (R M-7 / R MAJ-3 — replaced by `registerMap` combined paste).
-- Decoration `_large` variants for `detail_crystal` (kit doesn't ship; ×1.5 scale fallback).
+- ~~Decoration `_large` variants for `detail_crystal` (kit doesn't ship; ×1.5 scale fallback)~~ — Resolved during Phase 2 kit ingestion: kit DOES ship `detail-crystal-large.glb`. Included it.
 - Grid-snap visual toggle in editor (R MAJ-5 / M-5 — always-on for path/slot; off for decoration).
 - Per-tile rotation control in editor (A — runtime randomizes).
 
@@ -996,18 +1001,18 @@ Single commit. No new GLB assets yet.
 
 ### Phase 2 — Asset expansion (Kenney GLBs)
 
-Single commit. Copies 23 GLBs from kit; updates manifest + license.
+Single commit. Copies 24 GLBs from kit; updates manifest + license.
 
-- [ ] **2.1** Copy 23 GLBs from `C:/Users/chase/Downloads/kenney_tower-defense-kit/Models/GLB format/` to `games/castle-tower-defense/assets/models/`. Rename per the kit→repo mapping:
+- [x] **2.1** Copy 24 GLBs from `C:/Users/chase/Downloads/kenney_tower-defense-kit/Models/GLB format/` to `games/castle-tower-defense/assets/models/`. Rename per the kit→repo mapping:
   - Path tiles (8): `tile.glb → tile_ground.glb`, `tile-dirt.glb → tile_ground_dirt.glb`, `tile-straight.glb → tile_path_straight.glb`, `tile-corner-round.glb → tile_path_corner_round.glb`, `tile-corner-inner.glb → tile_path_corner_inner.glb`, `tile-corner-outer.glb → tile_path_corner_outer.glb`, `tile-end.glb → tile_path_end.glb`, `tile-end-round.glb → tile_path_end_round.glb`.
   - Snow theme (5): `snow-tile.glb → snow_tile_ground.glb`, `snow-tile-straight.glb → snow_tile_path_straight.glb`, `snow-tile-corner-round.glb → snow_tile_path_corner_round.glb`, `snow-tile-end-round.glb → snow_tile_path_end_round.glb`, `snow-tile-crystal.glb → snow_tile_crystal.glb`.
   - River (3): `tile-river-straight.glb → tile_river_straight.glb`, `tile-river-corner.glb → tile_river_corner.glb`, `tile-river-bridge.glb → tile_river_bridge.glb`.
-  - Decorations (5): `detail-tree.glb → detail_tree.glb`, `detail-tree-large.glb → detail_tree_large.glb`, `detail-rocks.glb → detail_rocks.glb`, `detail-rocks-large.glb → detail_rocks_large.glb`, `detail-crystal.glb → detail_crystal.glb`. (No `detail_crystal_large.glb` — kit doesn't ship.)
+  - Decorations (6): `detail-tree.glb → detail_tree.glb`, `detail-tree-large.glb → detail_tree_large.glb`, `detail-rocks.glb → detail_rocks.glb`, `detail-rocks-large.glb → detail_rocks_large.glb`, `detail-crystal.glb → detail_crystal.glb`, `detail-crystal-large.glb → detail_crystal_large.glb`. (Original spec predicted no `_large` for crystal; the kit ships it. Including it for visual consistency — hasMesh dispatch routes either way.)
   - Spawn (2): `spawn-round.glb → spawn_round.glb`, `tile-spawn.glb → tile_spawn.glb`.
-- [ ] **2.2** Append 23 entries to `assets/MANIFEST.json` per the §5 manifest schema. Role tags: `tile` (16 incl. snow + river), `decoration` (5), `spawn` (2).
-- [ ] **2.3** Append per-file source mapping to `assets/LICENSE.txt` under the existing Kenney TD Kit CC0 source.
-- [ ] **2.4** `assets.js`: add `hasMesh(id)` helper per §6. Returns `true` iff manifest contains the id AND the parsed mesh is in the cache. Export on `window.CTD3Assets`.
-- [ ] **2.5** Verification: boot the game; `await window.CTD3Assets.preload()` resolves; `getMesh('tile_path_straight')` returns a non-placeholder Group; `hasMesh('detail_tree_large')` === `true`; `hasMesh('detail_crystal_large')` === `false`. Total GLB payload still ≤ 8 MB.
+- [x] **2.2** Append 24 entries to `assets/MANIFEST.json` per the §5 manifest schema. Role tags: `tile` (16 incl. snow + river), `decoration` (6), `spawn` (2).
+- [x] **2.3** Append per-file source mapping to `assets/LICENSE.txt` under the existing Kenney TD Kit CC0 source.
+- [x] **2.4** `assets.js`: add `hasMesh(id)` helper per §6. Returns `true` iff manifest declares the id (manifest membership only — see §6 note on cache-presence race). Export on `window.CTD3Assets`.
+- [x] **2.5** Verification: boot the game; `await window.CTD3Assets.preload()` resolves; `getMesh('tile_path_straight')` returns a non-placeholder Group; `hasMesh('detail_tree_large')` === `true`; `hasMesh('detail_crystal_large')` === `true` (kit deviation — see §5). Total GLB payload still ≤ 8 MB.
 
 **Commit message:** `ADR-030 Phase 2: expand Kenney subset (23 GLBs — tiles, snow, river, decorations, spawn)`
 
@@ -1117,7 +1122,7 @@ If the 6-map count differs from anything documented in CLAUDE.md or `games/index
 - [ ] **CRIT-2**: Restart Plains 3× consecutively; `wardenAurasGroup.children.length` matches currently-placed Wardens, never accumulates
 - [ ] **CRIT-3**: `wardenAurasGroup` exists as a Three.js Group distinct from `decalsGroup` in `scene.init()`; `decalsGroup.clear()` does NOT empty aura rings
 - [ ] **MAJ-1**: Edit a waypoint to a diagonal coord in the editor; preview shows a yellow pill instead of throwing; runtime `paintTerrain` logs an error and renders bare ground
-- [ ] **MAJ-2**: Place a Snowfall Pass `detail_crystal` decoration with `size: 'large'`; runtime applies `scale.setScalar(1.5)` (no magenta cube)
+- [ ] **MAJ-2**: Place a Snowfall Pass `detail_crystal` decoration with `size: 'large'`; runtime renders the kit's `detail_crystal_large` mesh (kit ships it — see §5 deviation note). For decoration types whose `_large` is absent, the defensive `scale.setScalar(1.5)` branch in `paintDecorations` activates instead. Either path produces no magenta cube.
 - [ ] **MAJ-3**: Author a new map via the editor; single Copy JSON click → paste once into `maps.js`; both map and decorations populate correctly
 - [ ] **MAJ-4**: View page source of `tools/map-editor.html`; `<script src="../tile-grid.js">` appears BEFORE any inline `<script>` block
 - [ ] **MAJ-5**: Every existing map's path is axis-aligned (no segment where both dx and dz differ); each map entry in `maps.js` has an old-vs-new comment block

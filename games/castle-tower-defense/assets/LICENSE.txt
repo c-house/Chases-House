@@ -40,6 +40,40 @@ MODELS — Kenney "Tower Defense Kit" 2.1
   Castle (1):
     castle.glb             → wood-structure-high.glb
 
+  Path tiles (8 — ADR-030 Phase 2):
+    tile_ground.glb              → tile.glb
+    tile_ground_dirt.glb         → tile-dirt.glb
+    tile_path_straight.glb       → tile-straight.glb
+    tile_path_corner_round.glb   → tile-corner-round.glb
+    tile_path_corner_inner.glb   → tile-corner-inner.glb
+    tile_path_corner_outer.glb   → tile-corner-outer.glb
+    tile_path_end.glb            → tile-end.glb
+    tile_path_end_round.glb      → tile-end-round.glb
+
+  Snow theme (5 — Snowfall Pass):
+    snow_tile_ground.glb             → snow-tile.glb
+    snow_tile_path_straight.glb      → snow-tile-straight.glb
+    snow_tile_path_corner_round.glb  → snow-tile-corner-round.glb
+    snow_tile_path_end_round.glb     → snow-tile-end-round.glb
+    snow_tile_crystal.glb            → snow-tile-crystal.glb
+
+  River variants (3 — Riverbend decorations):
+    tile_river_straight.glb  → tile-river-straight.glb
+    tile_river_corner.glb    → tile-river-corner.glb
+    tile_river_bridge.glb    → tile-river-bridge.glb
+
+  Decorations (6 — ADR-030 §10):
+    detail_tree.glb          → detail-tree.glb
+    detail_tree_large.glb    → detail-tree-large.glb
+    detail_rocks.glb         → detail-rocks.glb
+    detail_rocks_large.glb   → detail-rocks-large.glb
+    detail_crystal.glb       → detail-crystal.glb
+    detail_crystal_large.glb → detail-crystal-large.glb
+
+  Spawn (2 — ADR-030 §10):
+    spawn_round.glb → spawn-round.glb
+    tile_spawn.glb  → tile-spawn.glb
+
 ----------------------------------------------------------------------
 AUDIO — Kenney audio packs (all CC0)
 ----------------------------------------------------------------------
