@@ -22,8 +22,10 @@ const ENEMY_BOB_AMP_FLYING = 0.18;
 
 let scene = null;
 let ground = null;
-let pathMesh = null;
 let castleMesh = null;
+let groundInstancedMesh = null;       // ADR-030 §9 — instanced kit ground tiles
+let pathGroup = null;                  // ADR-030 §9 — cloned kit path tiles
+let decorationsGroup = null;           // ADR-030 §10 — cloned decoration meshes
 let slotsGroup = null;
 let towersGroup = null;
 let enemiesGroup = null;
@@ -57,6 +59,8 @@ function init() {
   scene.add(ground);
 
   // Grouping for easy management
+  pathGroup        = new THREE.Group(); scene.add(pathGroup);
+  decorationsGroup = new THREE.Group(); scene.add(decorationsGroup);
   slotsGroup       = new THREE.Group(); scene.add(slotsGroup);
   towersGroup      = new THREE.Group(); scene.add(towersGroup);
   enemiesGroup     = new THREE.Group(); scene.add(enemiesGroup);
@@ -68,29 +72,87 @@ function init() {
 
 function getScene() { return scene; }
 
-// ─── paintTerrain: one-time per map ──────────────────────────
+// ─── paintTerrain: one-time per map (ADR-030 §9) ─────────────
+// Replaces makeRibbonGeometry-based ribbon with kit ground InstancedMesh
+// + cloned path tiles + cloned decorations. Themes select snow_tile_* by
+// map.id (no theme-enum widening — review-#1 C-3).
 function paintTerrain(map) {
-  // Clear previous map's terrain pieces
-  if (pathMesh) { scene.remove(pathMesh); pathMesh.geometry.dispose(); pathMesh = null; }
+  // Clear previous map's terrain pieces.
+  // Do NOT dispose the InstancedMesh's geometry/material — those are shared
+  // references owned by the assets cache (review-#3 MAJOR-2). InstancedMesh's
+  // own dispose() releases only the per-instance GPU buffers, not the
+  // underlying geometry/material — safe to call.
+  if (groundInstancedMesh) {
+    scene.remove(groundInstancedMesh);
+    if (typeof groundInstancedMesh.dispose === 'function') groundInstancedMesh.dispose();
+    groundInstancedMesh = null;
+  }
   if (castleMesh) { scene.remove(castleMesh); castleMesh = null; }
+  pathGroup.clear();
+  decorationsGroup.clear();
   slotsGroup.clear();
+  // Hide the placeholder green ground plane — kit ground tiles replace it.
+  if (ground) ground.visible = false;
 
-  // Path as a wide flat ribbon (uses LineSegments along the polyline,
-  // extruded as planes). Replaceable by GLB tiles once kit is available.
-  const points = map.path.map(p => new THREE.Vector3(p.x, 0.01, p.z));
-  const pathGeo = makeRibbonGeometry(points, 1.4);
-  const pathMat = new THREE.MeshStandardMaterial({ color: 0x7a5a30, roughness: 0.95 });
-  pathMesh = new THREE.Mesh(pathGeo, pathMat);
-  pathMesh.receiveShadow = true;
-  scene.add(pathMesh);
+  // 1. Compute playfield bounds from path + castle + slots, with 4-cell padding.
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  const include = (x, z) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  };
+  for (const p of map.path) include(p.x, p.z);
+  include(map.castle.x, map.castle.z);
+  for (const s of map.buildSlots) include(s.x, s.z);
+  minX = Math.floor(minX) - 4;  maxX = Math.ceil(maxX) + 4;
+  minZ = Math.floor(minZ) - 4;  maxZ = Math.ceil(maxZ) + 4;
 
-  // Castle — kit mesh (castle.glb = wood-structure-high.glb from kit)
+  // 2. Theme variants — snow override is by map.id, not theme tag.
+  const isSnow = (map.id === 'snowfall_pass');
+  const groundId = isSnow ? 'snow_tile_ground' : 'tile_ground';
+  const pathPrefix = isSnow ? 'snow_tile_path_' : 'tile_path_';
+
+  // 3. Ground: one InstancedMesh covering the bounds grid.
+  const w = maxX - minX + 1;
+  const h = maxZ - minZ + 1;
+  const totalCells = w * h;
+  const handle = window.CTD3Assets.getInstanced(groundId, totalCells);
+  const m = new THREE.Matrix4();
+  let i = 0;
+  for (let cz = minZ; cz <= maxZ; cz++) {
+    for (let cx = minX; cx <= maxX; cx++) {
+      m.makeTranslation(cx, 0, cz);
+      handle.setMatrixAt(i, m);
+      i += 1;
+    }
+  }
+  handle.setCount(totalCells);
+  handle.commit();
+  handle.mesh.receiveShadow = true;
+  groundInstancedMesh = handle.mesh;
+  scene.add(groundInstancedMesh);
+
+  // 4. Path: classifyPathCells; on ok:false, log + skip path.
+  const result = window.CTD3TileGrid.classifyPathCells(map.path);
+  if (!result.ok) {
+    console.error('[scene] path invalid for', map.id, '—', result.error, result.badSegment);
+  } else {
+    for (const cell of result.cells) {
+      const tileId = pathPrefix + cell.tileType.replace('tile_path_', '');
+      const mesh = window.CTD3Assets.getMesh(tileId);
+      mesh.position.set(cell.x, 0.01, cell.z);
+      mesh.rotation.y = cell.rotation;
+      mesh.traverse(o => { if (o.isMesh) { o.receiveShadow = true; } });
+      pathGroup.add(mesh);
+    }
+  }
+
+  // 5. Castle — kit mesh.
   castleMesh = window.CTD3Assets.getMesh('castle');
   castleMesh.position.set(map.castle.x, 0, map.castle.z);
   castleMesh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   scene.add(castleMesh);
 
-  // Slot plinths + invisible 80×80 collider planes for raycast (ADR-028 §13)
+  // 6. Slot plinths + invisible collider planes for raycast (ADR-028 §13).
   for (const slot of map.buildSlots) {
     const plinthGeo = new THREE.BoxGeometry(1.2, 0.2, 1.2);
     const plinthMat = new THREE.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.85 });
@@ -98,7 +160,6 @@ function paintTerrain(map) {
     plinth.position.set(slot.x, 0.1, slot.z);
     plinth.receiveShadow = true;
     slotsGroup.add(plinth);
-    // Invisible collider plane for tap targets (~2.5 world units = generous)
     const colGeo = new THREE.PlaneGeometry(2.5, 2.5);
     colGeo.rotateX(-Math.PI / 2);
     const colMat = new THREE.MeshBasicMaterial({ visible: false });
@@ -107,41 +168,34 @@ function paintTerrain(map) {
     collider.userData = { kind: 'slot', id: slot.id };
     slotsGroup.add(collider);
   }
+
+  // 7. Decorations — read window.CTD3Decorations[map.id].
+  paintDecorations(map.id);
 }
 
-function makeRibbonGeometry(points, width) {
-  // Build a triangle strip ribbon along the polyline.
-  const half = width / 2;
-  const positions = [];
-  const indices = [];
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    let tx = 0, tz = 0;
-    if (i === 0) {
-      const n = points[1];
-      tx = n.x - p.x; tz = n.z - p.z;
-    } else if (i === points.length - 1) {
-      const pr = points[i - 1];
-      tx = p.x - pr.x; tz = p.z - pr.z;
+// ─── paintDecorations (ADR-030 §10) ──────────────────────────
+function paintDecorations(mapId) {
+  const decorations = (window.CTD3Decorations && window.CTD3Decorations[mapId]) || [];
+  for (const d of decorations) {
+    if (!d || typeof d.type !== 'string') continue;
+    const targetId = (d.size === 'large') ? `${d.type}_large` : d.type;
+    let node;
+    if (d.size === 'large' && !window.CTD3Assets.hasMesh(targetId)) {
+      // Defensive fallback — currently dead (kit ships _large for tree, rocks,
+      // and crystal as of Phase 2), kept for hypothetical future types.
+      node = window.CTD3Assets.getMesh(d.type);
+      node.scale.setScalar(1.5);
+    } else if (!window.CTD3Assets.hasMesh(targetId)) {
+      console.warn('[scene] decoration mesh missing:', targetId);
+      continue;
     } else {
-      const pr = points[i - 1], n = points[i + 1];
-      tx = n.x - pr.x; tz = n.z - pr.z;
+      node = window.CTD3Assets.getMesh(targetId);
     }
-    const len = Math.hypot(tx, tz) || 1;
-    // perpendicular (rotated 90° in xz)
-    const px = -tz / len, pz = tx / len;
-    positions.push(p.x + px * half, p.y, p.z + pz * half);
-    positions.push(p.x - px * half, p.y, p.z - pz * half);
+    node.position.set(d.x, 0, d.z);
+    node.rotation.y = (typeof d.rotation === 'number') ? d.rotation : (Math.random() * Math.PI * 2);
+    node.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    decorationsGroup.add(node);
   }
-  for (let i = 0; i < points.length - 1; i++) {
-    const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2, d = (i + 1) * 2 + 1;
-    indices.push(a, c, b, b, c, d);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-  return geo;
 }
 
 // ─── clearPlayfield: between runs ────────────────────────────
@@ -162,6 +216,16 @@ function clearPlayfield() {
     if (node.material) node.material.dispose();
   });
   wardenAuraNodes.clear();
+  // Terrain assets are also map-scoped — drop them when leaving a map.
+  // See paintTerrain note on InstancedMesh disposal (review-#3 MAJOR-2).
+  if (pathGroup) pathGroup.clear();
+  if (decorationsGroup) decorationsGroup.clear();
+  if (groundInstancedMesh) {
+    scene.remove(groundInstancedMesh);
+    if (typeof groundInstancedMesh.dispose === 'function') groundInstancedMesh.dispose();
+    groundInstancedMesh = null;
+  }
+  if (castleMesh) { scene.remove(castleMesh); castleMesh = null; }
 }
 
 // ─── Entity sync (state diff → mesh transforms) ──────────────

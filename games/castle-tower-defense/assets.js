@@ -108,6 +108,17 @@ function getMesh(id) {
   const g = cache.get(id);
   if (g) return g.clone(true);
   // Not loaded — return placeholder and trigger lazy load.
+  // Look up the manifest path. Falling back to bare `${id}.glb` was a
+  // legacy ADR-028 hack that 404s for the 24 ADR-030 tile/decoration
+  // assets (their on-disk paths are `models/${id}.glb`). Use the manifest
+  // entry's path when available.
+  if (manifest && manifest.length) {
+    const entry = manifest.find(m => m.id === id);
+    if (entry) {
+      loadOne(id, entry.path);
+      return makePlaceholderMesh();
+    }
+  }
   loadOne(id, id + '.glb');
   return makePlaceholderMesh();
 }
