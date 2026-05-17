@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Use · Chase's House</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .legal-main {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 5vw, 2.5rem);
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 200ms;
+    }
+    .legal-eyebrow {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent-ember);
+      margin-bottom: 1rem;
+    }
+    .legal-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 40;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      letter-spacing: -0.01em;
+      line-height: 1.05;
+      margin-bottom: 0.6rem;
+    }
+    .legal-meta {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--bg-elevated);
+    }
+    .legal-main h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 32, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-top: 2.5rem;
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.005em;
+    }
+    .legal-main h3 {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--accent-glow);
+      margin-top: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .legal-main p,
+    .legal-main li {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+    .legal-main ul,
+    .legal-main ol {
+      padding-left: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .legal-main li { margin-bottom: 0.4rem; }
+    .legal-main a {
+      color: var(--accent-glow);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-ember);
+      transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .legal-main a:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+    .legal-main a:focus-visible {
+      outline: 2px solid var(--accent-gold);
+      outline-offset: 2px;
+    }
+    .legal-emphasized {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text-heading);
+    }
+    .legal-aside {
+      margin: 1.5rem 0;
+      padding: 1rem 1.2rem;
+      background: var(--bg-surface);
+      border-left: 3px solid var(--accent-ember);
+      border-radius: 3px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .legal-aside strong { color: var(--text-primary); }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <ul class="nav">
+        <li><a href="/" class="nav-link" style="--i:0;">Home</a></li>
+        <li><a href="/games/" class="nav-link" style="--i:1;">Games</a></li>
+        <li><span class="nav-link active" style="--i:2;">Legal</span></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="legal-main">
+    <p class="legal-eyebrow">Legal</p>
+    <h1 class="legal-title">Terms of Use</h1>
+    <p class="legal-meta">Last updated: May 12, 2026 · Operator: Chase House, United States</p>
+
+    <p>chases.house is a personal hobby website. By using it, you agree to these terms. They are written in plain English because this is a hobby site, not a SaaS contract.</p>
+
+    <h2>1. What you can use the site for</h2>
+    <p>You can browse the site and play any of the games for personal, non-commercial use. You do not need to register or pay. If you make something inspired by anything here — a fork of a game, a remix, a tribute — go for it; just don't claim you wrote my code.</p>
+
+    <h2>2. What you cannot use the site for</h2>
+    <ul>
+      <li>Anything illegal where you are or where I am (United States).</li>
+      <li>Harassing or abusing other players in Jeopardy multiplayer — including via display names, host-entered categories, or chat. I reserve the right to delete any room I see being used this way.</li>
+      <li>Entering personal information (real names, addresses, phone numbers, account credentials) into Jeopardy categories, clues, answers, or display names. There is no need to, and the data is being broadcast to other players in the room.</li>
+      <li>Scraping the site, fuzzing the Firebase endpoints, or attempting to reverse-engineer the security rules. The site is open source — the source code is right there on GitHub if you want it.</li>
+      <li>Republishing whole games or pages as your own work.</li>
+    </ul>
+
+    <h2>3. Open source / your right to copy the code</h2>
+    <p>The source code for chases.house is public on GitHub. The license applicable to the source code (see the repository's <code>LICENSE</code> file) governs what you can do with the code itself. These Terms of Use govern your use of the live, hosted site at chases.house.</p>
+
+    <h2>4. Trademarks and third-party rights</h2>
+    <p>Some game names on the site refer to classic public-domain game mechanics that share names with branded commercial products. I am not affiliated with, endorsed by, or sponsored by the owners of those products. Specifically:</p>
+    <ul>
+      <li><em>Connect Four</em> — the mechanic of connecting four pieces in a row is unprotectable; &ldquo;Connect 4®&rdquo; is a registered trademark of Hasbro Inc.</li>
+      <li><em>Castle Tower Defense</em> — &ldquo;Tower defense&rdquo; is a generic game genre; this implementation is original.</li>
+    </ul>
+    <p>If you are a rights holder and believe any content on this site infringes a trademark or copyright you own, email <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a> with the details and I will respond.</p>
+
+    <h2>5. Jeopardy host-entered content</h2>
+    <p>Jeopardy multiplayer allows the host to type in categories, clues, and answers. That content is created and entered by the host, not by me, and is visible to every player in the room. I have no editorial review of what hosts enter and no automated content moderation. By acting as a host you confirm you have the right to use the content you enter and that the content does not infringe anyone else's rights. By playing as a player you accept that you may see content the host typed in. Rooms are auto-deleted within 24 hours.</p>
+
+    <div class="legal-aside">
+      <strong>If you are a rights holder</strong> and you believe content has been entered into a Jeopardy room that infringes your work, email <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a>. Because rooms are auto-deleted within 24 hours, takedowns are usually moot before they can be processed, but I will respond.
+    </div>
+
+    <h2>6. No warranties</h2>
+    <p class="legal-emphasized">The site is provided &ldquo;as is&rdquo; and &ldquo;as available,&rdquo; without warranty of any kind, express or implied, including without limitation warranties of merchantability, fitness for a particular purpose, non-infringement, and freedom from defects or interruptions.</p>
+    <p>The site is a hobby project. It can go down at any time. Games can have bugs. Firebase can have outages. Your puzzle progress can disappear if your browser clears storage. None of this is going to be fixed under an SLA because there is no SLA.</p>
+
+    <h2>7. Limitation of liability</h2>
+    <p class="legal-emphasized">To the maximum extent permitted by law, the operator of chases.house shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or in connection with your use of the site, including without limitation lost data, lost game progress, lost time, or harm to your computing equipment.</p>
+    <p>If, despite the above, the operator is found liable, total aggregate liability for any claim arising out of or in connection with these terms or the site is limited to one hundred U.S. dollars (USD 100.00). This limitation reflects the non-commercial nature of the site.</p>
+
+    <h2>8. Indemnification (mostly Jeopardy hosts)</h2>
+    <p>If you act as a Jeopardy host and the content you enter into a Jeopardy room results in a claim against me by a third party — for example, a copyright complaint about clues you typed in, or a defamation claim about categories you wrote — you agree to indemnify and hold harmless the operator for the reasonable costs of responding to that claim. This is the only part of these terms that approaches lawyer-speak; it exists because I cannot edit what you type in real time.</p>
+
+    <h2>9. Changes to the site or these terms</h2>
+    <p>I may add, remove, or change games and content at any time, including for legal reasons. If I update these terms, I will update the &ldquo;Last updated&rdquo; date. Material changes will be noted in the site's commit history on GitHub.</p>
+
+    <h2>10. Governing law and venue</h2>
+    <p>These terms are governed by the laws of the State of [<em>Wisconsin — update to your home state</em>], United States, without regard to its conflict-of-laws rules. Any dispute arising out of or in connection with these terms or the site must be brought exclusively in the state or federal courts located in [<em>your county and state</em>], and you consent to personal jurisdiction there. If you access the site from outside the United States, you do so on your own initiative.</p>
+
+    <h2>11. Contact</h2>
+    <p>Questions about these terms: <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>chases.house · <a href="/legal/privacy.html" style="color:inherit;">Privacy</a> · <a href="/legal/terms.html" style="color:inherit;">Terms</a> · <a href="/legal/accessibility.html" style="color:inherit;">Accessibility</a></p>
+  </footer>
+</body>
+</html>

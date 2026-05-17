@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accessibility · Chase's House</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .legal-main {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 5vw, 2.5rem);
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 200ms;
+    }
+    .legal-eyebrow {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent-ember);
+      margin-bottom: 1rem;
+    }
+    .legal-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 40;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      letter-spacing: -0.01em;
+      line-height: 1.05;
+      margin-bottom: 0.6rem;
+    }
+    .legal-meta {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--bg-elevated);
+    }
+    .legal-main h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 32, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-top: 2.5rem;
+      margin-bottom: 0.8rem;
+    }
+    .legal-main h3 {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--accent-glow);
+      margin-top: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    .legal-main p,
+    .legal-main li {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+    .legal-main ul {
+      padding-left: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .legal-main li { margin-bottom: 0.4rem; }
+    .legal-main a {
+      color: var(--accent-glow);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-ember);
+      transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .legal-main a:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+    .legal-main a:focus-visible {
+      outline: 2px solid var(--accent-gold);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <ul class="nav">
+        <li><a href="/" class="nav-link" style="--i:0;">Home</a></li>
+        <li><a href="/games/" class="nav-link" style="--i:1;">Games</a></li>
+        <li><span class="nav-link active" style="--i:2;">Legal</span></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="legal-main">
+    <p class="legal-eyebrow">Legal</p>
+    <h1 class="legal-title">Accessibility</h1>
+    <p class="legal-meta">Last updated: May 12, 2026 · Standard targeted: WCAG 2.1 Level AA</p>
+
+    <h2>Commitment</h2>
+    <p>chases.house is a personal hobby site. I want it to be enjoyable to use for everyone, including people who use assistive technology, keyboard-only navigation, screen readers, or who have low vision, color-vision differences, or motion sensitivity. I aim for the site to meet <a href="https://www.w3.org/WAI/WCAG21/quickref/" target="_blank" rel="noopener">Web Content Accessibility Guidelines 2.1 at Level AA</a>.</p>
+
+    <h2>What is in place</h2>
+    <ul>
+      <li>Primary text on the dark background passes WCAG 2.1 AAA contrast ratios.</li>
+      <li>The site respects the <em>prefers-reduced-motion</em> setting in your operating system — animations are dropped to near-zero duration if you have requested reduced motion.</li>
+      <li>All site fonts are self-hosted; no third-party font CDNs.</li>
+      <li>The site renders without JavaScript for everything except the interactive games themselves.</li>
+      <li>Keyboard navigation is supported for navigation, links, and most turn-based games (Chess, Sudoku, Crossword, Connect Four, Tic-Tac-Toe, Checkers, Yahtzee).</li>
+    </ul>
+
+    <h2>Known gaps</h2>
+    <p>I am candid about what does not yet meet AA, in priority order:</p>
+    <ul>
+      <li><strong>Canvas-rendered games.</strong> Snake, Pac-Man, and Castle Tower Defense are drawn to an HTML canvas without programmatic state for screen readers. Right now they are not usable with a screen reader. Improving this is on the roadmap.</li>
+      <li><strong>Buzzer audio cues in Jeopardy.</strong> The game uses sound to signal buzzer events. A visual (pulse / flash) alternative is in progress.</li>
+      <li><strong>Focus indicators.</strong> Some game cells and buttons rely on the browser default focus ring. Higher-contrast, consistent focus styles are in progress.</li>
+      <li><strong>Faint text.</strong> A few labels use a low-contrast &ldquo;faint&rdquo; color that passes AA only at large sizes. I am working through and replacing these where the size is small.</li>
+    </ul>
+
+    <h2>Assistive technology tested</h2>
+    <p>The site has had informal testing with: NVDA on Firefox, VoiceOver on Safari (macOS and iOS), keyboard-only navigation, and the macOS Increase Contrast preference. It has not been tested with JAWS, Dragon, or every Android screen reader combination.</p>
+
+    <h2>Telling me when something breaks</h2>
+    <p>If you find an accessibility problem on the site — anything that makes it hard or impossible to use — please tell me. Even small reports help.</p>
+    <ul>
+      <li>Email: <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a> with the subject line &ldquo;Accessibility&rdquo;</li>
+      <li>If you can, include: the page or game, the browser and operating system, the assistive technology you were using, and what went wrong.</li>
+    </ul>
+    <p>I will reply within a reasonable time and, where I can, fix the problem in the public commit history. If it is something I cannot fix quickly, I will tell you that too, so you are not left waiting.</p>
+
+    <h2>Formal review</h2>
+    <p>This site is not a commercial enterprise and is not a place of public accommodation under ADA Title III; I do not currently engage formal third-party WCAG auditors. That said, I treat reports the same way I would treat a commercial site's reports — they matter.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>chases.house · <a href="/legal/privacy.html" style="color:inherit;">Privacy</a> · <a href="/legal/terms.html" style="color:inherit;">Terms</a> · <a href="/legal/accessibility.html" style="color:inherit;">Accessibility</a></p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy · Chase's House</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .legal-main {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: clamp(2rem, 5vw, 4rem) clamp(1.5rem, 5vw, 2.5rem);
+      animation: fadeSlideUp 600ms ease-out backwards;
+      animation-delay: 200ms;
+    }
+    .legal-eyebrow {
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent-ember);
+      margin-bottom: 1rem;
+    }
+    .legal-title {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 96, 'WONK' 1, 'SOFT' 40;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      color: var(--text-heading);
+      letter-spacing: -0.01em;
+      line-height: 1.05;
+      margin-bottom: 0.6rem;
+    }
+    .legal-meta {
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--bg-elevated);
+    }
+    .legal-main h2 {
+      font-family: var(--font-display);
+      font-variation-settings: 'opsz' 32, 'WONK' 1, 'SOFT' 40;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-top: 2.5rem;
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.005em;
+    }
+    .legal-main h3 {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--accent-glow);
+      margin-top: 1.8rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.01em;
+    }
+    .legal-main p,
+    .legal-main li {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+    .legal-main ul,
+    .legal-main ol {
+      padding-left: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .legal-main li { margin-bottom: 0.4rem; }
+    .legal-main a {
+      color: var(--accent-glow);
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent-ember);
+      transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .legal-main a:hover {
+      color: var(--accent-gold);
+      border-color: var(--accent-gold);
+    }
+    .legal-main a:focus-visible {
+      outline: 2px solid var(--accent-gold);
+      outline-offset: 2px;
+    }
+    .legal-aside {
+      margin: 1.5rem 0;
+      padding: 1rem 1.2rem;
+      background: var(--bg-surface);
+      border-left: 3px solid var(--accent-ember);
+      border-radius: 3px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .legal-aside strong { color: var(--text-primary); }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <ul class="nav">
+        <li><a href="/" class="nav-link" style="--i:0;">Home</a></li>
+        <li><a href="/games/" class="nav-link" style="--i:1;">Games</a></li>
+        <li><span class="nav-link active" style="--i:2;">Legal</span></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="legal-main">
+    <p class="legal-eyebrow">Legal</p>
+    <h1 class="legal-title">Privacy Policy</h1>
+    <p class="legal-meta">Last updated: May 12, 2026 · Operator: Chase House, United States</p>
+
+    <p>chases.house is a personal website. It exists for fun, not for business. This Privacy Policy describes the (small amount of) personal information the site touches, what happens to it, and what you can ask me to do with it.</p>
+
+    <h2>1. Who runs this site</h2>
+    <p>chases.house is operated by Chase House, an individual based in the United States. You can reach me at <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a>. There is no company, no team, and no investor sitting behind this site.</p>
+
+    <h2>2. What the site does not do</h2>
+    <ul>
+      <li>No account system. You do not sign up. You do not log in.</li>
+      <li>No payments. Nothing is for sale.</li>
+      <li>No advertising. No ad networks, no retargeting pixels, no marketing tools.</li>
+      <li>No analytics. No Google Analytics, no Plausible, no Cloudflare Web Analytics, no anything.</li>
+      <li>No newsletters or marketing emails.</li>
+    </ul>
+
+    <h2>3. What the site does collect</h2>
+
+    <h3>Static pages (everything except Jeopardy)</h3>
+    <p>The home page, the games gallery, and every game except Jeopardy run entirely in your browser. The site does not collect any information from you. GitHub Pages, which hosts the site, may log your IP address and request metadata as part of normal web hosting; those logs are governed by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy practices</a>.</p>
+
+    <h3>Jeopardy multiplayer (games/jeopardy/)</h3>
+    <p>Jeopardy is the only multiplayer game on the site. To make multiplayer work, it uses Firebase Realtime Database (a Google product) as a temporary shared whiteboard. When you join a room, the following is stored in Firebase for the duration of the game:</p>
+    <ul>
+      <li>The display name you type in (e.g., &ldquo;Pat&rdquo;). Use any name you like — there is no requirement that it be real, and I would prefer you not use your full name.</li>
+      <li>A 4-letter room code (e.g., &ldquo;BRZK&rdquo;) and an 8-character claim token for your spot in the room. Both are random.</li>
+      <li>Game state: your score, what you buzz on, what you wager, who answers what.</li>
+      <li>Whatever the host typed in for categories, clues, and answers. Please do not enter personal information in clues — there is no need.</li>
+    </ul>
+    <p>Firebase (Google) separately logs your IP address as part of normal request handling. I do not access, view, or use those logs. Their handling is governed by <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's privacy policy</a>.</p>
+
+    <div class="legal-aside">
+      <strong>Retention.</strong> Rooms are automatically deleted within 24 hours of creation. After deletion, the data is gone — I cannot retrieve it for you and neither can anyone else.
+    </div>
+
+    <h2>4. Cookies and browser storage</h2>
+    <p>The site does not set any analytics cookies. The only storage that happens in your browser is:</p>
+    <ul>
+      <li><strong>Firebase auth state</strong> (Jeopardy only): kept in IndexedDB for the duration of the game so the page can re-authenticate you if you refresh. Cleared when you close the tab.</li>
+      <li><strong>Local game state</strong> (selected games): your in-progress puzzle, current chess position, or similar, kept in localStorage so you can resume. Never leaves your device.</li>
+    </ul>
+    <p>None of this is used for tracking, profiling, advertising, or any third-party purpose. All of it falls within what the EU ePrivacy Directive treats as &ldquo;strictly necessary&rdquo; storage for the services you asked for, so the site does not show a cookie banner.</p>
+
+    <h2>5. Third parties</h2>
+    <ul>
+      <li><strong>GitHub Pages</strong> serves the site. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub privacy statement</a>.</li>
+      <li><strong>Firebase / Google Cloud</strong> hosts the Jeopardy multiplayer database. <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase privacy</a> · <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google privacy</a>.</li>
+      <li>Site fonts are self-hosted from chases.house — they do not call out to Google Fonts or any other CDN.</li>
+    </ul>
+
+    <h2>6. Children under 13</h2>
+    <p>This site is a general-audience hobby site. It is not directed to children under 13, and I do not knowingly collect personal information from children under 13. If you are a parent and you believe your child under 13 has provided personal information through this site (most likely by typing a name into Jeopardy), email me at <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a> and I will delete it. Rooms are auto-deleted within 24 hours anyway, so the easiest fix is to wait.</p>
+
+    <h2>7. Your choices</h2>
+    <p>While a Jeopardy room is still live (under 24 hours old), you can ask me to delete it by emailing the room code to <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a>. I will delete it within 7 days, usually faster. After 24 hours there is nothing to delete because everything is gone.</p>
+    <p>If you are based in California, the EU, the UK, or anywhere else with a personal-data law, you have the rights granted by that law (access, deletion, correction, objection, portability). I will honor any reasonable request to the extent the site holds data about you — which, given the above, is at most a 24-hour window for an active Jeopardy room.</p>
+
+    <h2>8. Where the site is operated</h2>
+    <p>chases.house is operated from the United States. If you access it from elsewhere in the world, you are doing so on your own initiative and your information may be processed in the United States. The site is not targeted at users in the European Union, the United Kingdom, or any other specific region.</p>
+
+    <h2>9. Changes</h2>
+    <p>If I change this policy, I will update the &ldquo;Last updated&rdquo; date at the top. Material changes will also be noted in the site's commit history on GitHub.</p>
+
+    <h2>10. Contact</h2>
+    <p>Privacy questions: <a href="mailto:chasej.house@gmail.com">chasej.house@gmail.com</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p>chases.house · <a href="/legal/privacy.html" style="color:inherit;">Privacy</a> · <a href="/legal/terms.html" style="color:inherit;">Terms</a> · <a href="/legal/accessibility.html" style="color:inherit;">Accessibility</a></p>
+  </footer>
+</body>
+</html>
