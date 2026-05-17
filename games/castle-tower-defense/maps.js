@@ -268,11 +268,124 @@
     ]
   });
 
+  // ─── MAP 5 — Snowfall Pass (ADR-030 §16, Phase 5) ────────────
+  // Theme: 'mountain'; runtime substitutes snow_tile_* by map.id (review-#1
+  // C-3). Unlock at 14★ — effectively post-Mountain (review-#2 MIN-1).
+  // No captain in waves (Mountain owns the captain).
+  registerMap({
+    map: {
+      id: 'snowfall_pass',
+      displayName: 'Snowfall Pass',
+      roman: 'Field the Fifth',
+      chip: 'Frozen',
+      chipKind: '',
+      description: 'A high col between the peaks. The crystals remember every step.',
+      thumbIcon: 'map_mountain',
+      unlockRequirement: 14,
+      theme: 'mountain',
+      castle: { x: 12, y: 0, z: 1 },
+      path: [
+        { x: -13, z: 0 }, { x: -9, z: 0 },
+        { x: -9, z: 4 },  { x: -4, z: 4 },
+        { x: -4, z: -2 }, { x: 3, z: -2 },
+        { x: 3, z: 3 },   { x: 8, z: 3 },
+        { x: 8, z: 1 },   { x: 12, z: 1 }
+      ],
+      buildSlots: [
+        { id: 's1', x: -11, z: 2 },
+        { id: 's2', x: -7,  z: 2 },
+        { id: 's3', x: -6,  z: -3 },
+        { id: 's4', x: 0,   z: 1 },
+        { id: 's5', x: 5,   z: 1 },
+        { id: 's6', x: 10,  z: 3 }
+      ],
+      waves: [
+        wave([ g('footman', 10, 550, 0) ], 22),
+        wave([ g('runner', 6, 600, 0), g('footman', 4, 500, 4000) ], 26),
+        wave([ g('skirmisher', 5, 850, 0), g('shielded', 2, 1500, 5000) ], 30),
+        wave([ g('heavy', 4, 1200, 0), g('skirmisher', 4, 850, 5500) ], 34),
+        wave([ g('shielded', 5, 1000, 0), g('runner', 6, 600, 6000) ], 38),
+        wave([ g('runner', 12, 400, 0), g('heavy', 3, 1700, 7000) ], 44),
+        wave([ g('skirmisher', 10, 600, 0), g('shielded', 4, 1100, 7000) ], 52),
+        wave([ g('heavy', 5, 1300, 0), g('shielded', 5, 1100, 6000),
+               g('skirmisher', 8, 700, 14000), g('runner', 8, 500, 18000) ], 120)
+      ]
+    },
+    decorations: [
+      { type: 'detail_crystal',                   x: -11.2, z: 6.4 },
+      { type: 'detail_crystal',  size: 'large',   x: -7,    z: -4 },
+      { type: 'detail_rocks_large',               x: -12,   z: -3.2 },
+      { type: 'detail_rocks_large',               x: -2,    z: 4.5 },
+      { type: 'detail_crystal',                   x: -3,    z: 6.2 },
+      { type: 'detail_rocks_large',               x: 1.4,   z: -5.5 },
+      { type: 'detail_crystal',  size: 'large',   x: 6.8,   z: 5.4 },
+      { type: 'detail_rocks_large',               x: 4.2,   z: 5.6 },
+      { type: 'detail_crystal',                   x: 10.5,  z: -3.4 },
+      { type: 'detail_rocks_large',               x: 11.2,  z: -4 }
+    ]
+  });
+
+  // ─── MAP 6 — Riverbend (ADR-030 §16, Phase 5) ────────────────
+  // Theme: 'forest'. Unlock at 13★ — mid-late game. River decorations
+  // (tile_river_*) sit along path edges; one bridge at a path crossing.
+  // Wave composition leans runner + skirmisher for a mobility test.
+  registerMap({
+    map: {
+      id: 'riverbend',
+      displayName: 'Riverbend',
+      roman: 'Field the Sixth',
+      chip: 'River Pass',
+      chipKind: '',
+      description: 'The river curls slow. A footbridge keeps the keep dry — for now.',
+      thumbIcon: 'map_forest',
+      unlockRequirement: 13,
+      theme: 'forest',
+      castle: { x: 12, y: 0, z: -2 },
+      path: [
+        { x: -13, z: 3 }, { x: -5, z: 3 },
+        { x: -5, z: -2 }, { x: 2, z: -2 },
+        { x: 2, z: 1 },   { x: 8, z: 1 },
+        { x: 8, z: -2 },  { x: 12, z: -2 }
+      ],
+      buildSlots: [
+        { id: 's1', x: -9, z: 5 },
+        { id: 's2', x: -3, z: 0 },
+        { id: 's3', x: 4,  z: -4 },
+        { id: 's4', x: 5,  z: 3 },
+        { id: 's5', x: 10, z: 1 },
+        { id: 's6', x: -4, z: 5 }
+      ],
+      waves: [
+        wave([ g('footman', 8, 550, 0) ], 20),
+        wave([ g('runner', 6, 550, 0), g('footman', 4, 500, 4500) ], 24),
+        wave([ g('skirmisher', 5, 750, 0), g('runner', 5, 600, 5000) ], 28),
+        wave([ g('runner', 10, 450, 0), g('shielded', 3, 1300, 5500) ], 32),
+        wave([ g('skirmisher', 8, 650, 0), g('heavy', 2, 1700, 6500) ], 36),
+        wave([ g('runner', 14, 380, 0), g('skirmisher', 4, 750, 7500) ], 42),
+        wave([ g('shielded', 6, 950, 0), g('runner', 10, 450, 7000) ], 50),
+        wave([ g('runner', 16, 400, 0), g('skirmisher', 8, 600, 8000),
+               g('shielded', 4, 1200, 14000), g('heavy', 3, 1500, 18000) ], 110)
+      ]
+    },
+    decorations: [
+      { type: 'detail_tree',         x: -11,   z: 5.4 },
+      { type: 'detail_tree_large',   x: -7.5,  z: 5.6 },
+      { type: 'tile_river_straight', x: -12.5, z: -1, rotation: 1.57 },
+      { type: 'tile_river_straight', x: -10.5, z: -1, rotation: 1.57 },
+      { type: 'detail_tree',         x: -2.5,  z: -5 },
+      { type: 'tile_river_bridge',   x: 0,     z: 0,  rotation: 1.57 },
+      { type: 'detail_tree_large',   x: 0,     z: 5 },
+      { type: 'detail_tree',         x: 5.5,   z: -5 },
+      { type: 'tile_river_corner',   x: 11,    z: 4 },
+      { type: 'detail_tree_large',   x: 9.5,   z: 4 },
+      { type: 'detail_tree',         x: 11,    z: -5 }
+    ]
+  });
+
   function byId(id) { return MAPS.find(m => m.id === id) || null; }
 
-  // ADR-028 §3: 2 difficulties; ADR-030 §17: 6 maps planned (4 now + 2 in
-  // Phase 5). maxStars stays a function of MAPS.length, so it updates as
-  // maps are appended.
+  // ADR-028 §3: 2 difficulties; ADR-030 §17: 6 maps total (4 originals +
+  // Snowfall Pass + Riverbend). maxStars stays a function of MAPS.length.
   function maxStars() { return MAPS.length * 3 * 2; }
 
   window.CTD3Maps = { MAPS, byId, maxStars };
