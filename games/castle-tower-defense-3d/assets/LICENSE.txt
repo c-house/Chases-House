@@ -1,0 +1,59 @@
+Castle Tower Defense 3D — third-party asset licenses
+======================================================
+
+All assets in this directory are Creative Commons Zero (CC0).
+No attribution is required, but credits are listed below as
+good practice.
+
+----------------------------------------------------------------------
+MODELS — Kenney "Tower Defense Kit" 2.1
+----------------------------------------------------------------------
+  Source:  https://kenney.nl/assets/tower-defense-kit
+  Author:  Kenney (www.kenney.nl)
+  License: CC0 1.0 Universal (Public Domain Dedication)
+           http://creativecommons.org/publicdomain/zero/1.0/
+
+  Per-file mapping (target filename → original from kit):
+
+  Towers (12 — 4 archetypes × 3 tiers):
+    tower_ranger_t1.glb    → tower-round-build-a.glb
+    tower_ranger_t2.glb    → tower-round-build-b.glb
+    tower_ranger_t3.glb    → tower-round-build-c.glb
+    tower_catapult_t1.glb  → tower-square-build-a.glb
+    tower_catapult_t2.glb  → tower-square-build-b.glb
+    tower_catapult_t3.glb  → tower-square-build-c.glb
+    tower_mage_t1.glb      → tower-round-build-d.glb
+    tower_mage_t2.glb      → tower-round-build-e.glb
+    tower_mage_t3.glb      → tower-round-build-f.glb
+    tower_warden_t1.glb    → tower-square-build-d.glb
+    tower_warden_t2.glb    → tower-square-build-e.glb
+    tower_warden_t3.glb    → tower-square-build-f.glb
+
+  Enemies (6):
+    enemy_footman.glb      → enemy-ufo-a.glb
+    enemy_heavy.glb        → enemy-ufo-b.glb
+    enemy_runner.glb       → enemy-ufo-c.glb
+    enemy_shielded.glb     → enemy-ufo-b-weapon.glb
+    enemy_skirmisher.glb   → enemy-ufo-a-weapon.glb
+    enemy_captain.glb      → enemy-ufo-d.glb
+
+  Castle (1):
+    castle.glb             → wood-structure-high.glb
+
+----------------------------------------------------------------------
+AUDIO — pending Phase 1.7 audition
+----------------------------------------------------------------------
+  Sources will be one or more of:
+    - Kenney audio packs (RPG Audio, UI Audio, Impact Sounds, Music Jingles) — CC0
+    - OpenGameArt.org (CC0 filtered)
+    - Freesound.org (CC0 filtered)
+    - Pixabay Music (per-track CC0 verification)
+
+  Filter criteria documented in docs/adr/028-castle-tower-defense-3d.md §11.
+  Per-file source mapping to be added here as audio lands.
+
+----------------------------------------------------------------------
+ICONS (12, PNG, 64×64) — generated from this kit's tower meshes
+----------------------------------------------------------------------
+  Baked via tools/bake-icons.html from the tower_*_t* GLBs above.
+  Derivative of CC0 source; ships under CC0.

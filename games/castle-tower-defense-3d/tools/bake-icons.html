@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CTD3 — Bake Tower Icons</title>
+  <!--
+    ADR-028 §10 + Phase 2.4: one-shot dev tool to bake 64x64 PNG
+    thumbnails of each tower mesh × tier. Run locally (python -m http.server),
+    open this page, click each "Bake" button, drop the downloaded PNGs into
+    /assets/icons/.
+    NOT loaded by the game — pure asset-prep workflow.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    body { font-family: ui-monospace, monospace; background: #1a1410; color: #e8d5a8; padding: 1.5rem; }
+    h1 { color: #c8943e; font-family: serif; }
+    .row { display: grid; grid-template-columns: 180px 120px 1fr; gap: 1rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #4a3f30; }
+    canvas { background: rgba(255,255,255,0.04); border: 1px solid #4a3f30; image-rendering: pixelated; }
+    button { background: #c8943e; color: #1a1410; border: none; padding: 0.4rem 0.8rem; font: inherit; cursor: pointer; border-radius: 3px; }
+    button:hover { background: #a06828; color: #e8d5a8; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .status { color: #4a3f30; font-size: 0.8rem; margin-left: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Castle Tower Defense 3D — Icon Baker</h1>
+  <p>Loads each tower mesh from <code>../assets/models/</code>, renders to a 64×64 canvas at the
+  in-game camera angle, downloads as <code>&lt;type&gt;_t&lt;n&gt;.png</code>. Move those into
+  <code>../assets/icons/</code>.</p>
+  <p>Mesh ID convention: <code>tower_&lt;type&gt;_t&lt;n&gt;.glb</code> (matches assets/MANIFEST.json).</p>
+  <div id="rows"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+    const TOWERS = ['ranger', 'catapult', 'mage', 'warden'];
+    const TIERS = [1, 2, 3];
+    const SIZE = 64;
+
+    const loader = new GLTFLoader();
+
+    function makeRow(type, tier) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const label = document.createElement('div');
+      label.textContent = `${type}_t${tier}`;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = SIZE;
+      const ctrl = document.createElement('div');
+      const btn = document.createElement('button');
+      btn.textContent = 'Bake';
+      const status = document.createElement('span');
+      status.className = 'status';
+      status.textContent = 'idle';
+      ctrl.appendChild(btn);
+      ctrl.appendChild(status);
+      row.appendChild(label);
+      row.appendChild(canvas);
+      row.appendChild(ctrl);
+
+      btn.onclick = async () => {
+        status.textContent = 'loading…';
+        btn.disabled = true;
+        try {
+          const path = `../assets/models/tower_${type}_t${tier}.glb`;
+          const gltf = await loader.loadAsync(path);
+          render(gltf.scene, canvas);
+          await download(canvas, `${type}_t${tier}.png`);
+          status.textContent = 'done';
+        } catch (err) {
+          console.warn(err);
+          status.textContent = 'error: ' + (err.message || err);
+        } finally {
+          btn.disabled = false;
+        }
+      };
+      return row;
+    }
+
+    function render(group, canvas) {
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setSize(SIZE, SIZE, false);
+      const scene = new THREE.Scene();
+      scene.add(group);
+
+      // Frame the mesh
+      const box = new THREE.Box3().setFromObject(group);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      group.position.sub(center);
+
+      const cam = new THREE.OrthographicCamera();
+      const maxDim = Math.max(size.x, size.y, size.z, 1);
+      const half = maxDim * 0.85;
+      cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
+      cam.near = 0.1; cam.far = 100;
+      const elev = THREE.MathUtils.degToRad(30);
+      const yaw  = THREE.MathUtils.degToRad(45);
+      const dist = maxDim * 3;
+      const horiz = Math.cos(elev) * dist;
+      cam.position.set(Math.sin(yaw) * horiz, Math.sin(elev) * dist, Math.cos(yaw) * horiz);
+      cam.lookAt(0, 0, 0);
+      cam.updateProjectionMatrix();
+
+      const dir = new THREE.DirectionalLight(0xffe6b3, 1.2);
+      dir.position.set(2, 5, 3);
+      scene.add(dir);
+      scene.add(new THREE.HemisphereLight(0xb0d4f1, 0x9d7f5a, 0.6));
+
+      renderer.render(scene, cam);
+      renderer.dispose();
+    }
+
+    function download(canvas, filename) {
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          resolve();
+        }, 'image/png');
+      });
+    }
+
+    const container = document.getElementById('rows');
+    for (const type of TOWERS) for (const tier of TIERS) {
+      container.appendChild(makeRow(type, tier));
+    }
+  </script>
+</body>
+</html>

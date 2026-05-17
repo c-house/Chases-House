@@ -1,0 +1,23 @@
+[
+  { "id": "tower_ranger_t1",   "role": "tower", "kind": "mesh", "path": "models/tower_ranger_t1.glb",   "variantTag": "wood" },
+  { "id": "tower_ranger_t2",   "role": "tower", "kind": "mesh", "path": "models/tower_ranger_t2.glb",   "variantTag": "stone" },
+  { "id": "tower_ranger_t3",   "role": "tower", "kind": "mesh", "path": "models/tower_ranger_t3.glb",   "variantTag": "stone-detail" },
+  { "id": "tower_catapult_t1", "role": "tower", "kind": "mesh", "path": "models/tower_catapult_t1.glb", "variantTag": "wood" },
+  { "id": "tower_catapult_t2", "role": "tower", "kind": "mesh", "path": "models/tower_catapult_t2.glb", "variantTag": "stone" },
+  { "id": "tower_catapult_t3", "role": "tower", "kind": "mesh", "path": "models/tower_catapult_t3.glb", "variantTag": "stone-detail" },
+  { "id": "tower_mage_t1",     "role": "tower", "kind": "mesh", "path": "models/tower_mage_t1.glb",     "variantTag": "wood" },
+  { "id": "tower_mage_t2",     "role": "tower", "kind": "mesh", "path": "models/tower_mage_t2.glb",     "variantTag": "stone" },
+  { "id": "tower_mage_t3",     "role": "tower", "kind": "mesh", "path": "models/tower_mage_t3.glb",     "variantTag": "stone-detail" },
+  { "id": "tower_warden_t1",   "role": "tower", "kind": "mesh", "path": "models/tower_warden_t1.glb",   "variantTag": "wood" },
+  { "id": "tower_warden_t2",   "role": "tower", "kind": "mesh", "path": "models/tower_warden_t2.glb",   "variantTag": "stone" },
+  { "id": "tower_warden_t3",   "role": "tower", "kind": "mesh", "path": "models/tower_warden_t3.glb",   "variantTag": "stone-detail" },
+
+  { "id": "enemy_footman",    "role": "enemy", "kind": "mesh", "path": "models/enemy_footman.glb" },
+  { "id": "enemy_heavy",      "role": "enemy", "kind": "mesh", "path": "models/enemy_heavy.glb" },
+  { "id": "enemy_runner",     "role": "enemy", "kind": "mesh", "path": "models/enemy_runner.glb" },
+  { "id": "enemy_shielded",   "role": "enemy", "kind": "mesh", "path": "models/enemy_shielded.glb" },
+  { "id": "enemy_skirmisher", "role": "enemy", "kind": "mesh", "path": "models/enemy_skirmisher.glb" },
+  { "id": "enemy_captain",    "role": "enemy", "kind": "mesh", "path": "models/enemy_captain.glb" },
+
+  { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" }
+]
