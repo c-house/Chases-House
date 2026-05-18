@@ -1496,6 +1496,13 @@
 (function () {
   'use strict';
 
+  const THEME_BG = {
+    plains:        0x6a8447,
+    forest:        0x5a6a3a,
+    mountain:      0x6a7a4a,
+    snowfall_pass: 0xb8c8d8
+  };
+
   let three = null;       // loaded lazily on first expand
   let GLTFLoader = null;
   let scene = null;
@@ -1599,6 +1606,10 @@
     if (!pane || !pane.classList.contains('open')) return;
     if (!three) return; // preview not yet loaded
     if (!initialized) ensureScene();
+
+    // T25: tint scene background by theme.
+    const theme = (state.meta && state.meta.theme) || 'plains';
+    scene.background = new three.Color(THEME_BG[theme] != null ? THEME_BG[theme] : THEME_BG.plains);
 
     // Bounds
     const path = state.path || [];
