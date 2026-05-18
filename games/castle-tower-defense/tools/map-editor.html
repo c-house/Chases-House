@@ -20,6 +20,8 @@
                  "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/" } }
   </script>
   <script src="../tile-grid.js"></script>
+  <script src="../wfc.js"></script>
+  <script src="../wfc-rules.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..600&display=swap" rel="stylesheet">
@@ -448,6 +450,20 @@
     <label>Unlock requirement <span class="hint">(stars)</span></label>
     <input data-bind="unlockRequirement" value="0" type="number">
     <hr>
+    <h2>Procedural fill (WFC)</h2>
+    <p class="help">Wave-Function Collapse populates the non-path field with kit terrain variants (bumps, trees, rocks). Hand-authored decorations always render on top — WFC fills <em>around</em> them.</p>
+    <label>WFC mode</label>
+    <select data-bind="wfcMode">
+      <option value="off">off — uniform ground (legacy)</option>
+      <option value="augment" selected>augment — WFC fills field around hand-authored</option>
+      <option value="fill">fill — WFC drives everything</option>
+    </select>
+    <label>Seed <span class="hint">(blank → hash of map id)</span></label>
+    <div class="row">
+      <input data-bind="wfcSeed" placeholder="auto from map id" type="number" style="flex:2;">
+      <button class="tool" data-action="wfc-reroll" title="Generate a fresh random seed and re-roll WFC" style="flex:1;">Re-roll</button>
+    </div>
+    <hr>
     <h2>Waves <span class="tag">passthrough</span></h2>
     <p class="help">Wave editing is not in scope for v1. Paste a <code>waves</code> JSON array below or leave the default. The export will use this array verbatim.</p>
     <textarea data-bind="wavesJson" style="min-height:140px;">[
@@ -567,7 +583,9 @@
       description: 'A road through new country.',
       thumbIcon: 'map_plains',
       unlockRequirement: 0,
-      theme: 'plains'
+      theme: 'plains',
+      wfcMode: 'augment',              // ADR-031 §3 Phase 6
+      wfcSeed: ''                      // string for the textbox; numeric in export
     },
     wavesJson: '',
     drag: null,
@@ -926,6 +944,14 @@
       if (pane.classList.contains('open') && typeof window.__cartographerPreviewExpand === 'function') {
         window.__cartographerPreviewExpand();
       }
+    } else if (name === 'wfc-reroll') {
+      // Generate a fresh random seed and write it into the seed textbox.
+      // Triggers a refresh which the preview consumes.
+      const newSeed = ((Math.random() * 0xFFFFFFFF) >>> 0);
+      state.meta.wfcSeed = newSeed;
+      const input = document.querySelector('[data-bind="wfcSeed"]');
+      if (input) input.value = String(newSeed);
+      refresh();
     }
   }
 
@@ -962,7 +988,7 @@
     const m = state.meta;
     // Path / slots / castle: integer-snapped at edit time, but round once more
     // here for safety against any drift.
-    return {
+    const out = {
       id: m.id,
       displayName: m.displayName,
       roman: m.roman,
@@ -977,6 +1003,11 @@
       buildSlots: state.slots.map(s => ({ id: s.id, x: Math.round(s.x), z: Math.round(s.z) })),
       waves
     };
+    // WFC fields are OPTIONAL — only emit if non-default to keep map JSON clean.
+    if (m.wfcMode && m.wfcMode !== 'augment') out.wfcMode = m.wfcMode;
+    const seedNum = (m.wfcSeed === '' || m.wfcSeed == null) ? null : parseInt(m.wfcSeed, 10);
+    if (seedNum != null && !isNaN(seedNum)) out.wfcSeed = seedNum >>> 0;
+    return out;
   }
   function round1(v) { return Math.round(v * 10) / 10; }
 
@@ -1244,16 +1275,45 @@
       pill('', false);
     }
 
-    // Ground tiles — one cloned instance per cell (preview-scale; runtime
-    // uses an InstancedMesh).
-    const groundMesh = await loadMesh(groundId);
-    if (groundMesh) {
-      for (let cz = minZ; cz <= maxZ; cz++) {
-        for (let cx = minX; cx <= maxX; cx++) {
-          const node = groundMesh.clone(true);
-          node.position.set(cx, 0, cz);
-          groundGroup.add(node);
+    // Compute path cell set for WFC pre-seed (ADR-031 §3 Phase 6).
+    const pathCellSet = new Set();
+    if (tg.ok) {
+      for (const cell of tg.cells) pathCellSet.add(cell.x + ',' + cell.z);
+    }
+
+    // Ground tiles — WFC-driven variants OR uniform fallback per wfcMode.
+    const wfcMode = (state.meta && state.meta.wfcMode) || 'augment';
+    let groundCellMap = null;  // key → tileId
+    if (wfcMode !== 'off' && window.CTD3WFC && window.CTD3WFCRules) {
+      const rules = window.CTD3WFCRules.rulesForMap({ id: state.meta && state.meta.id });
+      const preSeed = new Map();
+      if (tg.ok) {
+        for (const cell of tg.cells) {
+          preSeed.set(cell.x + ',' + cell.z, pathPrefix + cell.tileType.replace('tile_path_', ''));
         }
+      }
+      const seedRaw = state.meta && state.meta.wfcSeed;
+      const seed = (typeof seedRaw === 'number' && !isNaN(seedRaw))
+        ? (seedRaw >>> 0)
+        : window.CTD3WFC.hashSeed((state.meta && state.meta.id) || 'new_map');
+      groundCellMap = window.CTD3WFC.generate({
+        bounds: { minX, maxX, minZ, maxZ },
+        palette: rules.palette,
+        adjacency: rules.adjacency,
+        preSeed, seed
+      });
+    }
+
+    for (let cz = minZ; cz <= maxZ; cz++) {
+      for (let cx = minX; cx <= maxX; cx++) {
+        const k = cx + ',' + cz;
+        if (pathCellSet.has(k)) continue;
+        const tileId = groundCellMap ? (groundCellMap.get(k) || groundId) : groundId;
+        const tileMesh = await loadMesh(tileId);
+        if (!tileMesh) continue;
+        const node = tileMesh.clone(true);
+        node.position.set(cx, 0, cz);
+        groundGroup.add(node);
       }
     }
 
