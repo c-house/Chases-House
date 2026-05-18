@@ -14,9 +14,13 @@
   const GRID_SIZE = 1;
 
   // Direction encoding: 'x+', 'x-', 'z+', 'z-'.
-  // The kit's tile-straight.glb faces along +x by default; tile-end-round.glb's
-  // open mouth faces +x by default. Rotations confirmed via ?test=tile-debug.
-  const DIR_ROTATION = { 'x+': 0, 'z+': Math.PI / 2, 'x-': Math.PI, 'z-': -Math.PI / 2 };
+  // Kit's convention (verified by vertex inspection): default orientation
+  // points along +Z. tile-straight.glb at rot 0 has its path band running
+  // x ∈ [-0.38, +0.38], z ∈ [-0.5, +0.5] (centered in X, full-length in Z).
+  // tile-end-round.glb at rot 0 has its mouth at the +z edge (band reaches
+  // z=+0.5; rounded back at z=-0.38). To make a tile "face" direction D,
+  // rotate by the angle that maps +z → D around the y-axis.
+  const DIR_ROTATION = { 'x+': Math.PI / 2, 'z+': 0, 'x-': -Math.PI / 2, 'z-': Math.PI };
 
   // Corner rotation table — derived empirically (ADR-030 §21 R1 visual gate).
   // Kit's tile-corner-round.glb at rotation 0 has its path band in the NE
@@ -110,7 +114,9 @@
         cell.rotation = DIR_ROTATION[opposite];
       } else if (prevDir === nextDir) {
         cell.tileType = 'tile_path_straight';
-        cell.rotation = (nextDir === 'x+' || nextDir === 'x-') ? 0 : Math.PI / 2;
+        // Kit-default straight runs along +Z. For x-axis travel, rotate by π/2
+        // so the band lies along the world X-axis. For z-axis travel, no rotation.
+        cell.rotation = (nextDir === 'x+' || nextDir === 'x-') ? Math.PI / 2 : 0;
       } else {
         cell.tileType = 'tile_path_corner_round';
         cell.rotation = CORNER_ROTATION[prevDir + '|' + nextDir] || 0;
