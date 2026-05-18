@@ -94,14 +94,28 @@ async function preload() {
     fireReady();
     return;
   }
-  // Critical-path: first 10 meshes (per ADR-028 §10). Then background-fetch the rest.
+  // Critical-path: explicit ID allowlist (towers + path + WFC palette + decorations).
+  // Then background-fetch the rest.
   const meshes = manifest.filter(m => m.kind === 'mesh');
-  const critical = meshes.slice(0, 10);
+  const CRITICAL_IDS = new Set([
+    'tower_ranger_t1', 'tower_ranger_t2', 'tower_ranger_t3',
+    'tower_catapult_t1', 'tower_catapult_t2', 'tower_catapult_t3',
+    'tower_mage_t1', 'tower_mage_t2', 'tower_mage_t3',
+    'tower_warden_t1', 'tower_warden_t2', 'tower_warden_t3',
+    'tile_path_straight', 'tile_path_corner_round',
+    'tile_path_end_round', 'tile_path_spawn_end_round',
+    'tile_ground', 'tile_hill', 'tile_rock', 'tile_tree',
+    'tile_tree_double', 'tile_tree_quad', 'tile_crystal',
+    'snow_tile_ground', 'snow_tile_hill', 'snow_tile_rock', 'snow_tile_tree',
+    'snow_tile_tree_double', 'snow_tile_tree_quad', 'snow_tile_crystal',
+    'detail_tree', 'detail_rocks', 'detail_crystal'
+  ]);
+  const critical = meshes.filter(m => CRITICAL_IDS.has(m.id));
   await Promise.all(critical.map(m => loadOne(m.id, m.path)));
   critReady = true;
   fireReady();
   // Background-fetch the rest (fire and forget).
-  meshes.slice(10).forEach(m => loadOne(m.id, m.path));
+  meshes.filter(m => !CRITICAL_IDS.has(m.id)).forEach(m => loadOne(m.id, m.path));
 }
 
 function getMesh(id) {

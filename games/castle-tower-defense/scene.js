@@ -280,6 +280,8 @@ function paintTerrain(map) {
 
   // 7. Decorations — read window.CTD3Decorations[map.id].
   paintDecorations(map.id);
+
+  performance.mark('first-map-render-complete');
 }
 
 // ─── paintDecorations (ADR-030 §10, extended ADR-031 §3.4) ────
