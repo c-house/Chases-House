@@ -239,26 +239,27 @@ function wireSettings() {
 
 function handleAction(name, el) {
   switch (name) {
-    case 'show-help':              window.CTD3Ui.fillHelpScreen(); window.CTD3Ui.setScreen('help'); break;
-    case 'dismiss-help':           window.CTD3Ui.setScreen('title'); break;
+    case 'show-help':              window.CTD3Ui.fillHelpScreen(); window.CTD3Ui.setScreen('help'); window.CTD3Audio.uiSfx('click'); break;
+    case 'dismiss-help':           window.CTD3Ui.setScreen('title'); window.CTD3Audio.uiSfx('click'); break;
     case 'select-tower':           if (state) actions.selectTower(el.dataset.tower); break;
     case 'upgrade':                actions.upgrade(); break;
     case 'sell':                   actions.sell(); break;
     case 'send-next-wave':         actions.sendNextWave(); break;
     case 'toggle-fast-forward':    actions.toggleFastForward(); break;
-    case 'pause':                  actions.pause(); break;
-    case 'resume':                 actions.resume(); break;
-    case 'restart':                actions.restart(); break;
-    case 'play-again':             actions.restart(); break;
-    case 'quit-to-map-select':     backToMapSelect(); break;
-    case 'dismiss-tutorial':       actions.dismissTutorial(); break;
-    case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); break;
-    case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); break;
-    case 'sheet-close':            window.CTD3Ui.closeSheets(); break;
+    case 'pause':                  actions.pause(); window.CTD3Audio.uiSfx('click'); break;
+    case 'resume':                 actions.resume(); window.CTD3Audio.uiSfx('click'); break;
+    case 'restart':                actions.restart(); window.CTD3Audio.uiSfx('click'); break;
+    case 'play-again':             actions.restart(); window.CTD3Audio.uiSfx('click'); break;
+    case 'quit-to-map-select':     backToMapSelect(); window.CTD3Audio.uiSfx('click'); break;
+    case 'dismiss-tutorial':       actions.dismissTutorial(); window.CTD3Audio.uiSfx('click'); break;
+    case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); window.CTD3Audio.uiSfx('click'); break;
+    case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); window.CTD3Audio.uiSfx('click'); break;
+    case 'sheet-close':            window.CTD3Ui.closeSheets(); window.CTD3Audio.uiSfx('click'); break;
     case 'sheet-pick': {
       const slotId = window.CTD3Ui.getSheetSlotId();
       const towerType = el.dataset.tower;
       if (slotId && towerType) actions.placeFromSheet(slotId, towerType);
+      window.CTD3Audio.uiSfx('click');
       break;
     }
     case 'test-grant-gold': if (window.CastleTowerDefense._test) window.CastleTowerDefense._test.grantGold(500); break;
@@ -285,7 +286,10 @@ const actions = {
     if (state.paletteSelection) {
       const result = window.CTD3Engine.place(state, slotId, state.paletteSelection);
       // Engine return enum caller contract (ADR-028 §8)
-      if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+      if (result === 'unaffordable') {
+        window.CTD3Ui.setGoldFlash(true);
+        window.CTD3Audio.uiSfx('error');
+      }
       // 'invalid' and 'occupied' are silent
     } else {
       // No palette selection → open slot-select action sheet
@@ -312,8 +316,14 @@ const actions = {
   placeFromSheet(slotId, towerType) {
     if (!state) return;
     const result = window.CTD3Engine.place(state, slotId, towerType);
-    if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
-    if (result === 'ok') window.CTD3Ui.closeSheets();
+    if (result === 'unaffordable') {
+      window.CTD3Ui.setGoldFlash(true);
+      window.CTD3Audio.uiSfx('error');
+    }
+    if (result === 'ok') {
+      window.CTD3Ui.closeSheets();
+      window.CTD3Audio.uiSfx('click');
+    }
   },
   cancelSelection() {
     if (!state) return;
@@ -325,8 +335,12 @@ const actions = {
   upgrade() {
     if (!state || !state.selectedTowerId) return;
     const result = window.CTD3Engine.upgrade(state, state.selectedTowerId);
-    if (result === 'unaffordable') window.CTD3Ui.setGoldFlash(true);
+    if (result === 'unaffordable') {
+      window.CTD3Ui.setGoldFlash(true);
+      window.CTD3Audio.uiSfx('error');
+    }
     if (result === 'ok') {
+      window.CTD3Audio.uiSfx('click');
       // Repaint the open tower sheet (if any) with the new tier's stats
       const tw = state.towers.find(t => t.id === state.selectedTowerId);
       if (tw && window.CTD3Ui.getActiveSheet() === 'tower') {
@@ -337,7 +351,11 @@ const actions = {
   sell() {
     if (!state || !state.selectedTowerId) return;
     const result = window.CTD3Engine.sell(state, state.selectedTowerId);
-    if (result === 'ok') window.CTD3Ui.closeSheets();
+    if (result === 'unaffordable') window.CTD3Audio.uiSfx('error');
+    if (result === 'ok') {
+      window.CTD3Ui.closeSheets();
+      window.CTD3Audio.uiSfx('click');
+    }
   },
   sendNextWave() {
     if (!state) return;

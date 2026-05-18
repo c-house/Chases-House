@@ -172,11 +172,16 @@
 
   function getState() { return { musicVolume, sfxVolume, ambientVolume, musicMuted, sfxMuted }; }
 
+  function uiSfx(kind) {
+    if (kind === 'click') return play('ui_back', { gain: 0.4 });
+    if (kind === 'error') return play('ui_back', { gain: 0.5, rate: 0.7 });
+  }
+
   window.CTD3Audio = {
     ensure, resume, play,
     startBGM, stopBGM, startAmbient, stopAmbient,
     setMusicVolume, setSfxVolume, setAmbientVolume,
     setMusicMuted, setSfxMuted,
-    flushEvents, getState
+    flushEvents, getState, uiSfx
   };
 })();
