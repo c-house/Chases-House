@@ -130,6 +130,14 @@ function paintTerrain(map) {
     }
   }
 
+  // 3a-bis. Reserve slot + castle cells so WFC doesn't put a tree/hill/rock
+  // ON TOP of a build plinth or under the castle (user-visible regression:
+  // plinths obscured by terrain variants when camera angle reveals the
+  // overlap).
+  const reservedGroundCellSet = new Set();
+  for (const s of map.buildSlots) reservedGroundCellSet.add(Math.round(s.x) + ',' + Math.round(s.z));
+  reservedGroundCellSet.add(Math.round(map.castle.x) + ',' + Math.round(map.castle.z));
+
   // 3b. Ground: WFC-driven variants per non-path cell (ADR-031 §3 Phase 4).
   // wfcMode: 'off' uses uniform fallback ground tile (ADR-030 behavior);
   //          'augment' / 'fill' run WFC for terrain variety.
@@ -167,7 +175,9 @@ function paintTerrain(map) {
     });
     for (const [k, id] of wfcOut) {
       if (pathCellSet.has(k)) continue;  // path cells handled separately
-      cellToTileId.set(k, id);
+      // Slot + castle cells get plain ground so plinth / castle isn't
+      // visually competing with a tree/hill/rock sharing the same cell.
+      cellToTileId.set(k, reservedGroundCellSet.has(k) ? fallbackGroundId : id);
     }
   }
 
@@ -217,18 +227,35 @@ function paintTerrain(map) {
   scene.add(castleMesh);
 
   // 6. Slot plinths + invisible collider planes for raycast (ADR-028 §13).
+  // Plinth rises 0.55u above the field — tall enough to read above adjacent
+  // WFC variants (trees, hills) at any camera angle. Warm-stone base with a
+  // gold-tinted cap reads as "build here" against the green field.
   for (const slot of map.buildSlots) {
-    const plinthGeo = new THREE.BoxGeometry(1.2, 0.2, 1.2);
-    const plinthMat = new THREE.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.85 });
-    const plinth = new THREE.Mesh(plinthGeo, plinthMat);
-    plinth.position.set(slot.x, 0.1, slot.z);
-    plinth.receiveShadow = true;
-    slotsGroup.add(plinth);
+    // Lower base (warm stone)
+    const baseGeo = new THREE.CylinderGeometry(0.55, 0.6, 0.4, 16);
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.85 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.set(slot.x, 0.2, slot.z);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    slotsGroup.add(base);
+    // Upper cap (subtle gold accent so the slot reads at a glance)
+    const capGeo = new THREE.CylinderGeometry(0.5, 0.55, 0.15, 16);
+    const capMat = new THREE.MeshStandardMaterial({
+      color: 0xc8943e, roughness: 0.65, metalness: 0.1,
+      emissive: 0x3a2a10, emissiveIntensity: 0.4
+    });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.set(slot.x, 0.475, slot.z);
+    cap.castShadow = true;
+    cap.receiveShadow = true;
+    slotsGroup.add(cap);
+    // Invisible collider plane for tap targets (~2.5 world units = generous)
     const colGeo = new THREE.PlaneGeometry(2.5, 2.5);
     colGeo.rotateX(-Math.PI / 2);
     const colMat = new THREE.MeshBasicMaterial({ visible: false });
     const collider = new THREE.Mesh(colGeo, colMat);
-    collider.position.set(slot.x, 0.5, slot.z);
+    collider.position.set(slot.x, 0.6, slot.z);
     collider.userData = { kind: 'slot', id: slot.id };
     slotsGroup.add(collider);
   }
