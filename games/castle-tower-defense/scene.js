@@ -237,8 +237,15 @@ function paintTerrain(map) {
   paintDecorations(map.id);
 }
 
-// ─── paintDecorations (ADR-030 §10) ──────────────────────────
+// ─── paintDecorations (ADR-030 §10, extended ADR-031 §3.4) ────
+// Honors map.wfcMode: 'fill' SKIPS hand-authored decorations so the WFC
+// terrain output is the sole source of visual fill. 'augment' (default)
+// and 'off' render hand-authored decorations as anchors on top.
 function paintDecorations(mapId) {
+  const map = (window.CTD3Maps && typeof window.CTD3Maps.byId === 'function')
+    ? window.CTD3Maps.byId(mapId)
+    : null;
+  if (map && map.wfcMode === 'fill') return;
   const decorations = (window.CTD3Decorations && window.CTD3Decorations[mapId]) || [];
   for (const d of decorations) {
     if (!d || typeof d.type !== 'string') continue;

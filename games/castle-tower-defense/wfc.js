@@ -143,9 +143,10 @@
           }
           if (changed) {
             if (nb.possible.size === 0) {
-              // Contradiction — recovery: restore palette possibilities, signal upstream.
+              // Contradiction — recovery: restore palette possibilities so the
+              // next collapse picks something weighted-random rather than
+              // throwing. WFC's "purity" is sacrificed for never-crash robustness.
               nb.possible = new Set(allIds);
-              nb._contradicted = true;
             }
             queue.push(nb);
           }
