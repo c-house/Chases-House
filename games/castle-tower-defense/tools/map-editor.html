@@ -1424,7 +1424,9 @@
     } else {
       return { ok: false, error: 'unrecognized payload shape' };
     }
-    if (!mapShape.castle) return { ok: false, error: 'missing castle' };
+    if (!mapShape.castle || mapShape.castle.x == null || mapShape.castle.z == null) {
+      return { ok: false, error: 'missing castle (requires x and z)' };
+    }
     state.path        = Array.isArray(mapShape.path) ? mapShape.path : [];
     state.castle      = mapShape.castle;
     state.slots       = Array.isArray(mapShape.buildSlots) ? mapShape.buildSlots
