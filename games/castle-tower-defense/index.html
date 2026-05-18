@@ -97,8 +97,15 @@
     body[data-screen="title"]    .screen.title  { display: grid; place-items: center; }
     body[data-screen="map-select"] .screen.map-select { display: grid; place-items: center; padding: 4rem 1rem 1rem; overflow-y: auto; pointer-events: auto; }
     body[data-screen="play"]     .screen.play   { display: flex; flex-direction: column; pointer-events: none; }
-    body[data-screen="play"]     .screen.play .hud-top,
-    body[data-screen="play"]     .screen.play .hud-bottom { pointer-events: auto; }
+    /* HUD containers stay click-through so empty bar areas don't block
+       map drag-pan / tap-to-place. Buttons + interactive children opt in
+       to pointer events individually. */
+    body[data-screen="play"]     .screen.play .hud-top { pointer-events: none; }
+    body[data-screen="play"]     .screen.play .hud-top .cog,
+    body[data-screen="play"]     .screen.play .hud-top .return-link { pointer-events: auto; }
+    body[data-screen="play"]     .screen.play .hud-bottom { pointer-events: none; }
+    body[data-screen="play"]     .screen.play .hud-bottom .tower-card,
+    body[data-screen="play"]     .screen.play .hud-bottom .ctrl-btn { pointer-events: auto; }
     body[data-screen="pause"]    .screen.pause  { display: grid; place-items: center; background: rgba(10,10,11,0.75); pointer-events: auto; }
     body[data-screen="game-over"] .screen.game-over { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
     body[data-screen="tutorial"] .screen.tutorial { display: grid; place-items: end center; padding-bottom: 7rem; pointer-events: auto; }
