@@ -233,11 +233,18 @@
       const display = Math.min(state.waveIndex + 1, state.waveTotal);
       hudWaveNum.textContent = String(display);
       hudWaveOf.textContent  = `of ${state.waveTotal}`;
+    } else {
+      hudWaveNum.textContent = '';
+      hudWaveOf.textContent  = '';
     }
     updatePalette(state);
     updateNextWaveButton(state);
     updateFastFwdButton(state);
     updateGoldFlash();
+  }
+
+  function motionAllowed() {
+    return !body.classList.contains('reduced-motion');
   }
 
   function updateNextWaveButton(state) {
@@ -287,7 +294,10 @@
         'data-action': 'start-map',
         'data-map-id': map.id,
         'data-difficulty': 'quiet'
-      }, ['Quiet ' + '★'.repeat(sQuiet) + '☆'.repeat(3 - sQuiet)]);
+      }, [
+        'Quiet ',
+        el('span', { role: 'img', 'aria-label': `${sQuiet} of 3 stars` }, ['★'.repeat(sQuiet) + '☆'.repeat(3 - sQuiet)])
+      ]);
       if (!unlocked) quietBtn.disabled = true;
       row.appendChild(quietBtn);
 
@@ -296,7 +306,10 @@
         'data-action': 'start-map',
         'data-map-id': map.id,
         'data-difficulty': 'spirited'
-      }, ['Spirited ' + '★'.repeat(sSpirited) + '☆'.repeat(3 - sSpirited)]);
+      }, [
+        'Spirited ',
+        el('span', { role: 'img', 'aria-label': `${sSpirited} of 3 stars` }, ['★'.repeat(sSpirited) + '☆'.repeat(3 - sSpirited)])
+      ]);
       if (!unlocked) spiritedBtn.disabled = true;
       row.appendChild(spiritedBtn);
       card.appendChild(row);
@@ -315,7 +328,9 @@
     gameOverBindings.heading.textContent       = won ? 'The Watch Holds' : 'The Gate Has Fallen';
     gameOverBindings.heading.style.color       = won ? 'var(--aged-gold)' : 'var(--terracotta)';
     gameOverBindings.mapDifficulty.textContent = `${mapName} · ${difficulty[0].toUpperCase() + difficulty.slice(1)}`;
-    gameOverBindings.starsRow.textContent      = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    gameOverBindings.starsRow.replaceChildren(
+      el('span', { role: 'img', 'aria-label': `${stars} of 3 stars` }, ['★'.repeat(stars) + '☆'.repeat(3 - stars)])
+    );
     gameOverBindings.livesRemaining.textContent = `${Math.max(0, livesRemaining)} / ${startLives}`;
     gameOverBindings.score.textContent         = score.toLocaleString();
     gameOverBindings.bestScore.textContent     = bestScore.toLocaleString();
@@ -323,7 +338,7 @@
 
   // ─── Wave-clear flourish (gold-bar wipe; no 3D bird) ─────────
   function flashWaveClear(/* label */) {
-    if (body.classList.contains('reduced-motion')) return;
+    if (!motionAllowed()) return;
     const wipe = el('div', { class: 'wave-clear-wipe' });
     document.body.appendChild(wipe);
     setTimeout(() => wipe.remove(), 700);
@@ -402,7 +417,7 @@
 
   window.CTD3Ui = {
     init, setScreen, getScreen,
-    setReducedMotion,
+    setReducedMotion, motionAllowed,
     update, paintPalette, updatePalette,
     hydrateMapSelect, fillGameOver,
     flashWaveClear,

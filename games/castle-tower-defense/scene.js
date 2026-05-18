@@ -442,7 +442,9 @@ function syncEnemies(state) {
     const isFlying = !!def?.isFlying;
     const baseY = isFlying ? 1.2 : 0;
     let bob;
-    if (isFlying) {
+    if (!window.CTD3Ui.motionAllowed()) {
+      bob = 0;
+    } else if (isFlying) {
       bob = Math.sin(t * ENEMY_BOB_RATE_FLYING + node.userData.bobPhase) * ENEMY_BOB_AMP_FLYING;
     } else {
       bob = Math.abs(Math.sin(t * ENEMY_BOB_RATE_GROUND + node.userData.bobPhase)) * ENEMY_BOB_AMP_GROUND;
@@ -557,10 +559,15 @@ function syncWardenAuras(state) {
       wardenAuraNodes.set(tw.id, node);
       wardenAurasGroup.add(node);
     }
-    const elapsed = performance.now() - node.userData.t0;
-    const phase = Math.sin(elapsed / WARDEN_AURA_PERIOD_MS);
-    node.scale.setScalar((1 - WARDEN_AURA_SCALE_AMP) + phase * WARDEN_AURA_SCALE_AMP);
-    node.material.opacity = WARDEN_AURA_OPACITY_BASE * ((1 - WARDEN_AURA_OPACITY_AMP) + phase * WARDEN_AURA_OPACITY_AMP);
+    if (window.CTD3Ui.motionAllowed()) {
+      const elapsed = performance.now() - node.userData.t0;
+      const phase = Math.sin(elapsed / WARDEN_AURA_PERIOD_MS);
+      node.scale.setScalar((1 - WARDEN_AURA_SCALE_AMP) + phase * WARDEN_AURA_SCALE_AMP);
+      node.material.opacity = WARDEN_AURA_OPACITY_BASE * ((1 - WARDEN_AURA_OPACITY_AMP) + phase * WARDEN_AURA_OPACITY_AMP);
+    } else {
+      node.scale.setScalar(1);
+      node.material.opacity = WARDEN_AURA_OPACITY_BASE;
+    }
   }
   // Remove rings for towers that were sold
   for (const [id, node] of wardenAuraNodes) {

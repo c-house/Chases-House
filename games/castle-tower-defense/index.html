@@ -473,11 +473,15 @@
       100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
     }
     body.reduced-motion .wave-clear-wipe { animation: none; opacity: 0; }
+    body.reduced-motion .loading-bar      { animation: none; }
+    body.reduced-motion button:active     { transform: none; }
+    body.reduced-motion .sheet            { animation: none; transition: none; }
+    body.reduced-motion #stat-gold.flash  { animation: none; }
   </style>
 </head>
 <body data-screen="loading">
 
-  <a href="/games/" class="return-link">GAMES</a>
+  <a href="/games/" class="return-link" aria-label="Return to map select">GAMES</a>
 
   <!-- ── ?test=1 dev overlay (hidden unless URL has ?test=1) ───── -->
   <div id="test-overlay" style="display:none;position:fixed;top:0.5rem;right:0.5rem;z-index:80;background:rgba(0,0,0,0.7);color:#9fe;font:11px/1.4 ui-monospace,monospace;padding:0.4rem 0.6rem;border:1px solid rgba(159,238,255,0.3);border-radius:4px;pointer-events:auto;max-width:200px;">
@@ -544,21 +548,21 @@
     <div class="hud-top">
       <span class="stat" id="stat-gold">
         <span style="font-size:0.78rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.55);">Gold</span>
-        <span class="v" data-bind="gold">0</span>
+        <span class="v" data-bind="gold" aria-live="polite" aria-atomic="true">0</span>
       </span>
-      <span class="wave">
+      <span class="wave" aria-live="polite" aria-atomic="true">
         Wave <span data-bind="waveNum">0</span> <span data-bind="waveOf">of 0</span>
       </span>
       <span class="stat" id="stat-lives">
         <span style="font-size:0.78rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.55);">Lives</span>
-        <span class="v" data-bind="lives">0</span>
+        <span class="v" data-bind="lives" aria-live="polite" aria-atomic="true">0</span>
       </span>
       <button class="cog" data-action="pause" aria-label="Pause / settings">⚙</button>
     </div>
     <div class="hud-bottom">
       <div class="palette" data-bind="palette"></div>
       <div class="ctrl-stack">
-        <button class="ctrl-btn next-wave" data-action="send-next-wave">▶ Send wave</button>
+        <button class="ctrl-btn next-wave" data-action="send-next-wave" aria-label="Send next wave">▶ Send wave</button>
         <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward">2×</button>
       </div>
     </div>
