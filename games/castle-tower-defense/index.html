@@ -292,6 +292,10 @@
     }
     .btn.primary:hover { background: var(--ember); border-color: var(--ember); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-spirited {
+      border-color: var(--ember);
+      color: var(--ember);
+    }
 
     /* ── First-load notice (review m-4) ───────────────────────────── */
     .first-load-notice {
@@ -328,7 +332,10 @@
     /* ── Play HUD: top bar + bottom palette ───────────────────────── */
     .hud-top {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0.7rem 1rem;
+      padding-top: max(0.7rem, env(safe-area-inset-top));
+      padding-right: max(1rem, env(safe-area-inset-right));
+      padding-bottom: 0.7rem;
+      padding-left: max(1rem, env(safe-area-inset-left));
       background: linear-gradient(to bottom, rgba(10,10,11,0.7), transparent);
       color: var(--warm-stone);
       font-family: var(--font-body, 'Bricolage Grotesque'), system-ui, sans-serif;
@@ -355,7 +362,10 @@
 
     .hud-bottom {
       margin-top: auto;
-      padding: 0.7rem;
+      padding-top: 0.7rem;
+      padding-right: max(0.7rem, env(safe-area-inset-right));
+      padding-bottom: max(0.7rem, env(safe-area-inset-bottom));
+      padding-left: max(0.7rem, env(safe-area-inset-left));
       background: linear-gradient(to top, rgba(10,10,11,0.7), transparent);
       display: flex; align-items: center; gap: 0.5rem;
       min-height: 96px;

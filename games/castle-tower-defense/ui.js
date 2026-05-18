@@ -308,12 +308,12 @@
       row.appendChild(quietBtn);
 
       const spiritedBtn = el('button', {
-        class: 'btn',
+        class: 'btn btn-spirited',
         'data-action': 'start-map',
         'data-map-id': map.id,
         'data-difficulty': 'spirited'
       }, [
-        'Spirited ',
+        '★ Spirited ',
         el('span', { role: 'img', 'aria-label': `${sSpirited} of 3 stars` }, ['★'.repeat(sSpirited) + '☆'.repeat(3 - sSpirited)])
       ]);
       if (!unlocked) spiritedBtn.disabled = true;
