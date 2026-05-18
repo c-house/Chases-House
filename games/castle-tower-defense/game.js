@@ -436,6 +436,15 @@ function consumeEngineEvents(state) {
       window.CTD3Lighting.beginPhase(ev.to, 1200);
     } else if (ev.kind === 'fire' && ev.towerId) {
       window.CTD3Scene.flashTower(ev.towerId);
+    } else if (ev.kind === 'place') {
+      // Auto-dismiss the tutorial screen on first successful placement —
+      // engine.place clears tutorialActive but doesn't touch the screen
+      // attribute. Without this, the tutorial popup overlay would linger
+      // after the user did the exact action the prompt instructed.
+      if (!state.tutorialActive && window.CTD3Ui.getScreen() === 'tutorial') {
+        markTutorialSeen();
+        window.CTD3Ui.setScreen('play');
+      }
     }
   }
   state.events.length = 0;
@@ -448,7 +457,16 @@ function showGameOver(state) {
   const stars = window.CTD3Engine.computeStars(state);
   const score = window.CTD3Engine.computeScore(state);
   const mapDef = state.mapDef;
-  const best = won ? commitResult(state.mapId, state.difficulty, stars, score) : score;
+  // Best: on win, commitResult both persists + returns the post-update best.
+  // On loss, READ the prior persisted best so the modal doesn't mislead the
+  // player into thinking their losing score IS their best (audit T1).
+  let best;
+  if (won) {
+    best = commitResult(state.mapId, state.difficulty, stars, score);
+  } else {
+    const all = loadScores();
+    best = (all[state.mapId] && all[state.mapId][state.difficulty] && all[state.mapId][state.difficulty].bestScore) || 0;
+  }
   window.CTD3Ui.fillGameOver({
     won, stars, score,
     bestScore: Math.max(score, best),

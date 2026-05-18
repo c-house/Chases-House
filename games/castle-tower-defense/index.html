@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Castle Tower Defense — Chase's House</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -265,6 +265,21 @@
     }
     .btn:hover { background: rgba(200, 148, 62, 0.18); }
     .btn:active { transform: scale(0.96); }
+
+    /* Keyboard-focus indicator — applies to every interactive element
+       across all screens (a11y baseline; audit T4). */
+    :focus-visible {
+      outline: 2px solid var(--aged-gold);
+      outline-offset: 2px;
+    }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--warm-stone);
+      outline-offset: 2px;
+    }
     .btn.primary {
       background: var(--aged-gold);
       color: var(--ink);

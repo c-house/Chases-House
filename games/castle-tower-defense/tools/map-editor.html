@@ -153,6 +153,14 @@
       outline: none;
       border-color: var(--aged-gold);
     }
+
+    /* Keyboard-focus indicator for editor buttons + tool palette
+       (a11y baseline; audit T4). */
+    button:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--aged-gold);
+      outline-offset: 2px;
+    }
     .meta textarea {
       min-height: 60px;
       resize: vertical;
@@ -916,6 +924,7 @@
       state.slots = [];
       state.slotCounter = 0;
       state.decorations = [];
+      try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
       refresh();
     } else if (name === 'validate') {
       refresh();
@@ -1121,9 +1130,62 @@
     setCopyButtonEnabled(v.ok);
     $('[data-bind="preview"]').textContent = buildJsonString();
     schedulePreviewRefresh();
+    scheduleAutosave();
+  }
+
+  // ── Persistence (audit T5 — data-loss prevention) ──────────
+  // Debounced autosave of persistent state to localStorage so refresh /
+  // accidental Clear (after dismissing the confirm) doesn't wipe the
+  // author's work. Tool/drag/cursor are excluded as ephemeral.
+  const AUTOSAVE_KEY = 'ctd3:cartographer:v1';
+  let autosaveTimer = null;
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      try {
+        const snapshot = {
+          path: state.path,
+          castle: state.castle,
+          slots: state.slots,
+          decorations: state.decorations,
+          slotCounter: state.slotCounter,
+          meta: state.meta,
+          wavesJson: state.wavesJson,
+          savedAt: Date.now()
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshot));
+      } catch (e) { /* quota / private mode — silent */ }
+    }, 400);
+  }
+  function restoreFromAutosave() {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) return false;
+      const snap = JSON.parse(raw);
+      if (!snap || !snap.path) return false;
+      state.path        = snap.path        || state.path;
+      state.castle      = snap.castle      || state.castle;
+      state.slots       = snap.slots       || state.slots;
+      state.decorations = snap.decorations || state.decorations;
+      state.slotCounter = snap.slotCounter || state.slotCounter;
+      state.meta        = Object.assign({}, state.meta, snap.meta || {});
+      state.wavesJson   = snap.wavesJson   || state.wavesJson;
+      // Re-sync meta bindings with restored values
+      $$('[data-bind]').forEach(el => {
+        const key = el.dataset.bind;
+        if (state.meta[key] !== undefined) el.value = state.meta[key];
+        else if (key === 'wavesJson') el.value = state.wavesJson;
+      });
+      canvasWrap.dataset.theme = state.meta.theme;
+      return true;
+    } catch (e) { return false; }
   }
 
   resizeCanvas();
+  // Restore any in-progress map from localStorage before the first render
+  // so the user picks up where they left off (audit T5).
+  restoreFromAutosave();
   refresh();
 })();
 </script>

@@ -67,6 +67,16 @@
     }
   }
 
+  // The tutorial screen overlays the play HUD with a prompt that explicitly
+  // says "Tap a stone plinth" — canvas events MUST still flow through so the
+  // user can act on that prompt. The 'tutorial' screen is functionally
+  // equivalent to 'play' for input purposes; engine.place() clears the
+  // tutorial flag on success so the prompt dismisses naturally.
+  function isPlayLikeScreen() {
+    const s = document.body.getAttribute('data-screen');
+    return s === 'play' || s === 'tutorial';
+  }
+
   function pointerToNDC(ev) {
     const r = canvas.getBoundingClientRect();
     const nx = ((ev.clientX - r.left) / r.width) * 2 - 1;
@@ -77,7 +87,20 @@
   function onPointerDown(ev) {
     ev.preventDefault();
     canvas.setPointerCapture(ev.pointerId);
-    touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, startX: ev.clientX, startY: ev.clientY });
+    // Cache the down-point hit so a sub-threshold drag releases at the
+    // ORIGINAL slot/tower — not whatever is under the cursor when the
+    // pointer happened to settle after a 1-7px drift.
+    let downHit = null;
+    const state = getStateFn && getStateFn();
+    if (state && isPlayLikeScreen()) {
+      const { nx, ny } = pointerToNDC(ev);
+      downHit = window.CTD3Scene.raycastFromNormalizedPointer(nx, ny);
+    }
+    touches.set(ev.pointerId, {
+      x: ev.clientX, y: ev.clientY,
+      startX: ev.clientX, startY: ev.clientY,
+      downHit
+    });
 
     if (touches.size === 2) {
       // Start pinch
@@ -110,7 +133,7 @@
 
     if (touches.size !== 1) return;
     const state = getStateFn();
-    if (!state || document.body.getAttribute('data-screen') !== 'play') return;
+    if (!state || !isPlayLikeScreen()) return;
 
     // Check if drag threshold crossed (engages pan mode).
     const totalDx = ev.clientX - rec.startX;
@@ -142,11 +165,13 @@
     if (touches.size < 2) pinchStartDist = 0;
 
     // If this was the last pointer and we didn't engage pan, treat as tap.
+    // Use the POINTERDOWN hit (cached at press time), not the release-point
+    // hit — protects against the user microdrifting 1-7px off the slot they
+    // were aiming at before pointerup fires.
     if (touches.size === 0 && rec && !panActive) {
       const state = getStateFn();
-      if (!state || document.body.getAttribute('data-screen') !== 'play') return;
-      const { nx, ny } = pointerToNDC(ev);
-      const hit = window.CTD3Scene.raycastFromNormalizedPointer(nx, ny);
+      if (!state || !isPlayLikeScreen()) return;
+      const hit = rec.downHit;
       if (!hit) return;
       if (hit.kind === 'slot') actions.selectSlot(hit.id);
       else if (hit.kind === 'tower') actions.selectTowerInstance(hit.id);
