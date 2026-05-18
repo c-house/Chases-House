@@ -130,13 +130,27 @@ function paintTerrain(map) {
     }
   }
 
-  // 3a-bis. Reserve slot + castle cells so WFC doesn't put a tree/hill/rock
-  // ON TOP of a build plinth or under the castle (user-visible regression:
-  // plinths obscured by terrain variants when camera angle reveals the
-  // overlap).
+  // 3a-bis. Reserved cells get plain ground from WFC instead of a variant.
+  // Reservations:
+  //   - slot cells (plinth visibility — no tree/rock obscuring)
+  //   - castle cell
+  //   - 1-cell halo around every path cell (so WFC variants don't crowd the
+  //     road — keeps the path visually clear and gives the player room to
+  //     read the route).
   const reservedGroundCellSet = new Set();
   for (const s of map.buildSlots) reservedGroundCellSet.add(Math.round(s.x) + ',' + Math.round(s.z));
   reservedGroundCellSet.add(Math.round(map.castle.x) + ',' + Math.round(map.castle.z));
+  // Path halo: every cell within Chebyshev distance 1 of any path cell.
+  for (const cellKey of pathCellSet) {
+    const [pxs, pzs] = cellKey.split(',');
+    const px = parseInt(pxs, 10), pz = parseInt(pzs, 10);
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dz === 0) continue;  // path cell itself handled separately
+        reservedGroundCellSet.add((px + dx) + ',' + (pz + dz));
+      }
+    }
+  }
 
   // 3b. Ground: WFC-driven variants per non-path cell (ADR-031 §3 Phase 4).
   // wfcMode: 'off' uses uniform fallback ground tile (ADR-030 behavior);
@@ -226,36 +240,40 @@ function paintTerrain(map) {
   castleMesh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   scene.add(castleMesh);
 
-  // 6. Slot plinths + invisible collider planes for raycast (ADR-028 §13).
-  // Plinth rises 0.55u above the field — tall enough to read above adjacent
-  // WFC variants (trees, hills) at any camera angle. Warm-stone base with a
-  // gold-tinted cap reads as "build here" against the green field.
+  // 6. Slot stone slabs + invisible collider planes for raycast (ADR-028 §13).
+  // A flat, low stone slab (0.9 × 0.12 × 0.9) that doesn't compete on z-height
+  // with WFC terrain features. Cool grey-stone color (#a8a39c) reads
+  // distinctly against grass-green; slight darker rim suggests an inset.
+  // Empty buildable slots glow green when the user has a tower selected
+  // — handled separately in syncDecals so the highlight is reactive.
   for (const slot of map.buildSlots) {
-    // Lower base (warm stone)
-    const baseGeo = new THREE.CylinderGeometry(0.55, 0.6, 0.4, 16);
-    const baseMat = new THREE.MeshStandardMaterial({ color: 0x9b9080, roughness: 0.85 });
-    const base = new THREE.Mesh(baseGeo, baseMat);
-    base.position.set(slot.x, 0.2, slot.z);
-    base.castShadow = true;
-    base.receiveShadow = true;
-    slotsGroup.add(base);
-    // Upper cap (subtle gold accent so the slot reads at a glance)
-    const capGeo = new THREE.CylinderGeometry(0.5, 0.55, 0.15, 16);
-    const capMat = new THREE.MeshStandardMaterial({
-      color: 0xc8943e, roughness: 0.65, metalness: 0.1,
-      emissive: 0x3a2a10, emissiveIntensity: 0.4
+    // Slab — flat stone tile, ground-aware.
+    const slabGeo = new THREE.BoxGeometry(0.9, 0.12, 0.9);
+    const slabMat = new THREE.MeshStandardMaterial({
+      color: 0xa8a39c, roughness: 0.92, metalness: 0.0
     });
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.set(slot.x, 0.475, slot.z);
-    cap.castShadow = true;
-    cap.receiveShadow = true;
-    slotsGroup.add(cap);
+    const slab = new THREE.Mesh(slabGeo, slabMat);
+    slab.position.set(slot.x, 0.06, slot.z);
+    slab.castShadow = true;
+    slab.receiveShadow = true;
+    slot._slabRef = slab;  // for hover/selection state if scene wants to tint
+    slotsGroup.add(slab);
+    // Rim — slightly lower + wider darker stone block underneath so the slab
+    // appears mortared / inset rather than floating.
+    const rimGeo = new THREE.BoxGeometry(1.04, 0.04, 1.04);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: 0x7a7670, roughness: 0.95
+    });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    rim.position.set(slot.x, 0.02, slot.z);
+    rim.receiveShadow = true;
+    slotsGroup.add(rim);
     // Invisible collider plane for tap targets (~2.5 world units = generous)
     const colGeo = new THREE.PlaneGeometry(2.5, 2.5);
     colGeo.rotateX(-Math.PI / 2);
     const colMat = new THREE.MeshBasicMaterial({ visible: false });
     const collider = new THREE.Mesh(colGeo, colMat);
-    collider.position.set(slot.x, 0.6, slot.z);
+    collider.position.set(slot.x, 0.15, slot.z);
     collider.userData = { kind: 'slot', id: slot.id };
     slotsGroup.add(collider);
   }
@@ -563,7 +581,19 @@ function syncDecals(state) {
   if (sel && sel.behavior === 'projectile' && sel.range > 0) {
     decalsGroup.add(makeRing(sel.x, sel.z, sel.range, 0xc8943e, 0.4));
   }
-  // Hovered slot + palette selection → placement preview range
+  // When the user has a tower type chosen, every empty slot pulses a soft
+  // green disc beneath it so the "build here" affordance is unmissable.
+  // The currently-hovered slot adds a brighter range-circle preview on top.
+  if (state.paletteSelection && state.mapDef && state.mapDef.buildSlots) {
+    const t = performance.now() / 1000;
+    const pulse = 0.55 + Math.sin(t * 3) * 0.15;   // 0.40 – 0.70 opacity
+    for (const slot of state.mapDef.buildSlots) {
+      const occupied = state.towers.some(tw => tw.slotId === slot.id);
+      if (occupied) continue;
+      decalsGroup.add(makeDisc(slot.x, slot.z, 0.7, 0x5aa84a, pulse));
+    }
+  }
+  // Hovered slot + palette selection → placement preview range circle
   if (state.paletteSelection && state.hoverSlotId) {
     const slot = state.mapDef.buildSlots.find(s => s.id === state.hoverSlotId);
     const occupied = state.towers.some(t => t.slotId === state.hoverSlotId);
@@ -583,6 +613,16 @@ function makeRing(x, z, radius, color, opacity) {
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, 0.05, z);
+  return m;
+}
+
+// Filled disc decal (used for the green "place here" highlight under slots).
+function makeDisc(x, z, radius, color, opacity) {
+  const geo = new THREE.CircleGeometry(radius, 32);
+  geo.rotateX(-Math.PI / 2);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, 0.07, z);  // just above the rim block (0.04 thick @ y=0.02)
   return m;
 }
 

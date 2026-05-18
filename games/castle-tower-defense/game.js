@@ -165,6 +165,9 @@ function startMap(mapId, difficulty) {
   const useTutorial = !tutorialSeen() && mapId === 'plains';
   state = window.CTD3Engine.createState(mapId, difficulty, { tutorial: useTutorial });
   window.CTD3Scene.clearPlayfield();
+  if (window.CTD3Renderer && typeof window.CTD3Renderer.resetPan === 'function') {
+    window.CTD3Renderer.resetPan();
+  }
   window.CTD3Scene.paintTerrain(state.mapDef);
   window.CTD3Ui.update(state);
   window.CTD3Ui.setScreen(state.tutorialActive ? 'tutorial' : 'play');

@@ -15,11 +15,12 @@ const SHADOW_MAP_DESKTOP = 1024;
 const SHADOW_MAP_MOBILE  = 512;
 
 // Stardew-like ¾ angle: ~30° elevation, ~45° yaw.
-// Orthographic with one DOF (zoom). No orbit, no pan.
+// Orthographic with two DOF: zoom + xz-plane pan (click-and-drag).
 const CAMERA_FRUSTUM_BASE = 12;     // half-height in world units at zoom 1
 const CAMERA_DISTANCE     = 30;
 const CAMERA_ELEV_DEG     = 30;
 const CAMERA_YAW_DEG      = 45;
+const PAN_CLAMP_HALF      = 18;     // |pan.x|, |pan.z| max — keeps playfield in view
 
 let renderer = null;
 let camera   = null;
@@ -28,6 +29,7 @@ let zoom     = 1.0;
 let lowPower = false;
 let frameStreak = 0;
 let lowPowerListeners = [];
+const panOffset = { x: 0, z: 0 };
 
 function isMobile() {
   return /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -61,15 +63,52 @@ function applyDpr() {
 function positionCamera() {
   const elev = THREE.MathUtils.degToRad(CAMERA_ELEV_DEG);
   const yaw  = THREE.MathUtils.degToRad(CAMERA_YAW_DEG);
-  // Position the camera on a sphere of radius CAMERA_DISTANCE looking at origin.
+  // Position the camera on a sphere of radius CAMERA_DISTANCE looking at
+  // (panOffset.x, 0, panOffset.z). Shifting BOTH the position and the
+  // look-at point preserves the iso framing while letting the player drag
+  // the world under the camera.
   const horiz = Math.cos(elev) * CAMERA_DISTANCE;
   camera.position.set(
-    Math.sin(yaw) * horiz,
+    Math.sin(yaw) * horiz + panOffset.x,
     Math.sin(elev) * CAMERA_DISTANCE,
-    Math.cos(yaw) * horiz
+    Math.cos(yaw) * horiz + panOffset.z
   );
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(panOffset.x, 0, panOffset.z);
   updateFrustum();
+}
+
+// Pan by world-space delta on the xz plane. Clamped to PAN_CLAMP_HALF.
+function panByWorld(dx, dz) {
+  panOffset.x = Math.max(-PAN_CLAMP_HALF, Math.min(PAN_CLAMP_HALF, panOffset.x + dx));
+  panOffset.z = Math.max(-PAN_CLAMP_HALF, Math.min(PAN_CLAMP_HALF, panOffset.z + dz));
+  positionCamera();
+}
+
+// Pan by SCREEN-space delta (pixels). Converts to world units using the
+// current frustum + camera basis. Used by input.js click-and-drag.
+function panByScreen(dxPx, dyPx) {
+  if (!camera || !canvas) return;
+  const screenH = canvas.clientHeight || 1;
+  const worldPerPx = (2 * (CAMERA_FRUSTUM_BASE / zoom)) / screenH;
+  // Camera's local right/up vectors projected to xz plane.
+  // Right (screen +x): cos(yaw), -sin(yaw) on xz, but Three.js iso camera
+  // with yaw=45° puts world +x toward screen-bottom-right, so the screen
+  // axes map nontrivially. Use camera matrix columns directly.
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+  const up    = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+  right.y = 0; right.normalize();
+  up.y = 0;    up.normalize();
+  // Drag-RIGHT on screen → world moves LEFT → camera shifts RIGHT (positive
+  // panOffset along screen-right direction). dyPx is screen-down positive,
+  // so drag-DOWN → world moves UP → camera shifts BACKWARDS along screen-up.
+  const wx = -dxPx * worldPerPx * right.x + dyPx * worldPerPx * up.x;
+  const wz = -dxPx * worldPerPx * right.z + dyPx * worldPerPx * up.z;
+  panByWorld(wx, wz);
+}
+
+function resetPan() {
+  panOffset.x = 0; panOffset.z = 0;
+  positionCamera();
 }
 
 function updateFrustum() {
@@ -142,6 +181,7 @@ window.CTD3Renderer = {
   getCanvas: () => canvas,
   setLowPower, isLowPower, onLowPowerChange,
   trackFrame, setZoom, getZoom,
+  panByWorld, panByScreen, resetPan,
   getShadowMapSize,
   isMobile
 };
