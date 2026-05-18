@@ -16,17 +16,24 @@
   'use strict';
 
   // ── Standard theme palette + weights ────────────────────────
-  // Weights tuned so tile_ground dominates (~60%), variants form
-  // believable patches of bumps / rocks / trees without overwhelming.
-  // tile_ground_dirt is EXCLUDED — its kit material shares the path-band
-  // color, so dirt patches in the field visually read as fragmentary path
-  // tiles. Authors who want dirt patches can place them as hand-authored
-  // decorations.
+  // Weights tuned so tile_ground dominates (~65%), variants form
+  // believable patches of hills / rocks / trees without overwhelming.
+  //
+  // EXCLUDED kit variants (visual color-clash with path-band texture):
+  //   - tile_ground_dirt: pure brown tile, looks like a path-tile fragment
+  //   - tile_bump:        ~50% of the tile-top is the same brown as path
+  //                       tiles' dirt strip; from the iso camera angle,
+  //                       bump instances are indistinguishable from
+  //                       fragmentary path corners/straights.
+  //
+  // Remaining palette is composed of variants whose 3D feature reads as
+  // distinctly NOT path: hills (green slope), rocks (small mound), trees
+  // (vertical cones), crystals (purple). Authors who want dirt/bump
+  // patches can place them as hand-authored decoration anchors.
   const STANDARD_PALETTE = [
-    { id: 'tile_ground',       weight: 60 },
-    { id: 'tile_bump',         weight: 11 },
-    { id: 'tile_hill',         weight:  7 },
-    { id: 'tile_rock',         weight:  8 },
+    { id: 'tile_ground',       weight: 65 },
+    { id: 'tile_hill',         weight:  8 },
+    { id: 'tile_rock',         weight: 10 },
     { id: 'tile_tree',         weight: 10 },
     { id: 'tile_tree_double',  weight:  4 },
     { id: 'tile_tree_quad',    weight:  2 },
@@ -34,12 +41,13 @@
   ];
 
   // ── Snow theme palette + weights ────────────────────────────
+  // snow_tile_bump excluded for the same reason as standard tile_bump
+  // (bump-area shares path-strip texture / color).
   const SNOW_PALETTE = [
-    { id: 'snow_tile_ground',       weight: 55 },
-    { id: 'snow_tile_bump',         weight: 12 },
-    { id: 'snow_tile_hill',         weight:  6 },
-    { id: 'snow_tile_rock',         weight:  9 },
-    { id: 'snow_tile_tree',         weight:  6 },
+    { id: 'snow_tile_ground',       weight: 60 },
+    { id: 'snow_tile_hill',         weight:  7 },
+    { id: 'snow_tile_rock',         weight: 10 },
+    { id: 'snow_tile_tree',         weight:  7 },
     { id: 'snow_tile_tree_double',  weight:  3 },
     { id: 'snow_tile_tree_quad',    weight:  2 },
     { id: 'snow_tile_crystal',      weight:  4 },
