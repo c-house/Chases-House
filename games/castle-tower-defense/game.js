@@ -236,7 +236,8 @@ function wireSettings() {
 
 function handleAction(name, el) {
   switch (name) {
-    case 'show-help':                                                                break;  // no-op stub for v1
+    case 'show-help':              window.CTD3Ui.fillHelpScreen(); window.CTD3Ui.setScreen('help'); break;
+    case 'dismiss-help':           window.CTD3Ui.setScreen('title'); break;
     case 'select-tower':           if (state) actions.selectTower(el.dataset.tower); break;
     case 'upgrade':                actions.upgrade(); break;
     case 'sell':                   actions.sell(); break;

@@ -80,7 +80,8 @@
     body[data-screen="play"] .return-link,
     body[data-screen="pause"] .return-link,
     body[data-screen="game-over"] .return-link,
-    body[data-screen="tutorial"] .return-link { display: none; }
+    body[data-screen="tutorial"] .return-link,
+    body[data-screen="help"] .return-link { display: none; }
 
     /* ── Screens ────────────────────────────────────────────────────
        Screen visibility driven by body[data-screen=...] attribute.
@@ -101,6 +102,91 @@
     body[data-screen="pause"]    .screen.pause  { display: grid; place-items: center; background: rgba(10,10,11,0.75); pointer-events: auto; }
     body[data-screen="game-over"] .screen.game-over { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
     body[data-screen="tutorial"] .screen.tutorial { display: grid; place-items: end center; padding-bottom: 7rem; pointer-events: auto; }
+    body[data-screen="help"]     .screen.help     { display: grid; place-items: center; background: rgba(10,10,11,0.88); pointer-events: auto; overflow-y: auto; padding: 2rem 1rem; }
+
+    /* HOW TO PLAY modal — quick-reference legend */
+    .help-modal {
+      background: rgba(40,28,18,0.97);
+      border: 1px solid var(--aged-gold);
+      border-radius: 10px;
+      padding: 1.6rem 1.6rem 1.2rem;
+      max-width: 520px;
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    .help-modal h2 {
+      font-family: var(--font-display), serif;
+      color: var(--aged-gold);
+      margin: 0 0 0.4rem;
+      font-size: 1.6rem;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    .help-modal .goal {
+      text-align: center;
+      color: var(--warm-stone);
+      font-size: 0.95rem;
+      margin: 0 0 1rem;
+      line-height: 1.5;
+    }
+    .help-modal h3 {
+      font-family: var(--font-display), serif;
+      color: var(--aged-gold);
+      font-size: 0.86rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin: 1rem 0 0.5rem;
+      border-bottom: 1px solid rgba(200,148,62,0.3);
+      padding-bottom: 0.3rem;
+    }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.45rem;
+    }
+    .legend-card {
+      background: rgba(20,15,10,0.6);
+      border: 1px solid rgba(200,148,62,0.25);
+      border-radius: 5px;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.78rem;
+      color: var(--warm-stone);
+    }
+    .legend-card .name {
+      color: var(--aged-gold);
+      font-weight: 600;
+      font-size: 0.86rem;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .legend-card .meta {
+      color: rgba(240,230,211,0.6);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    .legend-card .role {
+      color: rgba(240,230,211,0.85);
+      line-height: 1.35;
+    }
+    .legend-card.boss {
+      border-color: var(--terracotta);
+    }
+    .legend-card.boss .name { color: var(--terracotta); }
+    .help-modal .tips {
+      color: rgba(240,230,211,0.78);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      margin: 0.8rem 0 1rem;
+    }
+    .help-modal .tips li { margin: 0.2rem 0; }
+    .help-modal .actions {
+      text-align: center;
+      margin-top: 0.6rem;
+    }
 
     /* ── Loading screen ───────────────────────────────────────────── */
     .loading-card { text-align: center; color: var(--warm-stone); }
@@ -536,6 +622,34 @@
         Stand the gate.
       </p>
       <button class="btn primary" data-action="dismiss-tutorial">Begin the watch</button>
+    </div>
+  </div>
+
+  <!-- ── HOW TO PLAY modal (Phase 1 of ADR-031 plan) ───────────────
+       Quick-reference legend. Tower + enemy cards are hydrated from
+       window.CTD3Entities.TOWERS / .ENEMIES in ui.js fillHelpScreen. -->
+  <div class="screen help">
+    <div class="help-modal">
+      <h2>How to Play</h2>
+      <p class="goal">Defend the castle. Stop raiders before they reach the gate.</p>
+
+      <h3>Towers</h3>
+      <div class="legend-grid" data-bind="helpTowers"></div>
+
+      <h3>Raiders</h3>
+      <div class="legend-grid" data-bind="helpEnemies"></div>
+
+      <h3>Tips</h3>
+      <ul class="tips">
+        <li><strong>Ranger</strong> handles early waves cheaply; <strong>Catapult</strong> for crowd splash.</li>
+        <li><strong>Mage</strong> shines against armor; <strong>Warden</strong> slows nearby raiders (place at chokepoints).</li>
+        <li>Tap a tower to upgrade or sell. Refunds are 75% of total invested.</li>
+        <li>Send waves at your pace. <strong>2×</strong> speeds the action.</li>
+      </ul>
+
+      <div class="actions">
+        <button class="btn primary" data-action="dismiss-help">Got It</button>
+      </div>
     </div>
   </div>
 

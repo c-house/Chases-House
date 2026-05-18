@@ -349,6 +349,57 @@
     if (stat && status) stat.textContent = status;
   }
 
+  // ─── HOW TO PLAY legend (hydrated from entities tables) ──────
+  function towerRoleHint(type, def) {
+    if (def.behavior === 'aura') return 'Aura — slows nearby raiders. No fire cooldown.';
+    const t0 = def.tiers[0];
+    if (def.splashRadius || (t0 && t0.splashRadius)) return 'Splash damage — strong vs. crowds.';
+    if (def.damageType === 'magic') return 'Magic damage — ignores armor; later tiers chain.';
+    if (def.targets === 'all') return 'Reliable single-target. Hits flying.';
+    return 'Single-target.';
+  }
+  function enemyMeta(def) {
+    const tags = [];
+    if (def.isFlying) tags.push('flying');
+    if (def.armor && def.armor > 0) tags.push('armored');
+    if (def.isBoss) tags.push('boss');
+    return tags.length ? tags.join(' · ') : 'standard';
+  }
+
+  function fillHelpScreen() {
+    const E = window.CTD3Entities;
+    if (!E) return;
+    const towersEl  = $('[data-bind="helpTowers"]');
+    const enemiesEl = $('[data-bind="helpEnemies"]');
+    if (towersEl) {
+      towersEl.replaceChildren();
+      ['ranger', 'catapult', 'mage', 'warden'].forEach(type => {
+        const def = E.TOWERS[type];
+        if (!def) return;
+        const t0 = def.tiers[0];
+        const card = el('div', { class: 'legend-card' }, [
+          el('span', { class: 'name' }, [def.name]),
+          el('span', { class: 'meta' }, ['cost ' + t0.cost + 'g · ' + (def.behavior === 'aura' ? 'aura' : (def.targets || 'all'))]),
+          el('span', { class: 'role' }, [towerRoleHint(type, def)])
+        ]);
+        towersEl.appendChild(card);
+      });
+    }
+    if (enemiesEl) {
+      enemiesEl.replaceChildren();
+      ['footman', 'heavy', 'runner', 'skirmisher', 'shielded', 'captain'].forEach(type => {
+        const def = E.ENEMIES[type];
+        if (!def) return;
+        const card = el('div', { class: 'legend-card' + (def.isBoss ? ' boss' : '') }, [
+          el('span', { class: 'name' }, [def.name]),
+          el('span', { class: 'meta' }, ['hp ' + def.hp + ' · spd ' + def.speed]),
+          el('span', { class: 'role' }, [enemyMeta(def)])
+        ]);
+        enemiesEl.appendChild(card);
+      });
+    }
+  }
+
   window.CTD3Ui = {
     init, setScreen, getScreen,
     setReducedMotion,
@@ -358,6 +409,7 @@
     setGoldFlash,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,
     setLoadingProgress,
+    fillHelpScreen,
     openSlotSheet, openTowerSheet, closeSheets,
     paintTowerSheet, paintSlotPicks,
     getActiveSheet, getSheetSlotId, getSheetTowerId
