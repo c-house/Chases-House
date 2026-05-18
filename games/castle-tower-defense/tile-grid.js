@@ -22,27 +22,31 @@
   // rotate by the angle that maps +z → D around the y-axis.
   const DIR_ROTATION = { 'x+': Math.PI / 2, 'z+': 0, 'x-': -Math.PI / 2, 'z-': Math.PI };
 
-  // Corner rotation table — derived empirically (ADR-030 §21 R1 visual gate).
-  // Kit's tile-corner-round.glb at rotation 0 has its path band in the NE
-  // quadrant: the curve connects the +x edge to the +z edge. Rotating the
-  // tile by +π/2 around +y moves the band so it connects +z edge to -x edge.
-  // For each (prevDir, nextDir) where prevDir = direction of travel INTO this
-  // cell and nextDir = direction of travel OUT, the corner's two open edges
-  // are -prevDir (entry from previous neighbor) and +nextDir (exit toward
-  // next neighbor). We pick the rotation whose path band matches those edges.
+  // Corner rotation table — derived from Three.js Y-rotation matrix.
+  // Kit's tile-corner-round.glb at rotation 0 has its path band in the
+  // tile-local NE quadrant (connects local +x edge to local +z edge).
+  // Three.js Y-rotation: (x, z) → (x cos θ + z sin θ, -x sin θ + z cos θ).
+  //   θ=0     → local (+x, +z) → world (+x, +z)
+  //   θ=π/2   → local (+x, +z) → world (-z, +x)   (open edges: -z, +x)
+  //   θ=π     → local (+x, +z) → world (-x, -z)
+  //   θ=-π/2  → local (+x, +z) → world (+z, -x)   (open edges: +z, -x = -x, +z)
+  // For each (prevDir, nextDir), open edges are {-prevDir, +nextDir}:
+  //   prev cell is at -prevDir of current → entry via -prevDir edge
+  //   next cell is at +nextDir of current → exit via +nextDir edge
+  // Match open-edge set to rotation:
   const CORNER_ROTATION = {
-    // Path band at +x edge + +z edge → rotation 0
-    'x-|z+': 0,          // entered from +x neighbor, exit to +z neighbor
-    'z-|x+': 0,          // entered from +z neighbor, exit to +x neighbor
-    // Path band at +z edge + -x edge → rotation π/2
-    'x+|z+': Math.PI / 2,
-    'z-|x-': Math.PI / 2,
-    // Path band at -x edge + -z edge → rotation π
-    'x+|z-': Math.PI,
-    'z+|x-': Math.PI,
-    // Path band at -z edge + +x edge → rotation -π/2 (= 3π/2)
-    'x-|z-': -Math.PI / 2,
-    'z+|x+': -Math.PI / 2
+    // Open edges {+x, +z} → rotation 0
+    'x-|z+': 0,           // entry -x, exit +z → world edges +x, +z
+    'z-|x+': 0,           // entry +z, exit +x → world edges +z, +x
+    // Open edges {-x, +z} → rotation -π/2
+    'x+|z+': -Math.PI / 2, // entry -x, exit +z
+    'z-|x-': -Math.PI / 2, // entry +z, exit -x
+    // Open edges {-x, -z} → rotation π
+    'x+|z-': Math.PI,     // entry -x, exit -z
+    'z+|x-': Math.PI,     // entry -z, exit -x
+    // Open edges {+x, -z} → rotation π/2
+    'z+|x+': Math.PI / 2, // entry -z, exit +x
+    'x-|z-': Math.PI / 2  // entry +x, exit -z
   };
 
   function dirOf(dx, dz) {

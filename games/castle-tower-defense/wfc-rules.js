@@ -16,15 +16,18 @@
   'use strict';
 
   // ── Standard theme palette + weights ────────────────────────
-  // Weights tuned so tile_ground dominates (~55%), variants form
+  // Weights tuned so tile_ground dominates (~60%), variants form
   // believable patches of bumps / rocks / trees without overwhelming.
+  // tile_ground_dirt is EXCLUDED — its kit material shares the path-band
+  // color, so dirt patches in the field visually read as fragmentary path
+  // tiles. Authors who want dirt patches can place them as hand-authored
+  // decorations.
   const STANDARD_PALETTE = [
-    { id: 'tile_ground',       weight: 55 },
-    { id: 'tile_ground_dirt',  weight:  6 },
-    { id: 'tile_bump',         weight: 10 },
-    { id: 'tile_hill',         weight:  6 },
-    { id: 'tile_rock',         weight:  7 },
-    { id: 'tile_tree',         weight:  9 },
+    { id: 'tile_ground',       weight: 60 },
+    { id: 'tile_bump',         weight: 11 },
+    { id: 'tile_hill',         weight:  7 },
+    { id: 'tile_rock',         weight:  8 },
+    { id: 'tile_tree',         weight: 10 },
     { id: 'tile_tree_double',  weight:  4 },
     { id: 'tile_tree_quad',    weight:  2 },
     { id: 'tile_crystal',      weight:  1 }
