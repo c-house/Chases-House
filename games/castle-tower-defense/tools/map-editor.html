@@ -73,6 +73,16 @@
         "meta    canvas   side";
       height: 100vh;
     }
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        grid-template-areas: "topbar" "meta" "canvas" "side";
+        height: auto;
+        min-height: 100vh;
+      }
+      .canvas-wrap { min-height: 60vh; }
+    }
 
     /* ── Top bar ─────────────────────────────────────────────── */
     .topbar {
@@ -114,6 +124,7 @@
     }
     .tool:hover { border-color: var(--aged-gold); }
     .tool.active { background: var(--aged-gold); color: var(--ink); border-color: var(--aged-gold); }
+    .tool[aria-pressed="true"] { background: rgba(200,148,62,0.25); }
     .tool.warn { border-color: var(--terracotta); color: var(--terracotta); }
     .tool.warn:hover { background: rgba(176,90,58,0.15); }
 
@@ -422,7 +433,7 @@
     <button class="tool active" data-decor="tree"    title="Tree (small or large)"><span class="swatch"></span>Tree</button>
     <button class="tool"        data-decor="rocks"   title="Rocks (small or large)"><span class="swatch"></span>Rocks</button>
     <button class="tool"        data-decor="crystal" title="Crystal (small or large)"><span class="swatch"></span>Crystal</button>
-    <button class="tool" data-decor-size="normal" style="flex:0 0 auto;">Size: <span data-bind="decorSize">normal</span></button>
+    <button class="tool" data-decor-size="normal" aria-pressed="false" style="flex:0 0 auto;">Size: <span data-bind="decorSize">normal</span></button>
   </div>
 
   <aside class="meta" aria-label="Map metadata">
@@ -1004,6 +1015,7 @@
       state.decorBrushSize = state.decorBrushSize === 'normal' ? 'large' : 'normal';
       const span = sz.querySelector('[data-bind="decorSize"]');
       if (span) span.textContent = state.decorBrushSize;
+      sz.setAttribute('aria-pressed', state.decorBrushSize === 'large' ? 'true' : 'false');
       historyPush();
     }
   });
@@ -1201,12 +1213,16 @@
     }
   }
 
-  // Canvas pill — yellow warning over the field when path validation fails.
+  // Canvas pill — yellow warning over the field when ANY validation rule fails.
   function setCanvasPill(v) {
     const pill = document.querySelector('[data-bind="canvas-pill"]');
     if (!pill) return;
-    if (!v.ok && v.badSegment) {
-      pill.textContent = 'Path has diagonals — snap segments to single-axis steps (segment ' + v.badSegment.i + ')';
+    if (!v.ok) {
+      if (v.badSegment) {
+        pill.textContent = 'Path has diagonals — snap segments to single-axis steps (segment ' + v.badSegment.i + ')';
+      } else {
+        pill.textContent = v.reason || 'Map not valid for export.';
+      }
       pill.classList.add('visible');
     } else {
       pill.classList.remove('visible');
@@ -1343,7 +1359,11 @@
     const palette = document.getElementById('decor-palette');
     if (palette) palette.classList.toggle('visible', state.tool === 'decor');
     $$('[data-decor]').forEach(b => b.classList.toggle('active', b.dataset.decor === state.decorBrush));
-    $$('[data-decor-size] [data-bind="decorSize"]').forEach(span => { span.textContent = state.decorBrushSize; });
+    $$('[data-decor-size]').forEach(btn => {
+      btn.setAttribute('aria-pressed', state.decorBrushSize === 'large' ? 'true' : 'false');
+      const span = btn.querySelector('[data-bind="decorSize"]');
+      if (span) span.textContent = state.decorBrushSize;
+    });
     $$('[data-bind]').forEach(el => {
       const key = el.dataset.bind;
       if (state.meta[key] !== undefined) el.value = state.meta[key];
