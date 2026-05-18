@@ -23,7 +23,7 @@ const ENEMY_BOB_AMP_FLYING = 0.18;
 let scene = null;
 let ground = null;
 let castleMesh = null;
-let groundInstancedMesh = null;       // ADR-030 §9 — instanced kit ground tiles
+const groundInstancedMeshes = new Map();  // ADR-031 §3 — tileId → InstancedMesh; one per WFC variant
 let pathGroup = null;                  // ADR-030 §9 — cloned kit path tiles
 let decorationsGroup = null;           // ADR-030 §10 — cloned decoration meshes
 let slotsGroup = null;
@@ -72,6 +72,17 @@ function init() {
 
 function getScene() { return scene; }
 
+// Remove all WFC-emitted ground InstancedMeshes. Geometry/material are
+// shared cache refs (do not dispose); only per-instance GPU buffers
+// (instanceMatrix/instanceColor) belong to the InstancedMesh.
+function clearGroundInstancedMeshes() {
+  groundInstancedMeshes.forEach((mesh) => {
+    scene.remove(mesh);
+    if (typeof mesh.dispose === 'function') mesh.dispose();
+  });
+  groundInstancedMeshes.clear();
+}
+
 // ─── paintTerrain: one-time per map (ADR-030 §9) ─────────────
 // Replaces makeRibbonGeometry-based ribbon with kit ground InstancedMesh
 // + cloned path tiles + cloned decorations. Themes select snow_tile_* by
@@ -82,11 +93,7 @@ function paintTerrain(map) {
   // references owned by the assets cache (review-#3 MAJOR-2). InstancedMesh's
   // own dispose() releases only the per-instance GPU buffers, not the
   // underlying geometry/material — safe to call.
-  if (groundInstancedMesh) {
-    scene.remove(groundInstancedMesh);
-    if (typeof groundInstancedMesh.dispose === 'function') groundInstancedMesh.dispose();
-    groundInstancedMesh = null;
-  }
+  clearGroundInstancedMeshes();
   if (castleMesh) { scene.remove(castleMesh); castleMesh = null; }
   pathGroup.clear();
   decorationsGroup.clear();
@@ -108,8 +115,8 @@ function paintTerrain(map) {
 
   // 2. Theme variants — snow override is by map.id, not theme tag.
   const isSnow = (map.id === 'snowfall_pass');
-  const groundId = isSnow ? 'snow_tile_ground' : 'tile_ground';
   const pathPrefix = isSnow ? 'snow_tile_path_' : 'tile_path_';
+  const fallbackGroundId = isSnow ? 'snow_tile_ground' : 'tile_ground';
 
   // 3a. Path: classify FIRST so we can skip ground placement under path cells
   // (kit ground + path tiles share y-extent → z-fighting if stacked).
@@ -123,26 +130,72 @@ function paintTerrain(map) {
     }
   }
 
-  // 3b. Ground: one InstancedMesh covering bounds, SKIPPING path cells.
-  const w = maxX - minX + 1;
-  const h = maxZ - minZ + 1;
-  const totalCells = w * h;
-  const handle = window.CTD3Assets.getInstanced(groundId, totalCells);
-  const tmpMat = new THREE.Matrix4();
-  let placed = 0;
-  for (let cz = minZ; cz <= maxZ; cz++) {
-    for (let cx = minX; cx <= maxX; cx++) {
-      if (pathCellSet.has(cx + ',' + cz)) continue;
-      tmpMat.makeTranslation(cx, 0, cz);
-      handle.setMatrixAt(placed, tmpMat);
-      placed += 1;
+  // 3b. Ground: WFC-driven variants per non-path cell (ADR-031 §3 Phase 4).
+  // wfcMode: 'off' uses uniform fallback ground tile (ADR-030 behavior);
+  //          'augment' / 'fill' run WFC for terrain variety.
+  const wfcMode = map.wfcMode || 'augment';
+  const cellToTileId = new Map();  // key → tileId
+  if (wfcMode === 'off' || !window.CTD3WFC || !window.CTD3WFCRules) {
+    // Uniform fallback (preserves pre-ADR-031 visuals).
+    for (let cz = minZ; cz <= maxZ; cz++) {
+      for (let cx = minX; cx <= maxX; cx++) {
+        const k = cx + ',' + cz;
+        if (pathCellSet.has(k)) continue;
+        cellToTileId.set(k, fallbackGroundId);
+      }
+    }
+  } else {
+    const rules = window.CTD3WFCRules.rulesForMap(map);
+    // Pre-seed path cells with their classified IDs so WFC respects them as
+    // immutable neighbors.
+    const preSeed = new Map();
+    if (result.ok) {
+      for (const cell of result.cells) {
+        const pathId = pathPrefix + cell.tileType.replace('tile_path_', '');
+        preSeed.set(cell.x + ',' + cell.z, pathId);
+      }
+    }
+    const seed = (typeof map.wfcSeed === 'number')
+      ? (map.wfcSeed >>> 0)
+      : window.CTD3WFC.hashSeed(map.id || 'plains');
+    const wfcOut = window.CTD3WFC.generate({
+      bounds: { minX, maxX, minZ, maxZ },
+      palette: rules.palette,
+      adjacency: rules.adjacency,
+      preSeed,
+      seed
+    });
+    for (const [k, id] of wfcOut) {
+      if (pathCellSet.has(k)) continue;  // path cells handled separately
+      cellToTileId.set(k, id);
     }
   }
-  handle.setCount(placed);
-  handle.commit();
-  handle.mesh.receiveShadow = true;
-  groundInstancedMesh = handle.mesh;
-  scene.add(groundInstancedMesh);
+
+  // 3c. Group cells by tileId so we use one InstancedMesh per variant.
+  const cellsByTile = new Map();  // tileId → [{x, z}]
+  for (const [k, tileId] of cellToTileId) {
+    if (!cellsByTile.has(tileId)) cellsByTile.set(tileId, []);
+    const [xs, zs] = k.split(',');
+    cellsByTile.get(tileId).push({ x: parseInt(xs, 10), z: parseInt(zs, 10) });
+  }
+
+  // 3d. Build one InstancedMesh per tileId (skips path tiles — those render
+  // as cloned meshes in step 4 so corner rotations are honored).
+  const tmpMat = new THREE.Matrix4();
+  for (const [tileId, cells] of cellsByTile) {
+    if (!window.CTD3Assets.hasMesh(tileId)) continue;
+    const handle = window.CTD3Assets.getInstanced(tileId, cells.length);
+    if (!handle || !handle.mesh) continue;
+    for (let i = 0; i < cells.length; i++) {
+      tmpMat.makeTranslation(cells[i].x, 0, cells[i].z);
+      handle.setMatrixAt(i, tmpMat);
+    }
+    handle.setCount(cells.length);
+    handle.commit();
+    handle.mesh.receiveShadow = true;
+    groundInstancedMeshes.set(tileId, handle.mesh);
+    scene.add(handle.mesh);
+  }
 
   // 4. Path: place kit path tiles at classified cells. y=0 (same elevation as
   // ground tiles, no z-fight because ground is skipped at these cells).
@@ -231,11 +284,7 @@ function clearPlayfield() {
   // See paintTerrain note on InstancedMesh disposal (review-#3 MAJOR-2).
   if (pathGroup) pathGroup.clear();
   if (decorationsGroup) decorationsGroup.clear();
-  if (groundInstancedMesh) {
-    scene.remove(groundInstancedMesh);
-    if (typeof groundInstancedMesh.dispose === 'function') groundInstancedMesh.dispose();
-    groundInstancedMesh = null;
-  }
+  clearGroundInstancedMeshes();
   if (castleMesh) { scene.remove(castleMesh); castleMesh = null; }
 }
 

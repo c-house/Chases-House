@@ -74,6 +74,21 @@ MODELS — Kenney "Tower Defense Kit" 2.1
     spawn_round.glb → spawn-round.glb
     tile_spawn.glb  → tile-spawn.glb
 
+  Ambient terrain variants (13 — ADR-031 Phase 3, for WFC procedural fill):
+    tile_bump.glb            → tile-bump.glb
+    tile_hill.glb            → tile-hill.glb
+    tile_rock.glb            → tile-rock.glb
+    tile_tree.glb            → tile-tree.glb
+    tile_tree_double.glb     → tile-tree-double.glb
+    tile_tree_quad.glb       → tile-tree-quad.glb
+    tile_crystal.glb         → tile-crystal.glb
+    snow_tile_bump.glb       → snow-tile-bump.glb
+    snow_tile_hill.glb       → snow-tile-hill.glb
+    snow_tile_rock.glb       → snow-tile-rock.glb
+    snow_tile_tree.glb       → snow-tile-tree.glb
+    snow_tile_tree_double.glb→ snow-tile-tree-double.glb
+    snow_tile_tree_quad.glb  → snow-tile-tree-quad.glb
+
 ----------------------------------------------------------------------
 AUDIO — Kenney audio packs (all CC0)
 ----------------------------------------------------------------------

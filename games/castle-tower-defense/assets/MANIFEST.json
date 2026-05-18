@@ -48,5 +48,20 @@
   { "id": "detail_crystal_large", "role": "decoration", "kind": "mesh", "path": "models/detail_crystal_large.glb" },
 
   { "id": "spawn_round", "role": "spawn", "kind": "mesh", "path": "models/spawn_round.glb" },
-  { "id": "tile_spawn",  "role": "spawn", "kind": "mesh", "path": "models/tile_spawn.glb" }
+  { "id": "tile_spawn",  "role": "spawn", "kind": "mesh", "path": "models/tile_spawn.glb" },
+
+  { "id": "tile_bump",        "role": "tile", "kind": "mesh", "path": "models/tile_bump.glb" },
+  { "id": "tile_hill",        "role": "tile", "kind": "mesh", "path": "models/tile_hill.glb" },
+  { "id": "tile_rock",        "role": "tile", "kind": "mesh", "path": "models/tile_rock.glb" },
+  { "id": "tile_tree",        "role": "tile", "kind": "mesh", "path": "models/tile_tree.glb" },
+  { "id": "tile_tree_double", "role": "tile", "kind": "mesh", "path": "models/tile_tree_double.glb" },
+  { "id": "tile_tree_quad",   "role": "tile", "kind": "mesh", "path": "models/tile_tree_quad.glb" },
+  { "id": "tile_crystal",     "role": "tile", "kind": "mesh", "path": "models/tile_crystal.glb" },
+
+  { "id": "snow_tile_bump",        "role": "tile", "kind": "mesh", "path": "models/snow_tile_bump.glb" },
+  { "id": "snow_tile_hill",        "role": "tile", "kind": "mesh", "path": "models/snow_tile_hill.glb" },
+  { "id": "snow_tile_rock",        "role": "tile", "kind": "mesh", "path": "models/snow_tile_rock.glb" },
+  { "id": "snow_tile_tree",        "role": "tile", "kind": "mesh", "path": "models/snow_tile_tree.glb" },
+  { "id": "snow_tile_tree_double", "role": "tile", "kind": "mesh", "path": "models/snow_tile_tree_double.glb" },
+  { "id": "snow_tile_tree_quad",   "role": "tile", "kind": "mesh", "path": "models/snow_tile_tree_quad.glb" }
 ]
