@@ -98,9 +98,9 @@ Previous `groundInstancedMesh` (single InstancedMesh) replaced with `groundInsta
 
 **wfcMode behavior** (Map shape addition):
 
-- `'off'`: uniform `tile_ground` / `snow_tile_ground` (pre-ADR-031 visuals).
-- `'augment'` (default): WFC generates terrain variants; hand-authored decorations render on top untouched.
-- `'fill'`: same as augment in current implementation; reserved for a future pass where WFC also generates decoration placements (currently hand-authored decorations always render).
+- `'off'`: uniform `tile_ground` / `snow_tile_ground` (pre-ADR-031 visuals). Hand-authored decorations render.
+- `'augment'` (default): WFC generates terrain variants; hand-authored decorations render on top as curated anchors.
+- `'fill'`: WFC generates terrain variants; hand-authored decorations are **skipped** (`scene.paintDecorations` returns early). The WFC ambient terrain (kit's `tile_tree*`, `tile_rock`, etc.) is the sole visual fill source. Use for maps where you want pure procedural variety with no hand-curated landmarks.
 
 **wfcSeed** (optional Map field, uint32): explicit seed. Default = `hashSeed(map.id)`, so each map's "look" is stable across reloads. Authors can pin a specific seed if they like a particular layout.
 

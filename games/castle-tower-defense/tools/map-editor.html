@@ -1292,9 +1292,19 @@
           preSeed.set(cell.x + ',' + cell.z, pathPrefix + cell.tileType.replace('tile_path_', ''));
         }
       }
+      // wfcSeed may be a number (set by Re-roll) or a string (set by data-bind
+      // when the user types in the seed input). Tolerate both so the preview
+      // tracks user intent without dropping to hashSeed silently.
       const seedRaw = state.meta && state.meta.wfcSeed;
-      const seed = (typeof seedRaw === 'number' && !isNaN(seedRaw))
-        ? (seedRaw >>> 0)
+      let seedNum = null;
+      if (typeof seedRaw === 'number' && !isNaN(seedRaw)) {
+        seedNum = seedRaw >>> 0;
+      } else if (typeof seedRaw === 'string' && seedRaw.trim() !== '') {
+        const parsed = parseInt(seedRaw, 10);
+        if (!isNaN(parsed)) seedNum = parsed >>> 0;
+      }
+      const seed = (seedNum != null)
+        ? seedNum
         : window.CTD3WFC.hashSeed((state.meta && state.meta.id) || 'new_map');
       groundCellMap = window.CTD3WFC.generate({
         bounds: { minX, maxX, minZ, maxZ },
@@ -1304,12 +1314,28 @@
       });
     }
 
+    // Pre-resolve the unique set of tile IDs we'll need so we await loadMesh
+    // once per UNIQUE id, then synchronously clone per cell. Avoids ~384
+    // serial awaits on a typical 24×16 grid (Pass-2 audit finding #5).
+    const neededIds = new Set();
+    for (let cz = minZ; cz <= maxZ; cz++) {
+      for (let cx = minX; cx <= maxX; cx++) {
+        const k = cx + ',' + cz;
+        if (pathCellSet.has(k)) continue;
+        neededIds.add(groundCellMap ? (groundCellMap.get(k) || groundId) : groundId);
+      }
+    }
+    const meshById = new Map();
+    await Promise.all(Array.from(neededIds).map(async (id) => {
+      const m = await loadMesh(id);
+      if (m) meshById.set(id, m);
+    }));
     for (let cz = minZ; cz <= maxZ; cz++) {
       for (let cx = minX; cx <= maxX; cx++) {
         const k = cx + ',' + cz;
         if (pathCellSet.has(k)) continue;
         const tileId = groundCellMap ? (groundCellMap.get(k) || groundId) : groundId;
-        const tileMesh = await loadMesh(tileId);
+        const tileMesh = meshById.get(tileId);
         if (!tileMesh) continue;
         const node = tileMesh.clone(true);
         node.position.set(cx, 0, cz);

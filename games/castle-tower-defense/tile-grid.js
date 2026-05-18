@@ -114,9 +114,11 @@
         cell.rotation = DIR_ROTATION[opposite];
       } else if (prevDir === nextDir) {
         cell.tileType = 'tile_path_straight';
-        // Kit-default straight runs along +Z. For x-axis travel, rotate by π/2
-        // so the band lies along the world X-axis. For z-axis travel, no rotation.
-        cell.rotation = (nextDir === 'x+' || nextDir === 'x-') ? Math.PI / 2 : 0;
+        // Straight tiles have bilateral symmetry along their long axis, so
+        // pointing them in the direction-of-travel (DIR_ROTATION[nextDir]) is
+        // visually equivalent to pointing them either way along that axis.
+        // Single source of truth: same lookup table as end_round (DRY).
+        cell.rotation = DIR_ROTATION[nextDir];
       } else {
         cell.tileType = 'tile_path_corner_round';
         cell.rotation = CORNER_ROTATION[prevDir + '|' + nextDir] || 0;

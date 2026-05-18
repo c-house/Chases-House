@@ -143,10 +143,28 @@
           }
           if (changed) {
             if (nb.possible.size === 0) {
-              // Contradiction — recovery: restore palette possibilities so the
-              // next collapse picks something weighted-random rather than
-              // throwing. WFC's "purity" is sacrificed for never-crash robustness.
+              // Contradiction — recovery: restore palette possibilities so
+              // the next collapse picks something weighted-random rather than
+              // crashing. Then re-apply hard constraints from any already-
+              // COLLAPSED neighbors so we don't reintroduce adjacency
+              // violations (e.g., tree_quad next to itself). Robust + invariant.
               nb.possible = new Set(allIds);
+              for (const recheckEdge of ['e', 'w', 'n', 's']) {
+                const ngx = nb.x + DX[recheckEdge], ngz = nb.z + DZ[recheckEdge];
+                const ngh = cells.get(cellKey(ngx, ngz));
+                if (!ngh || !ngh.collapsed) continue;
+                const oppEdge = OPP[recheckEdge];
+                const allowedFromNgh = adj[ngh.collapsed] && adj[ngh.collapsed][oppEdge];
+                if (!allowedFromNgh) continue;
+                for (const id of Array.from(nb.possible)) {
+                  if (!allowedFromNgh.has(id)) nb.possible.delete(id);
+                }
+              }
+              // Belt-and-suspenders: if STILL impossible, pin to palette[0] so
+              // the algorithm completes (last-resort, never crashes).
+              if (nb.possible.size === 0 && palette && palette.length) {
+                nb.possible = new Set([palette[0].id]);
+              }
             }
             queue.push(nb);
           }
@@ -185,10 +203,11 @@
       propagate(50000);
     }
 
-    // Build result map.
+    // Build result map. Defensive fallback if the palette was empty.
+    const fallbackId = (palette && palette.length) ? palette[0].id : 'tile_ground';
     const result = new Map();
     for (const [key, cell] of cells) {
-      result.set(key, cell.collapsed || palette[0].id);
+      result.set(key, cell.collapsed || fallbackId);
     }
     return result;
   }
