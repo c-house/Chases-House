@@ -181,7 +181,13 @@
     if (sheetSellBtn) sheetSellBtn.textContent = 'Sell · +' + sellValue + 'g';
   }
 
-  function setScreen(name) { body.setAttribute('data-screen', name); }
+  function setScreen(name) {
+    body.setAttribute('data-screen', name);
+    document.querySelectorAll('.screen').forEach(scr => {
+      if (scr.classList.contains(name)) scr.removeAttribute('inert');
+      else scr.setAttribute('inert', '');
+    });
+  }
   function getScreen() { return body.getAttribute('data-screen'); }
 
   function setReducedMotion(on) { body.classList.toggle('reduced-motion', !!on); }

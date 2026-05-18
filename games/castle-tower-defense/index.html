@@ -107,6 +107,7 @@
     body[data-screen="play"]     .screen.play .hud-bottom .tower-card,
     body[data-screen="play"]     .screen.play .hud-bottom .ctrl-btn { pointer-events: auto; }
     body[data-screen="pause"]    .screen.pause  { display: grid; place-items: center; background: rgba(10,10,11,0.75); pointer-events: auto; }
+    body[data-screen="restart-confirm"] .screen.restart-confirm { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
     body[data-screen="game-over"] .screen.game-over { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
     body[data-screen="tutorial"] .screen.tutorial { display: grid; place-items: end center; padding-bottom: 7rem; pointer-events: auto; }
     body[data-screen="help"]     .screen.help     { display: grid; place-items: center; background: rgba(10,10,11,0.88); pointer-events: auto; overflow-y: auto; padding: 2rem 1rem; }
@@ -120,9 +121,13 @@
       max-width: 520px;
       width: 100%;
       max-height: 92vh;
-      overflow-y: auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     }
+    .help-modal > .body   { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+    .help-modal > .footer { flex: 0 0 auto; padding-top: 0.8rem; text-align: center; }
     .help-modal h2 {
       font-family: var(--font-display), serif;
       color: var(--aged-gold);
@@ -596,7 +601,7 @@
     <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
       <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Paused</h2>
       <button class="btn primary" data-action="resume">Resume</button>
-      <button class="btn" data-action="restart">Restart</button>
+      <button class="btn" data-action="show-restart-confirm">Restart</button>
       <button class="btn" data-action="quit-to-map-select">Quit</button>
       <hr style="border-color:rgba(232,213,168,0.2);margin:1.2rem 0;">
       <div style="text-align:left;font-size:0.84rem;color:rgba(240,230,211,0.78);">
@@ -656,26 +661,38 @@
        window.CTD3Entities.TOWERS / .ENEMIES in ui.js fillHelpScreen. -->
   <div class="screen help">
     <div class="help-modal">
-      <h2>How to Play</h2>
-      <p class="goal">Defend the castle. Stop raiders before they reach the gate.</p>
+      <div class="body">
+        <h2>How to Play</h2>
+        <p class="goal">Defend the castle. Stop raiders before they reach the gate.</p>
 
-      <h3>Towers</h3>
-      <div class="legend-grid" data-bind="helpTowers"></div>
+        <h3>Towers</h3>
+        <div class="legend-grid" data-bind="helpTowers"></div>
 
-      <h3>Raiders</h3>
-      <div class="legend-grid" data-bind="helpEnemies"></div>
+        <h3>Raiders</h3>
+        <div class="legend-grid" data-bind="helpEnemies"></div>
 
-      <h3>Tips</h3>
-      <ul class="tips">
-        <li><strong>Ranger</strong> handles early waves cheaply; <strong>Catapult</strong> for crowd splash.</li>
-        <li><strong>Mage</strong> shines against armor; <strong>Warden</strong> slows nearby raiders (place at chokepoints).</li>
-        <li>Tap a tower to upgrade or sell. Refunds are 75% of total invested.</li>
-        <li>Send waves at your pace. <strong>2×</strong> speeds the action.</li>
-      </ul>
-
-      <div class="actions">
+        <h3>Tips</h3>
+        <ul class="tips">
+          <li><strong>Ranger</strong> handles early waves cheaply; <strong>Catapult</strong> for crowd splash.</li>
+          <li><strong>Mage</strong> shines against armor; <strong>Warden</strong> slows nearby raiders (place at chokepoints).</li>
+          <li>Tap a tower to upgrade or sell. Refunds are 75% of total invested.</li>
+          <li>Send waves at your pace. <strong>2×</strong> speeds the action.</li>
+        </ul>
+      </div>
+      <div class="footer">
         <button class="btn primary" data-action="dismiss-help">Got It</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Restart confirmation ──────────────────────────────────────
+       Wraps the existing actions.restart() to prevent accidental
+       mid-wave wipes from the pause menu. -->
+  <div class="screen restart-confirm">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
+      <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Restart will erase current progress.</h2>
+      <button class="btn primary" data-action="confirm-restart">Restart</button>
+      <button class="btn" data-action="cancel-restart">Cancel</button>
     </div>
   </div>
 

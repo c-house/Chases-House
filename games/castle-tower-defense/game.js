@@ -250,6 +250,9 @@ function handleAction(name, el) {
     case 'resume':                 actions.resume(); window.CTD3Audio.uiSfx('click'); break;
     case 'restart':                actions.restart(); window.CTD3Audio.uiSfx('click'); break;
     case 'play-again':             actions.restart(); window.CTD3Audio.uiSfx('click'); break;
+    case 'show-restart-confirm':   window.CTD3Ui.setScreen('restart-confirm'); window.CTD3Audio.uiSfx('click'); break;
+    case 'confirm-restart':        actions.restart(); window.CTD3Audio.uiSfx('click'); break;
+    case 'cancel-restart':         window.CTD3Ui.setScreen('pause'); window.CTD3Audio.uiSfx('click'); break;
     case 'quit-to-map-select':     backToMapSelect(); window.CTD3Audio.uiSfx('click'); break;
     case 'dismiss-tutorial':       actions.dismissTutorial(); window.CTD3Audio.uiSfx('click'); break;
     case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); window.CTD3Audio.uiSfx('click'); break;
