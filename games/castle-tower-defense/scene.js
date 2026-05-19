@@ -235,14 +235,15 @@ function paintTerrain(map) {
   }
 
   // 5. Castle — stacked square keep (kit: tower-square-bottom + middle + roof).
-  // Three pieces sit at integer unit-y offsets per Kenney TD kit convention.
+  // Each kit piece is 0.5u tall (measured at runtime, not 1u). Stack at
+  // half-unit offsets so pieces share a flush seam with no gap or overlap.
   const keep = new THREE.Group();
   const keepBot  = window.CTD3Assets.getMesh('keep_bottom');
   const keepMid  = window.CTD3Assets.getMesh('keep_middle');
   const keepRoof = window.CTD3Assets.getMesh('keep_roof');
-  keepBot.position.set(0, 0, 0);
-  keepMid.position.set(0, 1, 0);
-  keepRoof.position.set(0, 2, 0);
+  keepBot.position.set(0, 0,   0);
+  keepMid.position.set(0, 0.5, 0);
+  keepRoof.position.set(0, 1.0, 0);
   keep.add(keepBot, keepMid, keepRoof);
   keep.position.set(map.castle.x, 0, map.castle.z);
   keep.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
