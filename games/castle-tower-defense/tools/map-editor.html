@@ -1182,6 +1182,25 @@
     const last = m.path[m.path.length - 1];
     const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
     if (dCastle > 1.5) return { ok: false, reason: 'castle is far from path end (' + dCastle.toFixed(1) + 'u)' };
+    {
+      const pathCells = new Set();
+      for (let i = 0; i < m.path.length - 1; i++) {
+        const a = m.path[i], b = m.path[i + 1];
+        const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
+        let x = a.x, z = a.z;
+        while (x !== b.x || z !== b.z) {
+          pathCells.add(x + ',' + z);
+          x += dx; z += dz;
+        }
+        pathCells.add(b.x + ',' + b.z);
+      }
+      for (const s of m.buildSlots) {
+        const k = s.x + ',' + s.z;
+        if (pathCells.has(k)) {
+          return { ok: false, reason: 'slot ' + s.id + ' at (' + s.x + ',' + s.z + ') sits on path' };
+        }
+      }
+    }
     if (!m.buildSlots.every(s => Number.isInteger(s.x) && Number.isInteger(s.z))) {
       return { ok: false, reason: 'slot has non-integer coords' };
     }

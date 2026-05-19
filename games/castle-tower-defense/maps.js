@@ -1,3 +1,6 @@
+/* Map design — see docs/level-design.md for the H1–H12 rulebook.
+   New maps must pass tools/map-editor.html validate() (which now
+   enforces H6 — no slot on path). */
 /* ═══════════════════════════════════════════════════════════════
    Castle Tower Defense 3D — maps.js
    Hand-authored maps. World units (x/z plane; y is up, ground = 0).
