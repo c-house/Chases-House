@@ -38,7 +38,11 @@ MODELS — Kenney "Tower Defense Kit" 2.1
     enemy_captain.glb      → enemy-ufo-d.glb
 
   Castle (1):
-    castle.glb             → wood-structure-high.glb
+    castle.glb             → wood-structure-high.glb  (legacy; no longer rendered)
+    keep_bottom.glb        → tower-square-bottom-a.glb
+    keep_middle.glb        → tower-square-middle-a.glb
+    keep_roof.glb          → tower-square-roof-a.glb
+    slot_selection.glb     → selection-a.glb
 
   Path tiles (8 — ADR-030 Phase 2):
     tile_ground.glb              → tile.glb

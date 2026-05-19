@@ -102,6 +102,7 @@ async function preload() {
     'tower_catapult_t1', 'tower_catapult_t2', 'tower_catapult_t3',
     'tower_mage_t1', 'tower_mage_t2', 'tower_mage_t3',
     'tower_warden_t1', 'tower_warden_t2', 'tower_warden_t3',
+    'keep_bottom', 'keep_middle', 'keep_roof',
     'tile_path_straight', 'tile_path_corner_round',
     'tile_path_end_round', 'tile_path_spawn_end_round',
     'tile_ground', 'tile_hill', 'tile_rock', 'tile_tree',

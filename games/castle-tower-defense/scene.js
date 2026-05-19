@@ -234,10 +234,19 @@ function paintTerrain(map) {
     }
   }
 
-  // 5. Castle — kit mesh.
-  castleMesh = window.CTD3Assets.getMesh('castle');
-  castleMesh.position.set(map.castle.x, 0, map.castle.z);
-  castleMesh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  // 5. Castle — stacked square keep (kit: tower-square-bottom + middle + roof).
+  // Three pieces sit at integer unit-y offsets per Kenney TD kit convention.
+  const keep = new THREE.Group();
+  const keepBot  = window.CTD3Assets.getMesh('keep_bottom');
+  const keepMid  = window.CTD3Assets.getMesh('keep_middle');
+  const keepRoof = window.CTD3Assets.getMesh('keep_roof');
+  keepBot.position.set(0, 0, 0);
+  keepMid.position.set(0, 1, 0);
+  keepRoof.position.set(0, 2, 0);
+  keep.add(keepBot, keepMid, keepRoof);
+  keep.position.set(map.castle.x, 0, map.castle.z);
+  keep.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  castleMesh = keep;
   scene.add(castleMesh);
 
   // 6. Slot stone slabs + invisible collider planes for raycast (ADR-028 §13).
@@ -247,25 +256,24 @@ function paintTerrain(map) {
   // Empty buildable slots glow green when the user has a tower selected
   // — handled separately in syncDecals so the highlight is reactive.
   for (const slot of map.buildSlots) {
-    // Slab — flat stone tile, ground-aware.
-    const slabGeo = new THREE.BoxGeometry(0.9, 0.12, 0.9);
+    // Slab — flat stone tile, ground-aware. Warm cream contrasts grass green.
+    const slabGeo = new THREE.BoxGeometry(0.95, 0.22, 0.95);
     const slabMat = new THREE.MeshStandardMaterial({
-      color: 0xa8a39c, roughness: 0.92, metalness: 0.0
+      color: 0xd4c498, roughness: 0.88, metalness: 0.0
     });
     const slab = new THREE.Mesh(slabGeo, slabMat);
-    slab.position.set(slot.x, 0.06, slot.z);
+    slab.position.set(slot.x, 0.11, slot.z);
     slab.castShadow = true;
     slab.receiveShadow = true;
-    slot._slabRef = slab;  // for hover/selection state if scene wants to tint
+    slot._slabRef = slab;
     slotsGroup.add(slab);
-    // Rim — slightly lower + wider darker stone block underneath so the slab
-    // appears mortared / inset rather than floating.
-    const rimGeo = new THREE.BoxGeometry(1.04, 0.04, 1.04);
+    // Rim — wider darker base so the slab reads as inset / mortared.
+    const rimGeo = new THREE.BoxGeometry(1.08, 0.06, 1.08);
     const rimMat = new THREE.MeshStandardMaterial({
-      color: 0x7a7670, roughness: 0.95
+      color: 0x6a5a40, roughness: 0.95
     });
     const rim = new THREE.Mesh(rimGeo, rimMat);
-    rim.position.set(slot.x, 0.02, slot.z);
+    rim.position.set(slot.x, 0.03, slot.z);
     rim.receiveShadow = true;
     slotsGroup.add(rim);
     // Invisible collider plane for tap targets (~2.5 world units = generous)
@@ -590,16 +598,22 @@ function syncDecals(state) {
   if (sel && sel.behavior === 'projectile' && sel.range > 0) {
     decalsGroup.add(makeRing(sel.x, sel.z, sel.range, 0xc8943e, 0.4));
   }
-  // When the user has a tower type chosen, every empty slot pulses a soft
-  // green disc beneath it so the "build here" affordance is unmissable.
-  // The currently-hovered slot adds a brighter range-circle preview on top.
-  if (state.paletteSelection && state.mapDef && state.mapDef.buildSlots) {
+  // Empty buildable slots get TWO affordances:
+  //   - Always-on: subtle aged-gold ring outline (visible without selection).
+  //   - On palette-select: bright green pulsing disc on top (unmissable).
+  if (state.mapDef && state.mapDef.buildSlots) {
     const t = performance.now() / 1000;
-    const pulse = 0.55 + Math.sin(t * 3) * 0.15;   // 0.40 – 0.70 opacity
+    const pulse = 0.6 + Math.sin(t * 3) * 0.2;   // 0.40 – 0.80 opacity
     for (const slot of state.mapDef.buildSlots) {
       const occupied = state.towers.some(tw => tw.slotId === slot.id);
       if (occupied) continue;
-      decalsGroup.add(makeDisc(slot.x, slot.z, 0.7, 0x5aa84a, pulse));
+      // Always-on aged-gold ring around the slab — affordance without palette.
+      // Slab is 0.95×0.22×0.95 centered at y=0.11; ring sits just above the top.
+      decalsGroup.add(makeRing(slot.x, slot.z, 0.62, 0xc8943e, 0.85, 0.24));
+      if (state.paletteSelection) {
+        // Bright vivid-green pulsing disc when palette tower is selected
+        decalsGroup.add(makeDisc(slot.x, slot.z, 1.1, 0x6aff5a, pulse, 0.25));
+      }
     }
   }
   // Hovered slot + palette selection → placement preview range circle
@@ -616,22 +630,22 @@ function syncDecals(state) {
   }
 }
 
-function makeRing(x, z, radius, color, opacity) {
+function makeRing(x, z, radius, color, opacity, y) {
   const geo = new THREE.RingGeometry(radius * 0.97, radius, 48);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, 0.05, z);
+  m.position.set(x, y != null ? y : 0.05, z);
   return m;
 }
 
 // Filled disc decal (used for the green "place here" highlight under slots).
-function makeDisc(x, z, radius, color, opacity) {
+function makeDisc(x, z, radius, color, opacity, y) {
   const geo = new THREE.CircleGeometry(radius, 32);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, 0.07, z);  // just above the rim block (0.04 thick @ y=0.02)
+  m.position.set(x, y != null ? y : 0.07, z);
   return m;
 }
 

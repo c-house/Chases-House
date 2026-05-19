@@ -127,7 +127,21 @@
       flex-direction: column;
       box-shadow: 0 8px 32px rgba(0,0,0,0.6);
     }
-    .help-modal > .body   { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+    .help-modal > .body {
+      flex: 1 1 auto; overflow-y: auto; min-height: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--aged-gold) rgba(40,28,18,0.4);
+    }
+    .help-modal > .body::-webkit-scrollbar { width: 6px; }
+    .help-modal > .body::-webkit-scrollbar-track {
+      background: rgba(40,28,18,0.4);
+      border-radius: 3px;
+    }
+    .help-modal > .body::-webkit-scrollbar-thumb {
+      background: var(--aged-gold);
+      border-radius: 3px;
+    }
+    .help-modal > .body::-webkit-scrollbar-thumb:hover { background: var(--ember); }
     .help-modal > .footer { flex: 0 0 auto; padding-top: 0.8rem; text-align: center; }
     .help-modal h2 {
       font-family: var(--font-display), serif;

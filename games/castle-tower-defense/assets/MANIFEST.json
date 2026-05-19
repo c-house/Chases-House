@@ -20,6 +20,10 @@
   { "id": "enemy_captain",    "role": "enemy", "kind": "mesh", "path": "models/enemy_captain.glb" },
 
   { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" },
+  { "id": "keep_bottom",   "role": "castle", "kind": "mesh", "path": "models/keep_bottom.glb" },
+  { "id": "keep_middle",   "role": "castle", "kind": "mesh", "path": "models/keep_middle.glb" },
+  { "id": "keep_roof",     "role": "castle", "kind": "mesh", "path": "models/keep_roof.glb" },
+  { "id": "slot_selection", "role": "slot",  "kind": "mesh", "path": "models/slot_selection.glb" },
 
   { "id": "tile_ground",             "role": "tile", "kind": "mesh", "path": "models/tile_ground.glb" },
   { "id": "tile_ground_dirt",        "role": "tile", "kind": "mesh", "path": "models/tile_ground_dirt.glb" },
