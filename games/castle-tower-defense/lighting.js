@@ -16,11 +16,11 @@ const PRESETS = {
     hemiIntensity: 0.7
   },
   inWave: {
-    sunColor:   0x9bb0d4,
-    sunIntensity: 0.6,
-    hemiSkyColor: 0x3e4d6b,
-    hemiGroundColor: 0x4a3f30,
-    hemiIntensity: 0.4
+    sunColor:   0xffe6b3,
+    sunIntensity: 1.1,
+    hemiSkyColor: 0xb0d4f1,
+    hemiGroundColor: 0x9d7f5a,
+    hemiIntensity: 0.7
   }
 };
 
