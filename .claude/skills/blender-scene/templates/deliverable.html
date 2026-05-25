@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<!--
+  Blender render deliverable template.
+  Replace the placeholders marked {{...}}, swap the WebGL fragment shader
+  for one that matches your scene's mood, and either:
+    - Use the <video> hero (preferred when an MP4 exists)
+    - Or replace the <video> block with <img src="{{HERO_PNG}}"> if still-only.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --text: #f0e6d3;
+    --muted: rgba(240, 230, 211, 0.55);
+    --gold: #c8943e;
+    --ember: #a06828;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background: radial-gradient(120% 100% at 50% 0%, rgba(60, 90, 140, 0.10) 0%, rgba(10, 10, 11, 1) 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .frame {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 4vw, 2.5rem) 6rem;
+  }
+  .eyebrow {
+    color: var(--gold);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 1.1rem;
+    opacity: 0.9;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-variation-settings: "opsz" 144;
+    font-size: clamp(2.4rem, 6.2vw, 4.6rem);
+    letter-spacing: -0.025em;
+    line-height: 1.04;
+    margin-bottom: 0.6rem;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--gold);
+  }
+  .lede {
+    max-width: 56ch;
+    color: var(--muted);
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
+    margin-bottom: clamp(2rem, 4vw, 3.5rem);
+  }
+  .hero, .companion {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 6px 20px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(240, 230, 211, 0.06);
+  }
+  .hero img,
+  .hero video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #000;
+  }
+  .caption {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 1rem 0.25rem 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .caption .meta { font-variant-numeric: tabular-nums; }
+  .section-divider {
+    margin: clamp(3rem, 6vw, 5rem) 0 clamp(1.25rem, 3vw, 2rem);
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  .section-divider .num {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--gold);
+    font-size: 0.9rem;
+  }
+  .section-divider h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+    letter-spacing: -0.01em;
+  }
+  .section-divider hr {
+    flex: 1;
+    border: 0;
+    border-top: 1px solid rgba(240, 230, 211, 0.1);
+  }
+  .companion canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .notes {
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2.2rem 2.5rem;
+  }
+  .notes section h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 0.7rem;
+  }
+  .notes section p {
+    color: var(--muted);
+    font-size: 0.93rem;
+  }
+  .notes section p + p { margin-top: 0.5rem; }
+  code {
+    font-family: ui-monospace, SF Mono, Monaco, Consolas, monospace;
+    font-size: 0.86em;
+    background: rgba(200, 148, 62, 0.1);
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+  footer {
+    margin-top: 5rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(240, 230, 211, 0.08);
+    color: var(--muted);
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  @media (max-width: 640px) {
+    .caption { flex-direction: column; gap: 0.25rem; }
+  }
+</style>
+</head>
+<body>
+  <main class="frame">
+    <div class="eyebrow">{{EYEBROW}}</div>
+    <h1>{{TITLE_PART_A}} <em>{{TITLE_PART_B}}</em></h1>
+    <p class="lede">{{LEDE}}</p>
+
+    <div class="hero">
+      <!-- For animation: -->
+      <video src="{{HERO_MP4}}" autoplay loop muted playsinline preload="auto"
+             poster="{{HERO_PNG}}" aria-label="{{HERO_ALT}}">
+        <img src="{{HERO_PNG}}" alt="{{HERO_ALT}}">
+      </video>
+      <!-- For still-only, replace the <video> block above with:
+        <img src="{{HERO_PNG}}" alt="{{HERO_ALT}}">
+      -->
+    </div>
+    <div class="caption">
+      <span>{{HERO_TECH_SPECS}}</span>
+      <span class="meta">{{HERO_FILENAME}}</span>
+    </div>
+
+    <div class="section-divider">
+      <span class="num">II</span>
+      <h2>{{COMPANION_TITLE}}</h2>
+      <hr>
+    </div>
+    <div class="companion">
+      <canvas id="moodShader" aria-label="{{COMPANION_ALT}}"></canvas>
+    </div>
+    <div class="caption">
+      <span>{{COMPANION_TECH_SPECS}}</span>
+      <span class="meta">runs at 60 fps in your browser</span>
+    </div>
+
+    <div class="section-divider">
+      <span class="num">III</span>
+      <h2>How it was made</h2>
+      <hr>
+    </div>
+    <div class="notes">
+      <section>
+        <h3>Scene</h3>
+        <p>{{NOTE_SCENE}}</p>
+      </section>
+      <section>
+        <h3>Assets</h3>
+        <p>{{NOTE_ASSETS}}</p>
+      </section>
+      <section>
+        <h3>Lighting</h3>
+        <p>{{NOTE_LIGHTING}}</p>
+      </section>
+      <section>
+        <h3>Compositing</h3>
+        <p>{{NOTE_COMPOSITING}}</p>
+      </section>
+    </div>
+
+    <footer>
+      <span>{{FOOTER_LEFT}}</span>
+      <span>{{FOOTER_RIGHT}}</span>
+    </footer>
+  </main>
+
+<script>
+  const canvas = document.getElementById('moodShader');
+  const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false });
+  if (!gl) {
+    canvas.outerHTML = '<div style="padding:2rem;color:#a06828;font-family:sans-serif">WebGL 2 not available — animated companion skipped.</div>';
+  } else {
+    const vsSrc = `#version 300 es
+in vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }`;
+
+    // ⚠ Replace the body of mainImage(...) below with a shader that matches
+    //    your scene's mood. The wrapper at the bottom (void main { ... }) and
+    //    the iResolution/iTime uniforms are fixed — only edit mainImage().
+    const fsSrc = `#version 300 es
+precision highp float;
+uniform vec3 iResolution;
+uniform float iTime;
+out vec4 fragColor_out;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+  float t = iTime;
+
+  // Sky gradient
+  float sky = 1.0 - smoothstep(-0.5, 0.5, uv.y);
+  vec3 col = mix(vec3(0.004, 0.011, 0.024), vec3(0.014, 0.024, 0.045), sky);
+
+  // TODO: replace this body with content matching your scene.
+  // The {{shader_body}} placeholder used in skill instructions can replace
+  // these lines with stars / spores / fog / whatever.
+  float pulse = 0.5 + 0.5 * sin(t * 0.5 + uv.x * 3.0);
+  col += vec3(0.10, 0.18, 0.22) * pulse * smoothstep(0.5, 0.0, length(uv));
+
+  // Vignette
+  float vig = 1.0 - smoothstep(0.55, 1.05, length(uv * vec2(0.75, 0.95)));
+  col *= mix(0.45, 1.0, vig);
+
+  col = col / (col + 0.5) * 1.5;
+  col = pow(col, vec3(0.95));
+  fragColor = vec4(col, 1.0);
+}
+
+void main() { mainImage(fragColor_out, gl_FragCoord.xy); }`;
+
+    function compile(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error('Shader error:', gl.getShaderInfoLog(s));
+        return null;
+      }
+      return s;
+    }
+    const vs = compile(gl.VERTEX_SHADER, vsSrc);
+    const fs = compile(gl.FRAGMENT_SHADER, fsSrc);
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'a_position');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    const uRes = gl.getUniformLocation(prog, 'iResolution');
+    const uTime = gl.getUniformLocation(prog, 'iTime');
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const r = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.round(r.width * dpr));
+      canvas.height = Math.max(1, Math.round(r.height * dpr));
+      gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+    new ResizeObserver(resize).observe(canvas);
+    resize();
+
+    const t0 = performance.now();
+    let running = true;
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;
+      if (running) requestAnimationFrame(frame);
+    });
+    function frame() {
+      if (!running) return;
+      gl.useProgram(prog);
+      gl.uniform3f(uRes, canvas.width, canvas.height, 1.0);
+      gl.uniform1f(uTime, (performance.now() - t0) / 1000);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+</script>
+</body>
+</html>

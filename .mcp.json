@@ -7,6 +7,11 @@
         "-c",
         "npx -y chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9222"
       ]
+    },
+    "blender-community": {
+      "command": "uvx",
+      "args": ["blender-mcp"],
+      "env": { "BLENDER_PORT": "9877" }
     }
   }
 }

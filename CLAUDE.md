@@ -173,3 +173,48 @@ After building any UI component, page, or user flow:
 | Chrome DevTools Guide | `docs/Chrome-DevTools-MCP-Guide.md` |
 | ADR: Crossword | `docs/adr/010-crossword.md` |
 | ADR: Jeopardy | `docs/adr/011-jeopardy.md` |
+
+---
+
+## Agentic Feature Workflow (hostile + unprecedented work)
+
+For high-stakes feature work with both characteristics:
+
+- **Hostile** — high cost of getting it wrong (security, data integrity, performance budgets, production interfaces).
+- **Unprecedented** — limited precedent in this codebase or the ecosystem; no existing pattern to copy.
+
+Apply the protocol documented in [`.claude/shared/agentic-feature-workflow.md`](.claude/shared/agentic-feature-workflow.md). Skip the ceremony for routine work (bug fixes, single-hook tweaks, established patterns) — plan mode → direct agent execution is enough.
+
+**Phase map (condensed):**
+
+| Phase | Step | Tool | Fresh ctx |
+|---|---|---|---|
+| 0 Recon | 1-2. Map terrain, constraints inventory | Direct agent | — |
+| 1 Design | 3-4. Plan-mode draft + pushback | Plan mode | — |
+| | 5. Adversarial review #1 | `/review-plan` | **yes** |
+| | 6. Refine + adversarial review #2 | Plan mode + `/review-plan` | **yes** |
+| | 7. Serialize plan → spec doc (contract) | Direct agent | — |
+| 2 Build | 8-9. `/feature-dev` with per-task checkpoints (~200 lines / 3 files budget) | feature-dev | — |
+| | 10. Verify; manually exercise hostile scenarios | feature-dev + manual | — |
+| Debug | D1-D6. Isolate → diagnose → minimum-change fix → regression test | Fresh agent for D1-D2 | **yes** |
+| 3 Harden | 11. Adversarial diff review | Fresh agent | **yes** |
+| | 12. Stress the unprecedented bits | Manual + agent | — |
+| | 13. ADR (≤1 page, ~400 words) | Direct agent | — |
+
+**Hard rules:**
+- Two adversarial passes for hostile/unprecedented work; a third has diminishing returns.
+- Brief reviewers on the plan, not the justifications. Rationale biases the attack.
+- Spec is a contract, not an explanation. Rationale belongs in the ADR.
+- Workers implement exactly what the spec specifies. Missing piece → STOP and report.
+- Minimum-change fixes only. Other improvements get listed as follow-ups, not bundled.
+- Read every diff at every task boundary. No batch approval.
+
+Full protocol with guardrail phrases (paste into prompts), signal table for misdirected thinking, and deviation rules → [`.claude/shared/agentic-feature-workflow.md`](.claude/shared/agentic-feature-workflow.md).
+
+---
+
+## Blender MCP (for asset work)
+
+Blender MCP is configured in `.mcp.json` as `blender-community` (port 9877). Requires Blender running locally with the [community MCP add-on](https://github.com/ahujasid/blender-mcp) enabled. Use the `blender-mcp` and `blender-scene` skills for scene-build, asset import (Poly Haven / Sketchfab / Hyper3D / Hunyuan3D), and render workflows.
+
+Primary use case in this repo: sourcing CC0 enemy/decoration assets for Castle Tower Defense 3D from Quaternius / KayKit / Kenney kits, retopologizing to the Kenney castle-kit silhouette, and exporting to `games/castle-tower-defense/assets/models/`.

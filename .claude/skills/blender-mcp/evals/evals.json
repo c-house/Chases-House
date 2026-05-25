@@ -1,0 +1,26 @@
+{
+  "skill_name": "blender-mcp",
+  "evals": [
+    {
+      "id": 1,
+      "name": "scene-creation-from-vague-brief",
+      "prompt": "Build me a low-poly dungeon scene in Blender. Stone floor, four walls, a treasure chest in the middle, two torches with warm point lights. Don't make it too dark — I want to see what's going on.",
+      "expected_output": "Skill should: (1) detect which Blender MCP is connected, (2) inspect current scene before building, (3) commit to a concrete plan in plain language and confirm with user, (4) build in passes (blockout → materials → lighting), (5) verify with a screenshot at the end. Should NOT proceed without checking server detection or save state.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "scene-analysis-performance",
+      "prompt": "I've got a Blender scene that feels sluggish. Can you figure out which objects are dragging it down? Especially anything that has way more polys than its size on screen warrants.",
+      "expected_output": "Skill should: (1) detect server (this task fits the lab server's strengths but ahujasid + Python works too), (2) start with a high-level summary (datablocks or get_scene_info), (3) run the poly-count-vs-screen-area analysis script from analysis-and-debug.md, (4) report findings as a headline + table + per-finding suggestion, not raw script output.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "asset-workflow-poly-haven",
+      "prompt": "Set up a beach vibe in Blender — get an outdoor sunset HDRI from Poly Haven, drop in some rocks and maybe a palm tree if there is one, and a sand-textured floor plane. Camera at eye level looking out at the ocean direction.",
+      "expected_output": "Skill should: (1) detect ahujasid is connected (Poly Haven is ahujasid-only — if only lab is connected, skill should say so), (2) check get_polyhaven_status before any Poly Haven call, (3) search HDRIs/textures/models with appropriate categories, (4) handle import + placement, (5) frame the camera. Should NOT silently fail or hallucinate Poly Haven on lab server.",
+      "files": []
+    }
+  ]
+}
