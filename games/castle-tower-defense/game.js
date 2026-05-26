@@ -261,6 +261,16 @@ function handleAction(name, el) {
     case 'quit-to-map-select':     backToMapSelect(); window.CTD3Audio.uiSfx('click'); break;
     case 'dismiss-tutorial':       actions.dismissTutorial(); window.CTD3Audio.uiSfx('click'); break;
     case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); window.CTD3Audio.uiSfx('click'); break;
+    case 'delete-user-map': {
+      const mapId = el.dataset.mapId;
+      const map = window.CTD3Maps.byId(mapId);
+      if (map && window.confirm('Delete "' + map.displayName + '"? This cannot be undone.')) {
+        window.CTD3Maps.deleteUserMap(mapId);
+        window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+      }
+      window.CTD3Audio.uiSfx('click');
+      break;
+    }
     case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); window.CTD3Audio.uiSfx('click'); break;
     case 'sheet-close':            window.CTD3Ui.closeSheets(); window.CTD3Audio.uiSfx('click'); break;
     case 'sheet-pick': {

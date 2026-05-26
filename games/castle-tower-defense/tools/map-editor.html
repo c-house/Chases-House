@@ -514,6 +514,10 @@
       <button class="tool" data-action="validate">Re-validate</button>
       <button class="tool active" data-action="copy" data-bind="copy-button">Copy JSON</button>
     </div>
+    <div class="actions" style="margin-top:0.3rem;">
+      <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
+    </div>
+    <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
     <div class="preview">
       <pre data-bind="preview">(map preview)</pre>
     </div>
@@ -1080,6 +1084,45 @@
           status.style.color = 'var(--terracotta, #b05a3a)';
         }
       }
+    } else if (name === 'save-user-map') {
+      saveToMyMaps();
+    }
+  }
+
+  // ── Save to My Maps (Phase 2 of editor-promotion plan) ──────
+  // Writes the combined export to localStorage 'ctd3:userMaps' in
+  // the same shape that maps.js _ingestMap() hydrates on game boot.
+  // The standalone editor doesn't load maps.js, so we touch
+  // localStorage directly — id prefix 'user:' is the convention
+  // maps.js uses to distinguish user-authored maps from OFFICIAL_MAPS.
+  function slugify(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'map';
+  }
+  function saveToMyMaps() {
+    const status = document.querySelector('[data-bind="save-user-status"]');
+    const setStatus = (text, ok) => {
+      if (!status) return;
+      status.textContent = text;
+      status.style.color = ok ? 'var(--aged-gold)' : 'var(--terracotta, #b05a3a)';
+    };
+    const v = validate();
+    if (!v.ok) { setStatus('Cannot save: ' + v.reason, false); return; }
+    const combined = buildCombinedExport();
+    const displayName = window.prompt('Map name:', combined.map.displayName || 'New Map');
+    if (displayName === null) return;
+    const authorName = window.prompt('Author name (optional):', '') || '';
+    const newId = 'user:' + slugify(displayName) + ':' + Date.now().toString(36);
+    combined.map.id = newId;
+    combined.map.displayName = displayName;
+    combined.meta = { authorName: authorName, createdAt: Date.now(), updatedAt: Date.now() };
+    try {
+      const raw = localStorage.getItem('ctd3:userMaps');
+      const arr = raw ? JSON.parse(raw) : [];
+      arr.push(combined);
+      localStorage.setItem('ctd3:userMaps', JSON.stringify(arr));
+      setStatus('Saved "' + displayName + '" — open the game to play it.', true);
+    } catch (e) {
+      setStatus('Save failed: ' + (e && e.message), false);
     }
   }
 

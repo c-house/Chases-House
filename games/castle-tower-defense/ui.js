@@ -275,56 +275,63 @@
   }
 
   // ─── Map select ──────────────────────────────────────────────
+  function renderMapCard(map, opts) {
+    const { scores, unlocked, showUnlockHint, showDelete } = opts;
+    const mapScores = scores[map.id] || {};
+    const sQuiet    = (mapScores.quiet    && mapScores.quiet.stars)    || 0;
+    const sSpirited = (mapScores.spirited && mapScores.spirited.stars) || 0;
+
+    const card = el('article', {
+      style: 'background:rgba(40,28,18,0.7);border:1px solid rgba(200,148,62,0.4);border-radius:8px;padding:1rem;margin:0.6rem auto;max-width:520px;color:var(--warm-stone);' + (unlocked ? '' : 'opacity:0.5;')
+    });
+    card.appendChild(el('div', { style: 'font-family:var(--font-display),serif;font-size:1.4rem;' }, [map.displayName]));
+    if (map.roman) card.appendChild(el('div', { style: 'font-size:0.8rem;opacity:0.7;font-style:italic;' }, ['— ' + map.roman + ' —']));
+    if (map.description) card.appendChild(el('p', { style: 'font-size:0.9rem;color:rgba(240,230,211,0.8);' }, [map.description]));
+
+    const row = el('div', { style: 'display:flex;gap:0.4rem;margin-top:0.6rem;' });
+    const quietBtn = el('button', { class: 'btn', 'data-action': 'start-map', 'data-map-id': map.id, 'data-difficulty': 'quiet' },
+      ['Quiet ', el('span', { role: 'img', 'aria-label': `${sQuiet} of 3 stars` }, ['★'.repeat(sQuiet) + '☆'.repeat(3 - sQuiet)])]);
+    if (!unlocked) quietBtn.disabled = true;
+    row.appendChild(quietBtn);
+
+    const spiritedBtn = el('button', { class: 'btn btn-spirited', 'data-action': 'start-map', 'data-map-id': map.id, 'data-difficulty': 'spirited' },
+      ['★ Spirited ', el('span', { role: 'img', 'aria-label': `${sSpirited} of 3 stars` }, ['★'.repeat(sSpirited) + '☆'.repeat(3 - sSpirited)])]);
+    if (!unlocked) spiritedBtn.disabled = true;
+    row.appendChild(spiritedBtn);
+
+    if (showDelete) {
+      const delBtn = el('button', { class: 'btn', 'data-action': 'delete-user-map', 'data-map-id': map.id, style: 'margin-left:auto;background:rgba(176,90,58,0.2);border-color:rgba(176,90,58,0.5);color:var(--terracotta, #b05a3a);' }, ['Delete']);
+      row.appendChild(delBtn);
+    }
+    card.appendChild(row);
+
+    if (showUnlockHint) {
+      card.appendChild(el('div', { style: 'text-align:center;margin-top:0.5rem;opacity:0.8;' }, ['Awaits ' + map.unlockRequirement + '★']));
+    }
+    return card;
+  }
+
   function hydrateMapSelect(scores, isMapUnlocked, isHardUnlocked, totalStars) {
     if (!mapGrid) return;
     const MAPS = window.CTD3Maps.listOfficial();
+    const USER = window.CTD3Maps.listUserMaps();
     if (totalStarsEl) totalStarsEl.textContent = String(totalStars());
     if (maxStarsEl)   maxStarsEl.textContent   = String(window.CTD3Maps.maxStars());
     mapGrid.replaceChildren();
     MAPS.forEach(map => {
       const unlocked = isMapUnlocked(map.id);
-      const mapScores = scores[map.id] || {};
-      const sQuiet    = (mapScores.quiet    && mapScores.quiet.stars)    || 0;
-      const sSpirited = (mapScores.spirited && mapScores.spirited.stars) || 0;
-
-      const card = el('article', {
-        style: 'background:rgba(40,28,18,0.7);border:1px solid rgba(200,148,62,0.4);border-radius:8px;padding:1rem;margin:0.6rem auto;max-width:520px;color:var(--warm-stone);' + (unlocked ? '' : 'opacity:0.5;')
-      });
-      card.appendChild(el('div', { style: 'font-family:var(--font-display),serif;font-size:1.4rem;' }, [map.displayName]));
-      card.appendChild(el('div', { style: 'font-size:0.8rem;opacity:0.7;font-style:italic;' }, ['— ' + map.roman + ' —']));
-      card.appendChild(el('p', { style: 'font-size:0.9rem;color:rgba(240,230,211,0.8);' }, [map.description]));
-
-      const row = el('div', { style: 'display:flex;gap:0.4rem;margin-top:0.6rem;' });
-      const quietBtn = el('button', {
-        class: 'btn',
-        'data-action': 'start-map',
-        'data-map-id': map.id,
-        'data-difficulty': 'quiet'
-      }, [
-        'Quiet ',
-        el('span', { role: 'img', 'aria-label': `${sQuiet} of 3 stars` }, ['★'.repeat(sQuiet) + '☆'.repeat(3 - sQuiet)])
-      ]);
-      if (!unlocked) quietBtn.disabled = true;
-      row.appendChild(quietBtn);
-
-      const spiritedBtn = el('button', {
-        class: 'btn btn-spirited',
-        'data-action': 'start-map',
-        'data-map-id': map.id,
-        'data-difficulty': 'spirited'
-      }, [
-        '★ Spirited ',
-        el('span', { role: 'img', 'aria-label': `${sSpirited} of 3 stars` }, ['★'.repeat(sSpirited) + '☆'.repeat(3 - sSpirited)])
-      ]);
-      if (!unlocked) spiritedBtn.disabled = true;
-      row.appendChild(spiritedBtn);
-      card.appendChild(row);
-
-      if (!unlocked) {
-        card.appendChild(el('div', { style: 'text-align:center;margin-top:0.5rem;opacity:0.8;' }, ['Awaits ' + map.unlockRequirement + '★']));
-      }
-      mapGrid.appendChild(card);
+      mapGrid.appendChild(renderMapCard(map, {
+        scores, unlocked, showUnlockHint: !unlocked, showDelete: false
+      }));
     });
+    if (USER.length > 0) {
+      mapGrid.appendChild(el('h2', { style: 'font-family:var(--font-display),serif;color:var(--aged-gold);text-align:center;margin:1.6rem 0 0.4rem;font-size:1.4rem;' }, ['My Maps']));
+      USER.forEach(map => {
+        mapGrid.appendChild(renderMapCard(map, {
+          scores, unlocked: true, showUnlockHint: false, showDelete: true
+        }));
+      });
+    }
   }
 
   // ─── Game over ───────────────────────────────────────────────
