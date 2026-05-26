@@ -443,6 +443,18 @@ function syncEnemies(state) {
     if (!node) {
       const meshId = `enemy_${en.type}`;
       node = window.CTD3Assets.getMesh(meshId);
+      // Ghost: per-instance translucent material so a future fade-out doesn't
+      // bleed across all ghosts (Object3D.clone shares materials by reference).
+      if (en.type === 'ghost') {
+        node.traverse(o => {
+          if (o.isMesh && o.material) {
+            o.material = o.material.clone();
+            o.material.transparent = true;
+            o.material.opacity = 0.55;
+            o.material.depthWrite = false;
+          }
+        });
+      }
       node.traverse(o => { if (o.isMesh) o.castShadow = true; });
       // Per-enemy random bob offset (presentation only — never on engine entity, ADR-030 C-1).
       node.userData.bobPhase = Math.random() * Math.PI * 2;
@@ -452,26 +464,46 @@ function syncEnemies(state) {
     const def = window.CTD3Entities.ENEMIES[en.type];
     const isFlying = !!def?.isFlying;
     const baseY = isFlying ? 1.2 : 0;
-    let bob;
+    const phase = node.userData.bobPhase;
+
+    // Per-type movement personality. Slime + MiniSlime hop with squash-and-stretch;
+    // Juggernaut has a slow heavy lurch with side-roll; Ghost gets stronger float
+    // and a yaw wobble. Other types keep the original ground/flying bob.
+    let bobY = 0, scaleX = 1, scaleY = 1, scaleZ = 1, yawWobble = 0;
     if (!window.CTD3Ui.motionAllowed()) {
-      bob = 0;
+      // motion off — leave everything at neutral
+    } else if (en.type === 'slime' || en.type === 'mini_slime') {
+      const hop = Math.abs(Math.sin(t * 5.0 + phase));
+      const squash = 1 - hop * 0.25;
+      bobY = hop * 0.22;
+      scaleY = 1 / squash;
+      scaleX = scaleZ = squash;
+    } else if (en.type === 'juggernaut') {
+      const p = t * 1.8 + phase;
+      bobY = Math.abs(Math.sin(p)) * 0.04;
+      yawWobble = Math.sin(p) * 0.06;
+    } else if (en.type === 'ghost') {
+      bobY = Math.sin(t * ENEMY_BOB_RATE_FLYING + phase) * (ENEMY_BOB_AMP_FLYING * 1.3);
+      yawWobble = Math.sin(t * 1.2 + phase * 1.7) * 0.15;
     } else if (isFlying) {
-      bob = Math.sin(t * ENEMY_BOB_RATE_FLYING + node.userData.bobPhase) * ENEMY_BOB_AMP_FLYING;
+      bobY = Math.sin(t * ENEMY_BOB_RATE_FLYING + phase) * ENEMY_BOB_AMP_FLYING;
     } else {
-      bob = Math.abs(Math.sin(t * ENEMY_BOB_RATE_GROUND + node.userData.bobPhase)) * ENEMY_BOB_AMP_GROUND;
+      bobY = Math.abs(Math.sin(t * ENEMY_BOB_RATE_GROUND + phase)) * ENEMY_BOB_AMP_GROUND;
     }
-    node.position.set(en.x, baseY + bob, en.z);
-    // Yaw toward direction of travel (lookahead along path)
+
+    node.position.set(en.x, baseY + bobY, en.z);
+    // Yaw toward direction of travel (lookahead along path), plus per-type wobble.
     if (map && map.totalLength > 0) {
       const lookT = Math.min(1, en.pathT + 0.005);
       const next = window.CTD3Engine.sampleOnPath(map, lookT);
       const dx = next.x - en.x, dz = next.z - en.z;
       if (dx !== 0 || dz !== 0) {
-        node.rotation.y = Math.atan2(dz, dx) + Math.PI;
+        node.rotation.y = Math.atan2(dz, dx) + Math.PI + yawWobble;
       }
     }
-    // Hit-flash via scale pulse (preserves existing visual feedback).
-    node.scale.setScalar(en.hitFlashMs > 0 ? 1.1 : 1.0);
+    // Hit-flash scales on top of per-type squash-and-stretch.
+    const flash = en.hitFlashMs > 0 ? 1.1 : 1.0;
+    node.scale.set(scaleX * flash, scaleY * flash, scaleZ * flash);
   }
   for (const [id, node] of enemyNodes) {
     if (!seen.has(id)) {

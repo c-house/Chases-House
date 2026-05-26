@@ -18,6 +18,10 @@
   { "id": "enemy_shielded",   "role": "enemy", "kind": "mesh", "path": "models/enemy_shielded.glb" },
   { "id": "enemy_skirmisher", "role": "enemy", "kind": "mesh", "path": "models/enemy_skirmisher.glb" },
   { "id": "enemy_captain",    "role": "enemy", "kind": "mesh", "path": "models/enemy_captain.glb" },
+  { "id": "enemy_juggernaut", "role": "enemy", "kind": "mesh", "path": "models/enemy_juggernaut.glb" },
+  { "id": "enemy_slime",      "role": "enemy", "kind": "mesh", "path": "models/enemy_slime.glb" },
+  { "id": "enemy_mini_slime", "role": "enemy", "kind": "mesh", "path": "models/enemy_mini_slime.glb" },
+  { "id": "enemy_ghost",      "role": "enemy", "kind": "mesh", "path": "models/enemy_ghost.glb" },
 
   { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" },
   { "id": "keep_bottom",   "role": "castle", "kind": "mesh", "path": "models/keep_bottom.glb" },

@@ -201,6 +201,11 @@
     };
     // Phase 5 — Ghost-type per-spawn shield counter (first 2 projectile hits negated).
     if (def.spectralCharges) en.spectralCharges = def.spectralCharges;
+    // Armor: pre-Phase-5 makeEnemy never copied def.armor onto the entity, so
+    // applyDamage's `enemy.armor` read was always undefined and Shielded (0.65)
+    // and Captain (0.4) had been taking full physical damage all along. Fixing
+    // here makes Shielded/Captain genuinely tanky and enables Juggernaut's 0.2.
+    en.armor = def.armor || 0;
     return en;
   }
 
