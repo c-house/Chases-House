@@ -73,7 +73,15 @@
     runner:     { name: 'Runner',     hp: 42,   speed: 4.5, armor: 0,    isFlying: false, bounty: 14,  sizeWorld: 0.55 },
     shielded:   { name: 'Shielded',   hp: 80,   speed: 1.7, armor: 0.65, isFlying: false, bounty: 18,  sizeWorld: 0.6 },
     skirmisher: { name: 'Skirmisher', hp: 38,   speed: 3.2, armor: 0,    isFlying: true,  bounty: 18,  sizeWorld: 0.55 },
-    captain:    { name: 'Captain',    hp: 1800, speed: 1.1, armor: 0.4,  isFlying: false, bounty: 250, sizeWorld: 1.0, isBoss: true }
+    captain:    { name: 'Captain',    hp: 1800, speed: 1.1, armor: 0.4,  isFlying: false, bounty: 250, sizeWorld: 1.0, isBoss: true },
+
+    // Phase 5 of editor-promotion plan — 3 new types from WC3 / Element TD /
+    // Wintermaul / DotA TD canon. Visuals fall back to footman mesh until
+    // Blender-sourced GLBs land in assets/models/enemy_<name>.glb.
+    juggernaut: { name: 'Juggernaut', hp: 600,  speed: 1.2, armor: 0.2,  isFlying: false, bounty: 90,  sizeWorld: 0.85 },
+    slime:      { name: 'Slime',      hp: 60,   speed: 2.0, armor: 0,    isFlying: false, bounty: 8,   sizeWorld: 0.6,  splitsInto: 'mini_slime', splitCount: 2 },
+    mini_slime: { name: 'Mini Slime', hp: 22,   speed: 2.6, armor: 0,    isFlying: false, bounty: 4,   sizeWorld: 0.4 },
+    ghost:      { name: 'Ghost',      hp: 55,   speed: 3.0, armor: 0,    isFlying: true,  bounty: 22,  sizeWorld: 0.55, spectralCharges: 2 }
   };
 
   // ─── DIFFICULTY (ADR-028 §3: 2 tiers, not 3) ─────────────────
@@ -113,6 +121,12 @@
     return true;
   }
   function applyDamage(enemy, dmg, dmgType) {
+    // Ghost spectralCharges: first 2 projectile hits negated (Wintermaul-style
+    // anti-tower micro). Phase 5 of editor-promotion plan.
+    if (enemy.spectralCharges && enemy.spectralCharges > 0) {
+      enemy.spectralCharges--;
+      return 0;
+    }
     let actual = dmg;
     if (dmgType === 'physical') actual = dmg * (1 - (enemy.armor || 0));
     enemy.hp -= actual;
@@ -171,7 +185,7 @@
   function makeEnemy(type, hpMult) {
     const def = ENEMIES[type];
     const hp = Math.round(def.hp * (hpMult || 1));
-    return {
+    const en = {
       id: nextId('en'),
       type,
       hp,
@@ -185,6 +199,9 @@
       regenSuppressedMs: 0,
       sceneRef: null
     };
+    // Phase 5 — Ghost-type per-spawn shield counter (first 2 projectile hits negated).
+    if (def.spectralCharges) en.spectralCharges = def.spectralCharges;
+    return en;
   }
 
   function makeProjectile(opts) {

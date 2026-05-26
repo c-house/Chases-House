@@ -464,6 +464,8 @@
     const tags = [];
     if (def.isFlying) tags.push('flying');
     if (def.armor && def.armor > 0) tags.push('armored');
+    if (def.spectralCharges) tags.push('spectral × ' + def.spectralCharges);
+    if (def.splitsInto) tags.push('splits on death');
     if (def.isBoss) tags.push('boss');
     return tags.length ? tags.join(' · ') : 'standard';
   }
@@ -489,7 +491,7 @@
     }
     if (enemiesEl) {
       enemiesEl.replaceChildren();
-      ['footman', 'heavy', 'runner', 'skirmisher', 'shielded', 'captain'].forEach(type => {
+      ['footman', 'heavy', 'runner', 'skirmisher', 'shielded', 'juggernaut', 'slime', 'ghost', 'captain'].forEach(type => {
         const def = E.ENEMIES[type];
         if (!def) return;
         const card = el('div', { class: 'legend-card' + (def.isBoss ? ' boss' : '') }, [

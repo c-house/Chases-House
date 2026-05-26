@@ -469,6 +469,23 @@
     }));
     state.events.push({ kind: 'kill', enemyType: en.type });
     state.enemies = state.enemies.filter(e => e.id !== en.id);
+    // Phase 5 — Slime split-on-death. Fires only on damage-kill (this path),
+    // not on castle-reach (engine step's pathT >= 1 branch removes enemies
+    // directly, deliberately bypassing killEnemy so MiniSlimes don't spawn
+    // at the castle and cost free lives).
+    if (def.splitsInto) {
+      const splitDef = E().ENEMIES[def.splitsInto];
+      if (splitDef) {
+        const count = def.splitCount || 2;
+        const hpMult = state.difficultyMult ? state.difficultyMult.hpMult : 1;
+        for (let i = 0; i < count; i++) {
+          const child = E().makeEnemy(def.splitsInto, hpMult);
+          child.pathT = en.pathT;
+          child.x = en.x; child.y = en.y; child.z = en.z;
+          state.enemies.push(child);
+        }
+      }
+    }
   }
 
   function stepEffects(state, dtMs) {
