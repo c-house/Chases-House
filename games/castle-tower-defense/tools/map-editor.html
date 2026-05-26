@@ -1364,51 +1364,173 @@
 
   function validate() {
     const m = buildExportMap();
-    if (!m.path || m.path.length < 2) return { ok: false, reason: 'path needs at least 2 waypoints' };
-    // Tile-grid validation (axis-aligned, integer coords). Never throws.
+    const issues = []; // { severity: 'block' | 'warn', code, message }
+    const block = (code, message) => issues.push({ severity: 'block', code, message });
+    const warn  = (code, message) => issues.push({ severity: 'warn',  code, message });
+
+    // ── Blocker checks (existing) ─────────────────────────────
+    if (!m.path || m.path.length < 2) {
+      block('PATH_MIN', 'path needs at least 2 waypoints');
+      return { ok: false, issues, reason: issues[0].message };
+    }
     const tg = window.CTD3TileGrid.classifyPathCells(m.path);
     if (!tg.ok) {
-      return {
-        ok: false,
-        reason: tg.error + (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : ''),
-        badSegment: tg.badSegment || null
-      };
+      const message = tg.error + (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : '');
+      block('AXIS', message);
+      return { ok: false, issues, reason: message, badSegment: tg.badSegment || null };
     }
     const probe = { ...m, path: m.path.map(p => ({ ...p })) };
     bakeMap(probe);
-    if (probe.totalLength <= 0) return { ok: false, reason: 'zero-length path' };
+    if (probe.totalLength <= 0) {
+      block('ZERO_LEN', 'zero-length path');
+      return { ok: false, issues, reason: issues[0].message };
+    }
     const last = m.path[m.path.length - 1];
     const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
-    if (dCastle > 1.5) return { ok: false, reason: 'castle is far from path end (' + dCastle.toFixed(1) + 'u)' };
-    {
-      const pathCells = new Set();
-      for (let i = 0; i < m.path.length - 1; i++) {
-        const a = m.path[i], b = m.path[i + 1];
-        const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
-        let x = a.x, z = a.z;
-        while (x !== b.x || z !== b.z) {
-          pathCells.add(x + ',' + z);
-          x += dx; z += dz;
-        }
-        pathCells.add(b.x + ',' + b.z);
-      }
-      for (const s of m.buildSlots) {
-        const k = s.x + ',' + s.z;
-        if (pathCells.has(k)) {
-          return { ok: false, reason: 'slot ' + s.id + ' at (' + s.x + ',' + s.z + ') sits on path' };
-        }
+    if (dCastle > 1.5) {
+      const message = 'castle is far from path end (' + dCastle.toFixed(1) + 'u)';
+      block('H9_CASTLE_END', message);
+      return { ok: false, issues, reason: message };
+    }
+    // H6: no slot on path cell.
+    const pathCells = new Set();
+    for (let i = 0; i < m.path.length - 1; i++) {
+      const a = m.path[i], b = m.path[i + 1];
+      const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
+      let x = a.x, z = a.z;
+      while (x !== b.x || z !== b.z) { pathCells.add(x + ',' + z); x += dx; z += dz; }
+      pathCells.add(b.x + ',' + b.z);
+    }
+    for (const s of m.buildSlots) {
+      if (pathCells.has(s.x + ',' + s.z)) {
+        const message = 'slot ' + s.id + ' at (' + s.x + ',' + s.z + ') sits on path';
+        block('H6', message);
+        return { ok: false, issues, reason: message };
       }
     }
     if (!m.buildSlots.every(s => Number.isInteger(s.x) && Number.isInteger(s.z))) {
-      return { ok: false, reason: 'slot has non-integer coords' };
+      block('SLOT_INT', 'slot has non-integer coords');
+      return { ok: false, issues, reason: issues[0].message };
     }
-    try { JSON.parse(state.wavesJson || '[]'); }
-    catch (e) { return { ok: false, reason: 'waves JSON does not parse: ' + e.message }; }
-    if (m.buildSlots.length === 0) return { ok: false, reason: 'no build slots placed' };
-    return { ok: true, totalLength: probe.totalLength, cellCount: tg.cells.length };
+    let waves = [];
+    try { waves = JSON.parse(state.wavesJson || '[]'); if (!Array.isArray(waves)) waves = []; }
+    catch (e) {
+      const message = 'waves JSON does not parse: ' + e.message;
+      block('WAVES_PARSE', message);
+      return { ok: false, issues, reason: message };
+    }
+    if (m.buildSlots.length === 0) {
+      block('NO_SLOTS', 'no build slots placed');
+      return { ok: false, issues, reason: issues[0].message };
+    }
+    // H8a: every segment length ≥3u. Now promoted to block — official maps
+    // all pass after Phase 0b's path re-authoring.
+    for (let i = 0; i < m.path.length - 1; i++) {
+      const a = m.path[i], b = m.path[i + 1];
+      const segLen = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
+      if (segLen < 3) {
+        const message = 'segment ' + i + ' (' + a.x + ',' + a.z + ')→(' + b.x + ',' + b.z + ') is ' + segLen + 'u, below H8a 3u floor';
+        block('H8a', message);
+        return { ok: false, issues, reason: message };
+      }
+    }
+
+    // ── Warn checks (W1–W8 auto) ──────────────────────────────
+    const ENT = window.CTD3Entities;
+    if (ENT && waves.length > 0) {
+      // W1 — wave-to-wave HP scaling 1.10–1.40×.
+      const waveHp = waves.map(w => (w.enemies || []).reduce((sum, g) => {
+        const def = ENT.ENEMIES[g.type];
+        return def ? sum + (g.count | 0) * def.hp : sum;
+      }, 0));
+      for (let i = 1; i < waveHp.length; i++) {
+        const prev = waveHp[i - 1];
+        if (prev <= 0) continue;
+        const ratio = waveHp[i] / prev;
+        if (ratio < 1.10 || ratio > 1.40) {
+          warn('W1', 'wave ' + (i + 1) + ' HP ratio to wave ' + i + ' is ' + ratio.toFixed(2) + ' (target 1.10–1.40)');
+        }
+      }
+      // W2 — at least one ≥3s gap within each wave's spawn schedule.
+      waves.forEach((w, idx) => {
+        const events = [];
+        (w.enemies || []).forEach(g => {
+          const count   = g.count   | 0;
+          const spacing = g.spacing | 0;
+          const delay   = g.delay   | 0;
+          for (let n = 0; n < count; n++) events.push(delay + n * spacing);
+        });
+        events.sort((a, b) => a - b);
+        let maxGap = 0;
+        for (let i = 1; i < events.length; i++) {
+          const gap = events[i] - events[i - 1];
+          if (gap > maxGap) maxGap = gap;
+        }
+        if (events.length >= 2 && maxGap < 3000) {
+          warn('W2', 'wave ' + (idx + 1) + ' max spawn gap is ' + (maxGap / 1000).toFixed(1) + 's (target ≥3s for rebuild room)');
+        }
+      });
+      // W4 — flying enemies not before waveIndex 2 (third wave, 1-indexed).
+      waves.forEach((w, idx) => {
+        if (idx >= 2) return;
+        (w.enemies || []).forEach(g => {
+          const def = ENT.ENEMIES[g.type];
+          if (def && def.isFlying) {
+            warn('W4', 'wave ' + (idx + 1) + ' contains flying enemy "' + g.type + '" — players need 1–2 ground-only waves first');
+          }
+        });
+      });
+      // W5 — boss waves ≥6 apart.
+      const bossIdxs = [];
+      waves.forEach((w, idx) => { if (w.isBoss) bossIdxs.push(idx); });
+      for (let i = 1; i < bossIdxs.length; i++) {
+        const gap = bossIdxs[i] - bossIdxs[i - 1];
+        if (gap < 6) {
+          warn('W5', 'boss waves at index ' + bossIdxs[i - 1] + ' and ' + bossIdxs[i] + ' are ' + gap + ' apart (target ≥6)');
+        }
+      }
+      // W6 — late-game waves (idx ≥ 5) use ≥2 distinct enemy types.
+      waves.forEach((w, idx) => {
+        if (idx < 5) return;
+        const types = new Set((w.enemies || []).map(g => g.type));
+        if (types.size < 2) {
+          warn('W6', 'wave ' + (idx + 1) + ' uses only one enemy type — consider mixing for late-game variety');
+        }
+      });
+      // W8 — max concurrent enemies estimate ≤35. Walks the spawn schedule;
+      // estimated kill-time = ENEMY.hp / canonical T1 Ranger DPS (8 dmg × 1.4 fr = 11.2 dps).
+      const T1_DPS = 11.2;
+      waves.forEach((w, idx) => {
+        const events = []; // { t, hp }
+        (w.enemies || []).forEach(g => {
+          const def = ENT.ENEMIES[g.type];
+          if (!def) return;
+          const count = g.count | 0, spacing = g.spacing | 0, delay = g.delay | 0;
+          for (let n = 0; n < count; n++) events.push({ t: delay + n * spacing, hp: def.hp });
+        });
+        events.sort((a, b) => a.t - b.t);
+        let peak = 0;
+        for (let i = 0; i < events.length; i++) {
+          const now = events[i].t;
+          let alive = 0;
+          for (let j = 0; j <= i; j++) {
+            const killAt = events[j].t + (events[j].hp / T1_DPS) * 1000;
+            if (killAt > now) alive++;
+          }
+          if (alive > peak) peak = alive;
+        }
+        if (peak > 35) {
+          warn('W8', 'wave ' + (idx + 1) + ' peaks at ~' + peak + ' concurrent enemies (engine comfort zone is 30–40)');
+        }
+      });
+    }
+
+    return { ok: true, issues, totalLength: probe.totalLength, cellCount: tg.cells.length };
   }
 
-  // Safe DOM construction for status updates (no innerHTML)
+  // Safe DOM construction for status updates (no innerHTML).
+  // Phase 6: renders v.issues as a list under the OK/NOT READY label so
+  // amber warnings are visible alongside the binary ok/bad cue.
   function setStatus(v) {
     const el = $('[data-bind="status"]');
     el.replaceChildren();
@@ -1422,28 +1544,56 @@
       detail.className = 'detail';
       detail.textContent = ' — ' + state.path.length + ' waypoints · ' + v.cellCount + ' tile cells · ' + state.slots.length + ' slots · ' + state.decorations.length + ' decorations';
       el.appendChild(detail);
-    } else {
-      const reason = document.createElement('span');
-      reason.className = 'reason';
-      reason.textContent = v.reason;
-      el.appendChild(reason);
+    }
+    const warns = (v.issues || []).filter(i => i.severity === 'warn');
+    const blocks = (v.issues || []).filter(i => i.severity === 'block');
+    if (blocks.length || warns.length) {
+      const ul = document.createElement('ul');
+      ul.style.cssText = 'margin:0.3rem 0 0;padding-left:1.2rem;font-size:0.75rem;list-style:none;';
+      [...blocks, ...warns].forEach(iss => {
+        const li = document.createElement('li');
+        const icon = iss.severity === 'block' ? '✖' : '⚠';
+        const color = iss.severity === 'block' ? 'var(--terracotta, #b05a3a)' : 'var(--aged-gold)';
+        li.style.cssText = 'color:' + color + ';margin:0.1rem 0;';
+        li.textContent = icon + ' ' + iss.code + ' — ' + iss.message;
+        ul.appendChild(li);
+      });
+      el.appendChild(ul);
     }
   }
 
-  // Canvas pill — yellow warning over the field when ANY validation rule fails.
+  // Canvas pill — surfaces issues over the field. Blockers in red, warnings in amber.
   function setCanvasPill(v) {
     const pill = document.querySelector('[data-bind="canvas-pill"]');
     if (!pill) return;
-    if (!v.ok) {
-      if (v.badSegment) {
-        pill.textContent = 'Path has diagonals — snap segments to single-axis steps (segment ' + v.badSegment.i + ')';
-      } else {
-        pill.textContent = v.reason || 'Map not valid for export.';
-      }
-      pill.classList.add('visible');
-    } else {
+    const issues = v.issues || [];
+    const blocks = issues.filter(i => i.severity === 'block');
+    const warns  = issues.filter(i => i.severity === 'warn');
+    if (blocks.length === 0 && warns.length === 0) {
       pill.classList.remove('visible');
+      pill.replaceChildren();
+      return;
     }
+    pill.replaceChildren();
+    const ul = document.createElement('ul');
+    ul.style.cssText = 'margin:0;padding-left:1.1rem;list-style:none;';
+    [...blocks, ...warns].slice(0, 5).forEach(iss => {
+      const li = document.createElement('li');
+      const icon = iss.severity === 'block' ? '✖' : '⚠';
+      li.textContent = icon + ' ' + iss.code + ' — ' + iss.message;
+      li.style.cssText = (iss.severity === 'block')
+        ? 'color:#ffd4cb;'   // red-tinted for blockers against the pill's amber bg
+        : '';
+      ul.appendChild(li);
+    });
+    if (issues.length > 5) {
+      const li = document.createElement('li');
+      li.textContent = '… +' + (issues.length - 5) + ' more';
+      li.style.opacity = '0.7';
+      ul.appendChild(li);
+    }
+    pill.appendChild(ul);
+    pill.classList.add('visible');
   }
 
   // Copy button — disabled when validation fails (ADR-030 §13 M-5).

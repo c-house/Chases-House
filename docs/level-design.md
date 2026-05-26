@@ -57,3 +57,54 @@ Validation hint: assert `slots.length ≥ Math.ceil(pathLen / 7) && slots.length
 ### H12 — Coverage redundancy
 Rule: no single slot's T1 coverage (canonical 7.5u radius) accounts for more than 30% of the total path length covered by all slots combined. (Definition is over the slot's coverage as a fraction of TOTAL slot coverage — not as a fraction of total path length.)
 Validation hint: sample the path at 0.5u intervals; for each sample point, count which slots have it within 7.5u; let `S_i` = sum of samples where slot `i` is the ONLY one within 7.5u; let `S_total` = sum of samples where at least one slot is within 7.5u. Assert `S_i / S_total ≤ 0.30` for every slot `i`.
+
+---
+
+## Wave-shape heuristics (W1–W8)
+
+These rules cover the wave/enemy/timing dimensions that H1–H12 leave alone. Auto-enforced rules surface in `validate()`'s `issues` array; severity is **block** (gates export/save) or **warn** (advisory only). Manual rules are checklist-only — they depend on engine pacing or gold-curve simulation that's expensive to compute live.
+
+### W1 — Wave HP scaling
+Rule: total enemy HP per wave should scale 1.10–1.40× the prior wave. Compute `Σ enemies[].count × ENEMIES[type].hp` per wave; flag waves where the ratio to the prior wave is outside [1.10, 1.40]. Wave 1 is exempt.
+Severity: **warn (Auto)**. Players can intentionally author easy-then-hard pacing; the rule just nudges.
+
+### W2 — Spacing pacing
+Rule: within a wave, the spawn timing should produce ≥3s gaps where the player can rebuild. Compute the longest contiguous interval without a spawn event across all groups; flag if <3000ms.
+Severity: **warn (Auto)**.
+
+### W3 — Pre-wave prep duration (manual)
+Rule: pre-wave prep (the time between "wave cleared" and "next wave starts") should be ≥8s on Quiet, ≥5s on Spirited. This lives in engine timing, not map data; manual checklist only.
+
+### W4 — Flying-enemy gating
+Rule: flying enemies (`ENEMIES[type].isFlying === true`) should not appear before `waveIndex >= 2` (i.e., the third wave when displayed 1-indexed to players). New players need 1–2 waves of pure ground before learning anti-air is a constraint.
+Severity: **warn (Auto, single-tier)**. Not split per source — Community import lifecycle (Phase 4b) makes a block-for-user / warn-for-official rule unworkable since the `source` field is derived at hydrate from id-prefix, not stored on the map record.
+
+### W5 — Boss cadence
+Rule: waves flagged `isBoss: true` should be ≥6 regular waves apart. Avoids back-to-back boss fatigue and keeps the boss feeling like a finale.
+Severity: **warn (Auto)**.
+
+### W6 — Late-game diversity
+Rule: waves at `waveIndex >= 5` should include at least 2 distinct enemy types. A pure-footman wave 6 onwards is rarely interesting — towers that counter one type carry the whole map.
+Severity: **warn (Auto)**.
+
+### W7 — Reward economy (manual)
+Rule: a wave's `reward` should cover 50–90% of the cheapest next-tier upgrade cost (Ranger T1→T2 = 60g, etc.). Too low and the player can't keep up; too high and the gold floor trivializes the build choice. Gold-curve simulation is non-trivial across difficulty + per-map overrides; manual.
+
+### W8 — Concurrent on-screen ceiling
+Rule: the max concurrent enemies on-screen at any wave step (computed by walking each group's spawn schedule against expected kill-time at the canonical T1 Ranger DPS) should not exceed 35. Approximate guard against the engine's ~30–40 entity comfort zone.
+Severity: **warn (Auto)**.
+
+---
+
+## Severity tiers
+
+`validate()` returns `{ ok, issues, badSegment?, totalLength?, cellCount? }` where `issues` is an array of `{ severity: 'block' | 'warn', code: 'H1' | 'W4' | ..., message }`. The top-level `ok` is `issues.every(i => i.severity !== 'block')` — backward-compatible with callers that only read `.ok`.
+
+| Severity | Effect on export/save | UI cue |
+|---|---|---|
+| **block** | Gates Copy JSON / Save to My Maps / Publish to Community. | Red icon in canvas pill. |
+| **warn** | Allows export/save. Advisory only. | Amber icon in canvas pill. |
+
+H6 (no slot on path), H8a (min segment ≥3u), the axis-aligned check, the "≥2 waypoints", and the castle-distance check are **block**. All W-rules are **warn**.
+
+The canvas pill (`[data-bind="canvas-pill"]`) renders the full `issues` list as a `<ul>`. The status panel (`[data-bind="status"]`) renders the OK/NOT READY label plus the issues. `setCopyButtonEnabled` reads `.ok` only — unchanged.
