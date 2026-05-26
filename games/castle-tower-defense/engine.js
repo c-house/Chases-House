@@ -57,7 +57,7 @@
   // ─── State factory ───────────────────────────────────────────
   function createState(mapId, difficulty, opts) {
     const map = bakeMap(M().byId(mapId));
-    const diff = E().DIFFICULTY[difficulty];
+    const diff = E().mergedDifficulty(difficulty, map.difficultyOverrides);
     return {
       fsm: 'prepWave',
       paused: false,

@@ -82,6 +82,22 @@
     spirited: { hpMult: 1.15, startGold: 180, startLives: 12 }
   };
 
+  // Per-map difficulty overrides (Phase 3 of editor-promotion plan).
+  // Canonical merge helper consumed by BOTH engine.createState and the
+  // editor's live preview pane — no inlined overlay logic anywhere else.
+  // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?},
+  //                       spirited?: {hpMult?, startGold?, startLives?} }
+  // Blank fields inherit canonical DIFFICULTY[difficulty] values.
+  function mergedDifficulty(difficulty, overrides) {
+    const base = DIFFICULTY[difficulty] || DIFFICULTY.quiet;
+    const o = (overrides && overrides[difficulty]) || {};
+    return {
+      hpMult:     (o.hpMult     != null) ? o.hpMult     : base.hpMult,
+      startGold:  (o.startGold  != null) ? o.startGold  : base.startGold,
+      startLives: (o.startLives != null) ? o.startLives : base.startLives
+    };
+  }
+
   // ─── HELPERS ─────────────────────────────────────────────────
   function towerInvested(type, tierIndex) {
     let total = 0;
@@ -201,6 +217,7 @@
 
   window.CTD3Entities = {
     TOWERS, ENEMIES, DIFFICULTY, TOWER_FIRE_SFX,
+    mergedDifficulty,
     towerInvested, towerSellValue, canTarget, applyDamage,
     refreshTowerSnapshot,
     makeTower, makeEnemy, makeProjectile, makeEffect
