@@ -367,6 +367,18 @@ function sync(state) {
   syncDecals(state);
 }
 
+// Object3D.clone(true) shares materials by reference, so mutating one tower's
+// emissive (muzzle flash) bleeds to every other tower instance that started
+// from the same source mesh. Clone every material on a freshly-built tower
+// node so per-instance emissive writes stay local.
+function clonePerInstanceMaterials(node) {
+  node.traverse(o => {
+    if (o.isMesh && o.material) {
+      o.material = o.material.clone();
+    }
+  });
+}
+
 function syncTowers(state) {
   const seen = new Set();
   const now = performance.now();
@@ -376,6 +388,7 @@ function syncTowers(state) {
     if (!node) {
       const meshId = `tower_${tw.type}_t${tw.tier + 1}`;
       node = window.CTD3Assets.getMesh(meshId);
+      clonePerInstanceMaterials(node);
       node.position.set(tw.x, 0, tw.z);
       node.userData.meshId = meshId;
       node.userData.towerId = tw.id;
@@ -388,6 +401,7 @@ function syncTowers(state) {
       if (node.userData.meshId !== desiredMeshId) {
         towersGroup.remove(node);
         const fresh = window.CTD3Assets.getMesh(desiredMeshId);
+        clonePerInstanceMaterials(fresh);
         fresh.position.set(tw.x, 0, tw.z);
         fresh.userData.meshId = desiredMeshId;
         fresh.userData.towerId = tw.id;
