@@ -317,6 +317,35 @@ function handleAction(name, el) {
       window.CTD3Audio.uiSfx('click');
       break;
     }
+    case 'map-tab': {
+      const tab = el.dataset.tab;
+      window.CTD3Ui.setMapTab(tab);
+      window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+      window.CTD3Audio.uiSfx('click');
+      break;
+    }
+    case 'import-community': {
+      const code = el.dataset.communityCode;
+      if (!code || typeof window.SharedFirebase === 'undefined') break;
+      window.SharedFirebase.ref('ctd3-community/' + code).once('value').then(snap => {
+        const val = snap.val();
+        if (!val || !val.map) { window.alert('Map ' + code + ' not found.'); return; }
+        const combined = {
+          map: Object.assign({}, val.map),
+          decorations: val.decorations || [],
+          meta: val.meta || {}
+        };
+        // Re-namespace to avoid collision with user's local ids.
+        combined.map.id = 'user:community-' + code + ':' + Date.now().toString(36);
+        if (window.confirm('Import "' + (val.map.displayName || code) + '" by ' + ((val.meta && val.meta.authorName) || 'anonymous') + '?')) {
+          window.CTD3Maps.saveUserMap(combined);
+          window.CTD3Ui.setMapTab('mine');
+          window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+        }
+      }).catch(e => window.alert('Import failed: ' + (e && e.message)));
+      window.CTD3Audio.uiSfx('click');
+      break;
+    }
     case 'dismiss-first-load-notice': window.CTD3Ui.dismissFirstLoadNotice(); window.CTD3Audio.uiSfx('click'); break;
     case 'sheet-close':            window.CTD3Ui.closeSheets(); window.CTD3Audio.uiSfx('click'); break;
     case 'sheet-pick': {

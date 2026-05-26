@@ -23,6 +23,10 @@
   <script src="../wfc.js"></script>
   <script src="../wfc-rules.js"></script>
   <script src="../entities.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="../../shared/firebase.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..600&display=swap" rel="stylesheet">
@@ -540,6 +544,7 @@
     <div class="actions" style="margin-top:0.3rem;">
       <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
       <button class="tool" data-action="share-link" data-bind="share-link-button">Share link</button>
+      <button class="tool" data-action="publish-community" data-bind="publish-community-button">Publish to Community</button>
     </div>
     <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
     <div class="preview">
@@ -1116,6 +1121,8 @@
       saveToMyMaps();
     } else if (name === 'share-link') {
       shareLink();
+    } else if (name === 'publish-community') {
+      publishToCommunity();
     }
   }
 
@@ -1170,6 +1177,65 @@
       }
     } catch (e) {
       setStatus('Share failed: ' + (e && e.message), false);
+    }
+  }
+
+  // ── Publish to Community (Phase 4b) ─────────────────────────
+  // Writes the combined export to Firebase 'ctd3-community/<code>' and
+  // tracks ownership locally in 'ctd3:publishedCodes'. No claim token —
+  // small-trust personal-site model; if abuse appears, harden in a v2.
+  const COMMUNITY_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // skip I, O
+  function _genCommunityCode() {
+    let c = '';
+    for (let i = 0; i < 4; i++) c += COMMUNITY_LETTERS[Math.floor(Math.random() * COMMUNITY_LETTERS.length)];
+    return c;
+  }
+  async function _uniqueCommunityCode() {
+    for (let i = 0; i < 20; i++) {
+      const code = _genCommunityCode();
+      const snap = await window.SharedFirebase.ref('ctd3-community/' + code + '/meta').once('value');
+      if (!snap.exists()) return code;
+    }
+    throw new Error('could not find a unique 4-letter code after 20 attempts');
+  }
+  async function publishToCommunity() {
+    const status = document.querySelector('[data-bind="save-user-status"]');
+    const setStatus = (text, ok) => {
+      if (!status) return;
+      status.textContent = text;
+      status.style.color = ok ? 'var(--aged-gold)' : 'var(--terracotta, #b05a3a)';
+    };
+    if (typeof window.SharedFirebase === 'undefined') {
+      setStatus('Firebase SDK not loaded — cannot publish.', false);
+      return;
+    }
+    const v = validate();
+    if (!v.ok) { setStatus('Cannot publish: ' + v.reason, false); return; }
+    setStatus('Publishing…', true);
+    try {
+      await window.SharedFirebase.signInAnonymously();
+      const code = await _uniqueCommunityCode();
+      const combined = buildCombinedExport();
+      if (!combined.meta) combined.meta = {};
+      combined.meta.publishedAt = Date.now();
+      combined.meta.code = code;
+      // meta as top-level in the record so the Community tab can query lightly.
+      await window.SharedFirebase.ref('ctd3-community/' + code).set({
+        map: combined.map,
+        decorations: combined.decorations,
+        meta: combined.meta,
+        updatedAt: window.SharedFirebase.serverTimestamp()
+      });
+      // Track ownership locally so the author can edit/delete from My Maps later.
+      try {
+        const raw = localStorage.getItem('ctd3:publishedCodes');
+        const arr = raw ? JSON.parse(raw) : [];
+        arr.push({ code: code, mapId: combined.map.id, savedAt: Date.now() });
+        localStorage.setItem('ctd3:publishedCodes', JSON.stringify(arr));
+      } catch (e) { /* localStorage failure non-fatal */ }
+      setStatus('Published as ' + code + ' — share this code with friends.', true);
+    } catch (e) {
+      setStatus('Publish failed: ' + (e && e.message), false);
     }
   }
 

@@ -311,26 +311,100 @@
     return card;
   }
 
+  // Tab state lives on the function — simple module-private store.
+  let _activeMapTab = 'official';
+  function setMapTab(tab) {
+    _activeMapTab = tab;
+    // Caller (game.js) re-hydrates with the same args; we read from state.
+  }
+  function getActiveMapTab() { return _activeMapTab; }
+
+  function _renderTabs() {
+    const map = { official: 'tab-official', mine: 'tab-mine', community: 'tab-community' };
+    Object.entries(map).forEach(([tab, bind]) => {
+      const btn = document.querySelector('[data-bind="' + bind + '"]');
+      if (!btn) return;
+      btn.classList.toggle('primary', tab === _activeMapTab);
+      btn.setAttribute('aria-pressed', tab === _activeMapTab);
+    });
+  }
+
+  function _renderCommunityList(scores) {
+    mapGrid.appendChild(el('div', { style: 'text-align:center;color:rgba(240,230,211,0.6);font-size:0.9rem;margin:1rem;' }, ['Loading community maps…']));
+    if (typeof window.SharedFirebase === 'undefined') {
+      mapGrid.replaceChildren();
+      mapGrid.appendChild(el('div', { style: 'text-align:center;color:var(--terracotta);font-size:0.9rem;margin:1rem;' }, ['Firebase SDK not loaded.']));
+      return;
+    }
+    window.SharedFirebase.signInAnonymously()
+      .then(() => window.SharedFirebase.ref('ctd3-community').orderByChild('updatedAt').limitToLast(30).once('value'))
+      .then(snap => {
+        mapGrid.replaceChildren();
+        // Reverse so newest first (Firebase orderByChild returns ascending).
+        const entries = [];
+        snap.forEach(child => { entries.push({ code: child.key, val: child.val() }); });
+        entries.reverse();
+        if (entries.length === 0) {
+          mapGrid.appendChild(el('div', { style: 'text-align:center;color:rgba(240,230,211,0.6);font-size:0.9rem;margin:1rem;' }, ['No community maps yet. Be the first — publish from the editor.']));
+          return;
+        }
+        entries.forEach(({ code, val }) => {
+          if (!val || !val.map) return;
+          // Stamp the code into the displayed map so import + identification work.
+          const cardMap = Object.assign({}, val.map, { _communityCode: code, _communityMeta: val.meta });
+          const card = renderCommunityCard(cardMap, val, scores);
+          mapGrid.appendChild(card);
+        });
+      })
+      .catch(e => {
+        mapGrid.replaceChildren();
+        mapGrid.appendChild(el('div', { style: 'text-align:center;color:var(--terracotta);font-size:0.9rem;margin:1rem;' }, ['Community fetch failed: ' + (e && e.message)]));
+      });
+  }
+
+  function renderCommunityCard(map, record, scores) {
+    const card = el('article', {
+      style: 'background:rgba(40,28,18,0.7);border:1px solid rgba(200,148,62,0.4);border-radius:8px;padding:1rem;margin:0.6rem auto;max-width:520px;color:var(--warm-stone);'
+    });
+    card.appendChild(el('div', { style: 'font-family:var(--font-display),serif;font-size:1.4rem;' }, [map.displayName || 'Untitled']));
+    const author = (record.meta && record.meta.authorName) ? record.meta.authorName : 'anonymous';
+    card.appendChild(el('div', { style: 'font-size:0.8rem;opacity:0.7;font-style:italic;' }, ['by ' + author + ' · code ' + map._communityCode]));
+    if (map.description) card.appendChild(el('p', { style: 'font-size:0.9rem;color:rgba(240,230,211,0.8);' }, [map.description]));
+    const row = el('div', { style: 'display:flex;gap:0.4rem;margin-top:0.6rem;' });
+    row.appendChild(el('button', {
+      class: 'btn primary', 'data-action': 'import-community', 'data-community-code': map._communityCode
+    }, ['Import to My Maps']));
+    card.appendChild(row);
+    return card;
+  }
+
   function hydrateMapSelect(scores, isMapUnlocked, isHardUnlocked, totalStars) {
     if (!mapGrid) return;
-    const MAPS = window.CTD3Maps.listOfficial();
-    const USER = window.CTD3Maps.listUserMaps();
     if (totalStarsEl) totalStarsEl.textContent = String(totalStars());
     if (maxStarsEl)   maxStarsEl.textContent   = String(window.CTD3Maps.maxStars());
+    _renderTabs();
     mapGrid.replaceChildren();
-    MAPS.forEach(map => {
-      const unlocked = isMapUnlocked(map.id);
-      mapGrid.appendChild(renderMapCard(map, {
-        scores, unlocked, showUnlockHint: !unlocked, showDelete: false
-      }));
-    });
-    if (USER.length > 0) {
-      mapGrid.appendChild(el('h2', { style: 'font-family:var(--font-display),serif;color:var(--aged-gold);text-align:center;margin:1.6rem 0 0.4rem;font-size:1.4rem;' }, ['My Maps']));
-      USER.forEach(map => {
+    if (_activeMapTab === 'official') {
+      const MAPS = window.CTD3Maps.listOfficial();
+      MAPS.forEach(map => {
+        const unlocked = isMapUnlocked(map.id);
         mapGrid.appendChild(renderMapCard(map, {
-          scores, unlocked: true, showUnlockHint: false, showDelete: true
+          scores, unlocked, showUnlockHint: !unlocked, showDelete: false
         }));
       });
+    } else if (_activeMapTab === 'mine') {
+      const USER = window.CTD3Maps.listUserMaps();
+      if (USER.length === 0) {
+        mapGrid.appendChild(el('div', { style: 'text-align:center;color:rgba(240,230,211,0.6);font-size:0.9rem;margin:1rem;' }, ['No user maps yet. Open the Map Editor from the title screen and click "Save to My Maps".']));
+      } else {
+        USER.forEach(map => {
+          mapGrid.appendChild(renderMapCard(map, {
+            scores, unlocked: true, showUnlockHint: false, showDelete: true
+          }));
+        });
+      }
+    } else if (_activeMapTab === 'community') {
+      _renderCommunityList(scores);
     }
   }
 
@@ -433,6 +507,7 @@
     setReducedMotion, motionAllowed,
     update, paintPalette, updatePalette,
     hydrateMapSelect, fillGameOver,
+    setMapTab, getActiveMapTab,
     flashWaveClear,
     setGoldFlash,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,

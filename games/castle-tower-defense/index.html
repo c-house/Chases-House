@@ -567,6 +567,11 @@
       <div data-bind="totalStarsLine" style="text-align:center;font-size:0.8rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.6);margin-bottom:1.5rem;">
         STARS EARNED <span data-bind="totalStars">0</span> / <span data-bind="maxStars">0</span>
       </div>
+      <div data-bind="mapSelectTabs" style="text-align:center;margin-bottom:0.8rem;">
+        <button class="btn" data-action="map-tab" data-tab="official" data-bind="tab-official">Official</button>
+        <button class="btn" data-action="map-tab" data-tab="mine" data-bind="tab-mine">Mine</button>
+        <button class="btn" data-action="map-tab" data-tab="community" data-bind="tab-community">Community</button>
+      </div>
       <div data-bind="mapGrid"></div>
       <div style="text-align:center;margin-top:1.5rem;">
         <button class="btn" data-go="title">◂ Back to Title</button>
@@ -728,6 +733,10 @@
        Modules (assets/renderer/scene/lighting/game — those that import three)
        run as deferred, after classic + DOMContentLoaded, in HTML order. -->
   <script src="../shared/storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="../shared/firebase.js"></script>
   <script src="tile-grid.js"></script>
   <script src="wfc.js"></script>
   <script src="wfc-rules.js"></script>

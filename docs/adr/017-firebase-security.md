@@ -71,10 +71,36 @@ The published rule set ([Firebase console → Realtime Database → Rules](https
           }
         }
       }
+    },
+
+    "ctd3-community": {
+      ".read": "auth != null",
+      ".indexOn": ["updatedAt"],
+      "$code": {
+        ".write": "auth != null",
+        ".validate": "$code.matches(/^[A-Z]{4}$/)",
+        "map": { ".validate": "newData.hasChildren(['id', 'displayName', 'path', 'buildSlots', 'castle'])" },
+        "decorations": { ".validate": "newData.isString() || newData.hasChildren() || !newData.exists()" },
+        "meta": {
+          "authorName": { ".validate": "newData.isString() && newData.val().length < 60" },
+          "createdAt":  { ".validate": "newData.isNumber()" },
+          "publishedAt":{ ".validate": "newData.isNumber()" },
+          "code":       { ".validate": "newData.isString() && newData.val().matches(/^[A-Z]{4}$/)" },
+          "$other":     { ".validate": true }
+        },
+        "updatedAt": { ".validate": "newData.isNumber()" },
+        "$other":    { ".validate": false }
+      }
     }
   }
 }
 ```
+
+**ctd3-community paths**:
+- **Top-level read allowed for any auth'd client** so the Community tab can call `.orderByChild('updatedAt').limitToLast(30)` without scoping to a code. The `.indexOn: ["updatedAt"]` directive lets that query execute server-side without a console warning.
+- **Per-code writes require auth + code shape**: 4 uppercase letters from the same alphabet as jeopardy room codes (I + O omitted to avoid confusion). The publish flow in `tools/map-editor.html` generates these via `_uniqueCommunityCode()` with a 20-attempt collision check.
+- **Shape validation on `map`**: must have at least the load-bearing fields (`id`, `displayName`, `path`, `buildSlots`, `castle`) — enough to reject obviously broken submissions without freezing the schema. `meta.authorName` capped at 60 chars to prevent display-name spam. The `$other` allow on `meta` keeps the rule open to future fields (e.g. `meta.notes`); the `$other: false` at the code level rejects extra top-level keys.
+- **No ownership rules**: matches the deliberate "personal-site scale of trust" choice. Anyone authenticated can overwrite anyone's published map at the same code. Re-publishing always generates a fresh code via `_uniqueCommunityCode()` collision-check, so accidental clobbers are practically impossible; intentional clobbers would require knowing the target code. If abuse appears, add a `publishedBy: $auth.uid` field + ownership check.
 
 What this enforces:
 
