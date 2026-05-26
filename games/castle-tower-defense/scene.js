@@ -13,8 +13,11 @@ const MUZZLE_FLASH_EMISSIVE_HEX = 0xc8943e;
 const MUZZLE_FLASH_INTENSITY = 0.6;
 const WARDEN_AURA_PERIOD_MS = 800;
 const WARDEN_AURA_SCALE_AMP = 0.05;
-const WARDEN_AURA_OPACITY_BASE = 0.5;
+const WARDEN_AURA_OPACITY_BASE = 0.85;
 const WARDEN_AURA_OPACITY_AMP = 0.15;
+const WARDEN_AURA_FILL_OPACITY_BASE = 0.22;
+const WARDEN_AURA_FILL_OPACITY_AMP = 0.07;
+const WARDEN_AURA_COLOR = 0x6fd0e0;
 const ENEMY_BOB_RATE_GROUND = 4;
 const ENEMY_BOB_RATE_FLYING = 1.6;
 const ENEMY_BOB_AMP_GROUND = 0.05;
@@ -336,11 +339,14 @@ function clearPlayfield() {
   projNodes.clear();
   effectNodes.clear();
   decalsGroup.clear();
-  // Persistent Warden aura registry (ADR-030 §12, CRIT-2)
+  // Persistent Warden aura registry (ADR-030 §12, CRIT-2). Nodes are Groups
+  // containing ring + fill children — traverse to dispose both.
   wardenAuraNodes.forEach((node) => {
     wardenAurasGroup.remove(node);
-    if (node.geometry) node.geometry.dispose();
-    if (node.material) node.material.dispose();
+    node.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
   });
   wardenAuraNodes.clear();
   // Terrain assets are also map-scoped — drop them when leaving a map.
@@ -587,18 +593,35 @@ function syncWardenAuras(state) {
     present.add(tw.id);
     let node = wardenAuraNodes.get(tw.id);
     if (!node) {
-      const geo = new THREE.RingGeometry(tw.auraRadius * 0.97, tw.auraRadius, 48);
-      geo.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0x9bb0d4,
+      // Group containing a thick outer ring + a faint inner disc so the
+      // slow-area coverage reads at-a-glance against varied ground tiles.
+      node = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(tw.auraRadius * 0.88, tw.auraRadius, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: WARDEN_AURA_COLOR,
         transparent: true,
         opacity: WARDEN_AURA_OPACITY_BASE,
         side: THREE.DoubleSide,
         depthWrite: false
       });
-      node = new THREE.Mesh(geo, mat);
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      const fillGeo = new THREE.CircleGeometry(tw.auraRadius * 0.88, 48);
+      fillGeo.rotateX(-Math.PI / 2);
+      const fillMat = new THREE.MeshBasicMaterial({
+        color: WARDEN_AURA_COLOR,
+        transparent: true,
+        opacity: WARDEN_AURA_FILL_OPACITY_BASE,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const fill = new THREE.Mesh(fillGeo, fillMat);
+      node.add(ring);
+      node.add(fill);
       node.position.set(tw.x, 0.05, tw.z);
       node.userData.t0 = performance.now();
+      node.userData.ring = ring;
+      node.userData.fill = fill;
       wardenAuraNodes.set(tw.id, node);
       wardenAurasGroup.add(node);
     }
@@ -606,18 +629,23 @@ function syncWardenAuras(state) {
       const elapsed = performance.now() - node.userData.t0;
       const phase = Math.sin(elapsed / WARDEN_AURA_PERIOD_MS);
       node.scale.setScalar((1 - WARDEN_AURA_SCALE_AMP) + phase * WARDEN_AURA_SCALE_AMP);
-      node.material.opacity = WARDEN_AURA_OPACITY_BASE * ((1 - WARDEN_AURA_OPACITY_AMP) + phase * WARDEN_AURA_OPACITY_AMP);
+      node.userData.ring.material.opacity = WARDEN_AURA_OPACITY_BASE + phase * WARDEN_AURA_OPACITY_AMP;
+      node.userData.fill.material.opacity = WARDEN_AURA_FILL_OPACITY_BASE + phase * WARDEN_AURA_FILL_OPACITY_AMP;
     } else {
       node.scale.setScalar(1);
-      node.material.opacity = WARDEN_AURA_OPACITY_BASE;
+      node.userData.ring.material.opacity = WARDEN_AURA_OPACITY_BASE;
+      node.userData.fill.material.opacity = WARDEN_AURA_FILL_OPACITY_BASE;
     }
   }
-  // Remove rings for towers that were sold
+  // Remove rings for towers that were sold (node is now a Group containing
+  // ring + fill children — dispose both).
   for (const [id, node] of wardenAuraNodes) {
     if (present.has(id)) continue;
     wardenAurasGroup.remove(node);
-    if (node.geometry) node.geometry.dispose();
-    if (node.material) node.material.dispose();
+    node.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
     wardenAuraNodes.delete(id);
   }
 }
