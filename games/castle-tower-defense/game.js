@@ -66,6 +66,45 @@ function commitResult(mapId, difficulty, stars, score) {
   return (all[mapId] && all[mapId][difficulty] && all[mapId][difficulty].bestScore) || score;
 }
 
+// ─── Inbound share-link handler (Phase 4a) ──────────────────
+// Decodes #map=<base64(deflate-raw(JSON))> from the URL hash, prompts
+// the user to import, and saves via CTD3Maps.saveUserMap. Always
+// clears the hash via history.replaceState so reloads don't re-trigger.
+async function handleInboundMap() {
+  const m = location.hash.match(/^#map=(.+)$/);
+  if (!m) return;
+  try {
+    const b64url = m[1];
+    const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    const bin = atob(padded);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    writer.write(bytes);
+    writer.close();
+    const buf = await new Response(ds.readable).arrayBuffer();
+    const jsonStr = new TextDecoder().decode(buf);
+    const combined = JSON.parse(jsonStr);
+    if (!combined || !combined.map) throw new Error('not a map payload');
+    const author = (combined.meta && combined.meta.authorName) ? ' by ' + combined.meta.authorName : '';
+    const name = combined.map.displayName || combined.map.id;
+    if (window.confirm('Import shared map "' + name + '"' + author + '?')) {
+      // Re-namespace if the share didn't carry the user: prefix (e.g.,
+      // someone shared a draft pre-Save). Avoids collision with official ids.
+      if (!combined.map.id || !combined.map.id.startsWith('user:')) {
+        combined.map.id = 'user:imported:' + Date.now().toString(36);
+      }
+      window.CTD3Maps.saveUserMap(combined);
+    }
+  } catch (e) {
+    console.warn('[ctd3] inbound #map= decode failed:', e && e.message);
+  } finally {
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
 // ─── Boot ────────────────────────────────────────────────────
 async function start() {
   // Renderer + scene + lighting first
@@ -114,6 +153,13 @@ async function start() {
   running = true;
   lastTs = performance.now();
   requestAnimationFrame(tick);
+
+  // Inbound #map= share-link handler (Phase 4a). Runs after maps.js
+  // has hydrated user maps so the import sits alongside any existing
+  // entries. Hash is cleared via history.replaceState whether import
+  // succeeds, fails, or the user cancels — prevents re-trigger on
+  // reload and avoids stale-hash false positives.
+  await handleInboundMap();
 
   // Show title
   window.CTD3Ui.setScreen('title');

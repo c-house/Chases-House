@@ -539,6 +539,7 @@
     </div>
     <div class="actions" style="margin-top:0.3rem;">
       <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
+      <button class="tool" data-action="share-link" data-bind="share-link-button">Share link</button>
     </div>
     <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
     <div class="preview">
@@ -1113,6 +1114,8 @@
       }
     } else if (name === 'save-user-map') {
       saveToMyMaps();
+    } else if (name === 'share-link') {
+      shareLink();
     }
   }
 
@@ -1125,6 +1128,51 @@
   function slugify(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 32) || 'map';
   }
+  // ── Share link (Phase 4a) ───────────────────────────────────
+  // Encodes the current combined export as a #map= URL hash via
+  // CompressionStream('deflate-raw') + base64-url-safe. The link
+  // opens the main game; its boot handler decodes and prompts to
+  // import. Largest current map (~1.7KB JSON) compresses to ~600
+  // bytes, ~800 chars base64 — well within URL limits.
+  async function shareLink() {
+    const status = document.querySelector('[data-bind="save-user-status"]');
+    const setStatus = (text, ok) => {
+      if (!status) return;
+      status.textContent = text;
+      status.style.color = ok ? 'var(--aged-gold)' : 'var(--terracotta, #b05a3a)';
+    };
+    const v = validate();
+    if (!v.ok) { setStatus('Cannot share: ' + v.reason, false); return; }
+    try {
+      const combined = buildCombinedExport();
+      // Stamp meta so the receiver sees authorName/createdAt even when
+      // sharing a draft that wasn't saved to My Maps first.
+      if (!combined.meta) combined.meta = {};
+      if (!combined.meta.createdAt) combined.meta.createdAt = Date.now();
+      const jsonStr = JSON.stringify(combined);
+      const cs = new CompressionStream('deflate-raw');
+      const writer = cs.writable.getWriter();
+      writer.write(new TextEncoder().encode(jsonStr));
+      writer.close();
+      const buf = await new Response(cs.readable).arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      const b64 = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      const gameUrl = location.origin + location.pathname.replace(/\/tools\/.*$/, '/');
+      const fullUrl = gameUrl + '#map=' + b64;
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+        setStatus('Link copied (' + fullUrl.length + ' chars) — share and paste in another browser.', true);
+      } catch (e) {
+        window.prompt('Copy this share link:', fullUrl);
+        setStatus('Link built (' + fullUrl.length + ' chars). Paste it in another browser.', true);
+      }
+    } catch (e) {
+      setStatus('Share failed: ' + (e && e.message), false);
+    }
+  }
+
   function saveToMyMaps() {
     const status = document.querySelector('[data-bind="save-user-status"]');
     const setStatus = (text, ok) => {
