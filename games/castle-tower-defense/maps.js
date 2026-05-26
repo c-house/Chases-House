@@ -20,26 +20,104 @@
     return Object.assign({ enemies: groups, reward: reward || 20, isBoss: false }, opts || {});
   }
 
-  // ─── registerMap (ADR-030 §6 + §14) ──────────────────────────
-  // Splits a single combined export (from the Cartographer Phase A2) into
-  // the runtime MAPS array and the parallel CTD3Decorations registry.
-  // Wraps per-map work in try/catch so one bad paste degrades to
-  // "that map missing", not "site doesn't boot" (review-#2 MIN-3).
-  const MAPS = [];
+  // ─── Map registry (ADR-030 §6 + §14) ─────────────────────────
+  // Splits a combined export (from the Cartographer Phase A2) into
+  // a map array and the parallel CTD3Decorations registry.
+  //
+  // Two arrays, one ingestion path:
+  //   OFFICIAL_MAPS — code-defined maps, populated at module-load by
+  //     the registerMap() calls below. Source of truth: this file.
+  //   USER_MAPS — player-authored maps, hydrated from localStorage
+  //     'ctd3:userMaps' on init and persisted on each mutation.
+  // Both flow through _ingestMap() which holds the shared validate +
+  // push + decorations-registry logic. Wraps in try/catch so one bad
+  // paste degrades to "that map missing", not "site doesn't boot"
+  // (review-#2 MIN-3).
+  const OFFICIAL_MAPS = [];
+  const USER_MAPS = [];
+  const USER_MAPS_KEY = 'ctd3:userMaps';
   window.CTD3Decorations = window.CTD3Decorations || {};
 
-  function registerMap(combined) {
+  function _ingestMap(combined, targetArray) {
     try {
       if (!combined || !combined.map || !combined.map.id) {
-        console.error('[maps] registerMap: missing combined.map.id', combined);
-        return;
+        console.error('[maps] _ingestMap: missing combined.map.id', combined);
+        return false;
       }
-      MAPS.push(combined.map);
+      targetArray.push(combined.map);
       window.CTD3Decorations[combined.map.id] = combined.decorations || [];
+      return true;
     } catch (e) {
-      console.error('[maps] registerMap failed:', e, combined);
+      console.error('[maps] _ingestMap failed:', e, combined);
+      return false;
     }
   }
+
+  function registerMap(combined) { _ingestMap(combined, OFFICIAL_MAPS); }
+
+  // Hydrate user maps from localStorage. Stored shape mirrors the editor's
+  // combined export: { map, decorations, meta }. meta is preserved but not
+  // surfaced through byId — runtime only needs map + decorations.
+  (function hydrateUserMaps() {
+    const stored = (window.SharedStorage && window.SharedStorage.safeGet)
+      ? window.SharedStorage.safeGet(USER_MAPS_KEY, [])
+      : [];
+    if (!Array.isArray(stored)) return;
+    for (const entry of stored) _ingestMap(entry, USER_MAPS);
+  })();
+
+  function persistUserMaps() {
+    if (!window.SharedStorage || !window.SharedStorage.safeSet) return;
+    // Round-trip the user maps as combined exports so reload reconstructs
+    // the same decorations registry.
+    const out = USER_MAPS.map(m => ({
+      map: m,
+      decorations: window.CTD3Decorations[m.id] || [],
+      meta: m._meta || {}
+    }));
+    window.SharedStorage.safeSet(USER_MAPS_KEY, out);
+  }
+
+  function saveUserMap(combined) {
+    if (!combined || !combined.map || !combined.map.id) return false;
+    // Reject ids that collide with official maps. User ids are expected to
+    // already carry the 'user:' prefix per the editor's id-generator.
+    if (OFFICIAL_MAPS.some(m => m.id === combined.map.id)) {
+      console.error('[maps] saveUserMap: id collides with official map', combined.map.id);
+      return false;
+    }
+    // Replace-or-append semantics.
+    const idx = USER_MAPS.findIndex(m => m.id === combined.map.id);
+    if (idx >= 0) {
+      USER_MAPS.splice(idx, 1);
+      // Decorations are overwritten by _ingestMap below.
+    }
+    if (combined.meta) combined.map._meta = combined.meta;
+    const ok = _ingestMap(combined, USER_MAPS);
+    if (ok) persistUserMaps();
+    return ok;
+  }
+
+  function deleteUserMap(id) {
+    const idx = USER_MAPS.findIndex(m => m.id === id);
+    if (idx < 0) return false;
+    USER_MAPS.splice(idx, 1);
+    delete window.CTD3Decorations[id];
+    persistUserMaps();
+    return true;
+  }
+
+  function renameUserMap(id, newDisplayName) {
+    const m = USER_MAPS.find(x => x.id === id);
+    if (!m) return false;
+    m.displayName = String(newDisplayName);
+    if (m._meta) m._meta.updatedAt = Date.now();
+    persistUserMaps();
+    return true;
+  }
+
+  function listOfficial() { return OFFICIAL_MAPS.slice(); }
+  function listUserMaps() { return USER_MAPS.slice(); }
 
   // ─── MAP 1 — The Plains ──────────────────────────────────────
   // Old (ribbon) path: (-12,4) (-8,3) (-4,2) (0,3) (3,5) (6,2) (8,-2) (11,-2)
@@ -383,11 +461,24 @@
     ]
   });
 
-  function byId(id) { return MAPS.find(m => m.id === id) || null; }
+  // byId attaches a derived `source` field at lookup time so callers can
+  // distinguish official maps from user-authored ones without storing the
+  // flag (id prefix 'user:' is the source of truth).
+  function byId(id) {
+    const off = OFFICIAL_MAPS.find(m => m.id === id);
+    if (off) { off.source = 'official'; return off; }
+    const usr = USER_MAPS.find(m => m.id === id);
+    if (usr) { usr.source = 'user'; return usr; }
+    return null;
+  }
 
-  // ADR-028 §3: 2 difficulties; ADR-030 §17: 6 maps total (4 originals +
-  // Snowfall Pass + Riverbend). maxStars stays a function of MAPS.length.
-  function maxStars() { return MAPS.length * 3 * 2; }
+  // ADR-028 §3: 2 difficulties; ADR-030 §17: 6 official maps total.
+  // User maps don't inflate the star ceiling.
+  function maxStars() { return OFFICIAL_MAPS.length * 3 * 2; }
 
-  window.CTD3Maps = { MAPS, byId, maxStars };
+  window.CTD3Maps = {
+    byId, maxStars,
+    listOfficial, listUserMaps,
+    saveUserMap, deleteUserMap, renameUserMap
+  };
 })();

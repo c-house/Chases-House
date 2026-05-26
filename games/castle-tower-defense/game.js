@@ -36,12 +36,17 @@ function markTutorialSeen() { window.SharedStorage.safeSet(KEYS.tutorialSeen, tr
 function totalStars() {
   const all = loadScores();
   let n = 0;
-  Object.values(all).forEach(map => Object.values(map).forEach(d => { n += d.stars || 0; }));
+  Object.entries(all).forEach(([mapId, map]) => {
+    if (mapId.startsWith('user:')) return;
+    Object.values(map).forEach(d => { n += d.stars || 0; });
+  });
   return n;
 }
 function isMapUnlocked(mapId) {
   const map = window.CTD3Maps.byId(mapId);
-  return totalStars() >= (map ? map.unlockRequirement : 0);
+  if (!map) return false;
+  if (map.source === 'user') return true;
+  return totalStars() >= map.unlockRequirement;
 }
 function isHardUnlocked(_mapId) {
   // 2 difficulties only — both available if map is unlocked. Kept for API parity.

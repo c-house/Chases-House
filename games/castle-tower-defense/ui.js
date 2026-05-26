@@ -277,7 +277,7 @@
   // ─── Map select ──────────────────────────────────────────────
   function hydrateMapSelect(scores, isMapUnlocked, isHardUnlocked, totalStars) {
     if (!mapGrid) return;
-    const MAPS = window.CTD3Maps.MAPS;
+    const MAPS = window.CTD3Maps.listOfficial();
     if (totalStarsEl) totalStarsEl.textContent = String(totalStars());
     if (maxStarsEl)   maxStarsEl.textContent   = String(window.CTD3Maps.maxStars());
     mapGrid.replaceChildren();
