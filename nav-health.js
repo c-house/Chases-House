@@ -33,7 +33,7 @@
   }
 
   // Music: separate Cloudflare zone (thewiseguy.ai), cross-origin probe.
-  enableNavWhenLive('music-nav',   'https://dj.thewiseguy.ai/health', 'Music');
+  enableNavWhenLive('music-nav',   'https://thewiseguy.ai/health', 'Music');
 
   // Lookout: same-origin path-based (chases.house/the-lookout/health behind
   // a Cloudflare Worker that splits traffic to a Tunnel). See ADR-024.
