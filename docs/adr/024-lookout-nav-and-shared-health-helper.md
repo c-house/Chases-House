@@ -108,3 +108,13 @@ enableNavWhenLive('X-nav', '<healthUrl>', '<Label>');
 ```
 
 No new CSS class needed — `.nav-link-live` is shared across all activations.
+
+## Addendum — 2026-05-30: Music probe moved to the apex
+
+WebDJ migrated its canonical URL from the `dj.thewiseguy.ai` subdomain to the apex `thewiseguy.ai` (WebDJ ADR-071, "Domain Migration — Canonical Apex"). The Music line in `nav-health.js` now reads:
+
+```js
+enableNavWhenLive('music-nav',   'https://thewiseguy.ai/health', 'Music');
+```
+
+The code snippets above (and ADR-012) keep the original `dj.thewiseguy.ai` URL as the as-of-decision record; the live target is the apex. `dj.thewiseguy.ai` still 301-redirects to the apex during a transition window. The apex was chosen over the new `dj.chases.house` family alias deliberately: the WebDJ Cloudflare Access "Health Check" bypass is scoped to `thewiseguy.ai/health` only, so any other target would 302 to the Access login and CORS-fail the probe. Nothing else in the helper changed — `healthUrl.replace(/\/health$/, '')` auto-derives the live link href.
