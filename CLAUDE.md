@@ -4,7 +4,7 @@
 
 - **Site**: Static personal website at **chases.house**
 - **Tech**: Plain HTML/CSS/JS — no build step, no framework, no backend
-- **Hosting**: GitHub Pages (push to `main` triggers deploy). Static assets sit behind a Cloudflare cache (up to ~4h stale) — purge the changed asset URL after deploy
+- **Hosting**: GitHub Pages (push to `main` triggers deploy). Static assets sit behind a Cloudflare cache (up to ~4h stale) — purge the changed asset URL after deploy via the CF dashboard's Custom Purge (drivable through Chrome DevTools MCP; no CF API token on this box, so no scripted purge)
 - **Domain**: chases.house (DNS via GoDaddy A records → GitHub Pages IPs)
 - **Games**: Browser games in `games/` — each self-contained with inline CSS
 - **Subsites**: Some nav links (Music → thewiseguy.ai, Lookout) point to Cloudflare-tunneled services hosted off-repo; `files.chases.house` is another tunneled subsite (ADR-013). This repo carries only their nav links / static front-ends, not the tunnels
@@ -20,7 +20,8 @@
 │                       "coming-soon" nav spans when their tunneled subsite returns
 │                       200 on /health. New subsite nav = one call here. See ADR-024
 ├── docs/             → Project documentation (not served)
-│   ├── adr/          → Architecture decision records (one per feature)
+│   ├── adr/          → Architecture decision records (one per feature; point-in-time —
+│   │                   append a dated `## Addendum — YYYY-MM-DD`, don't rewrite the body)
 │   └── screenshots/  → Local verification artifacts (gitignored)
 └── games/            → Browser games
     ├── index.html    → Games gallery page
