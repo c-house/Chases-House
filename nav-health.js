@@ -38,4 +38,8 @@
   // Lookout: same-origin path-based (chases.house/the-lookout/health behind
   // a Cloudflare Worker that splits traffic to a Tunnel). See ADR-024.
   enableNavWhenLive('lookout-nav', '/the-lookout/health',             'Lookout');
+
+  // Shopping: same-origin path-based (chases.house/shop/health behind the
+  // chases-house-router Worker → Smart-Shopper tunnel). Mirrors Lookout.
+  enableNavWhenLive('shop-nav',    '/shop/health',                    'Shopping');
 })();
