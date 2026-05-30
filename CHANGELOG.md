@@ -2,6 +2,12 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-05-30 — Music nav points at thewiseguy.ai apex
+
+- Switch the Music nav health-probe in `nav-health.js` from `dj.thewiseguy.ai/health` to the apex `thewiseguy.ai/health` (WebDJ rebrand to canonical apex). The existing `healthUrl.replace(/\/health$/,'')` auto-derives the live link href, so the upgraded Music link now points at `https://thewiseguy.ai`
+- Apex chosen over the new `dj.chases.house` family alias deliberately: the WebDJ Cloudflare Access "Health Check" bypass is scoped to `thewiseguy.ai/health` only, so any other target would 302 to Access login and CORS-fail the probe
+- Document `nav-health.js` (shared `enableNavWhenLive` helper), the off-repo tunneled subsites, ADR-024, and the Cloudflare edge-cache purge-after-deploy gotcha in `CLAUDE.md`
+
 ## 2026-04-25 — Cleaner home page (forest backdrop)
 
 - Replace the room-card landing with a full-bleed forest-cabin photograph and a quiet "Chase's House" title in the lower-left

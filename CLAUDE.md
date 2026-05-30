@@ -4,9 +4,10 @@
 
 - **Site**: Static personal website at **chases.house**
 - **Tech**: Plain HTML/CSS/JS — no build step, no framework, no backend
-- **Hosting**: GitHub Pages (push to `main` triggers deploy)
+- **Hosting**: GitHub Pages (push to `main` triggers deploy). Static assets sit behind a Cloudflare cache (up to ~4h stale) — purge the changed asset URL after deploy
 - **Domain**: chases.house (DNS via GoDaddy A records → GitHub Pages IPs)
 - **Games**: Browser games in `games/` — each self-contained with inline CSS
+- **Subsites**: Some nav links (Music → thewiseguy.ai, Lookout) point to Cloudflare-tunneled services hosted off-repo; `files.chases.house` is another tunneled subsite (ADR-013). This repo carries only their nav links / static front-ends, not the tunnels
 
 ## Folder Structure
 
@@ -15,6 +16,9 @@
 ├── index.html        → Home page (landing/hub)
 ├── styles.css        → Shared design tokens
 ├── CNAME             → Custom domain config
+├── nav-health.js     → Shared nav-link health-probe (enableNavWhenLive); lights up
+│                       "coming-soon" nav spans when their tunneled subsite returns
+│                       200 on /health. New subsite nav = one call here. See ADR-024
 ├── docs/             → Project documentation (not served)
 │   ├── adr/          → Architecture decision records (one per feature)
 │   └── screenshots/  → Local verification artifacts (gitignored)
@@ -173,6 +177,7 @@ After building any UI component, page, or user flow:
 | Chrome DevTools Guide | `docs/Chrome-DevTools-MCP-Guide.md` |
 | ADR: Crossword | `docs/adr/010-crossword.md` |
 | ADR: Jeopardy | `docs/adr/011-jeopardy.md` |
+| ADR: Lookout nav + health helper | `docs/adr/024-lookout-nav-and-shared-health-helper.md` |
 
 ---
 
