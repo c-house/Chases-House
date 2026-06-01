@@ -44,6 +44,13 @@ function init(canvasEl) {
     alpha: true                 // lets dark site bg show through
   });
   applyDpr();
+  // ADR-034 Group 2 §A — AgX over ACES: ACES oversaturates the kit's neon
+  // purple before clipping; AgX neutrally desaturates so it settles into a
+  // dim plum while the gold window highlight survives. AgX darkens midtones
+  // slightly, hence the 1.06 exposure + the small sun bump in lighting.js §B.
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 1.06;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 

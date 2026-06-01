@@ -17,7 +17,10 @@ const WARDEN_AURA_OPACITY_BASE = 0.85;
 const WARDEN_AURA_OPACITY_AMP = 0.15;
 const WARDEN_AURA_FILL_OPACITY_BASE = 0.22;
 const WARDEN_AURA_FILL_OPACITY_AMP = 0.07;
-const WARDEN_AURA_COLOR = 0x6fd0e0;
+// Warden aura — single sanctioned cool-blue exception per ADR-034 Deliberate
+// Decision A. Mistier frost replaces prior neon 0x6fd0e0; never push back
+// toward neon 0x00d4ff. Constrained to aura ring + hover preview only.
+const WARDEN_AURA_COLOR = 0x8fc6cf;
 const ENEMY_BOB_RATE_GROUND = 4;
 const ENEMY_BOB_RATE_FLYING = 1.6;
 const ENEMY_BOB_AMP_GROUND = 0.05;
@@ -51,15 +54,33 @@ const tmpHit = new THREE.Vector3();
 
 function init() {
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a0b);
+  // ADR-034 Group 2 §C — warm pine background + linear fog at the same colour,
+  // so the field edge dissolves into canopy rather than hard-cutting to black.
+  scene.background = new THREE.Color(0x1a2a20);
+  scene.fog = new THREE.Fog(0x1a2a20, 26, 58);
 
-  // Ground plane (large, flat).
+  // Ground plane (large, flat). ADR-034 Group 2 §D — sage-moss rim under the
+  // Kenney tile InstancedMesh; rendered visible only when tiles are absent.
   const groundGeo = new THREE.PlaneGeometry(60, 40);
   groundGeo.rotateX(-Math.PI / 2);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x6a8447, roughness: 0.85 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x3c5a38, roughness: 0.95 });
   ground = new THREE.Mesh(groundGeo, groundMat);
   ground.receiveShadow = true;
   scene.add(ground);
+
+  // Radial AO disc — cheap fake contact-shadow so the playfield grounds
+  // visually against the warm-pine background (ADR-034 Group 2 §D).
+  const aoGeo = new THREE.PlaneGeometry(46, 30).rotateX(-Math.PI / 2);
+  const aoMat = new THREE.MeshBasicMaterial({
+    map: makeRadialAlpha(),
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false
+  });
+  const ao = new THREE.Mesh(aoGeo, aoMat);
+  ao.position.y = 0.02;             // just above the underplane, below tiles
+  scene.add(ao);
 
   // Grouping for easy management
   pathGroup        = new THREE.Group(); scene.add(pathGroup);
@@ -71,6 +92,86 @@ function init() {
   effectsGroup     = new THREE.Group(); scene.add(effectsGroup);
   decalsGroup      = new THREE.Group(); scene.add(decalsGroup);
   wardenAurasGroup = new THREE.Group(); scene.add(wardenAurasGroup);
+
+  // ADR-034 Group 2 §F — shader-based firefly motes. Reduced-motion +
+  // low-power gating handled inside initFireflies().
+  initFireflies(scene, { count: 14 });
+}
+
+// ─── AO disc texture + firefly module (ADR-034 Group 2 §D, §F) ───
+function makeRadialAlpha() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(128, 128, 12, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(0,0,0,1)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+let ffMat = null;
+let ffPoints = null;
+
+function initFireflies(s, { count = 14 } = {}) {
+  // T13 honored before creation — reduced-motion produces zero Points.
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.CTD3Renderer && window.CTD3Renderer.isLowPower && window.CTD3Renderer.isLowPower()) {
+    count = Math.min(count, 6);
+  }
+  const pos = new Float32Array(count * 3);
+  const seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3]     = (Math.random() - 0.5) * 44;   // x across field
+    pos[i * 3 + 1] = 0.6 + Math.random() * 4;      // y just above ground
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 28;   // z
+    seed[i] = Math.random() * 6.28;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seed, 1));
+  ffMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: {
+      uTime:  { value: 0 },
+      uColor: { value: new THREE.Color(0xf4cc6e) },   // matches --accent-glow
+      uSize:  { value: 90 }
+    },
+    vertexShader: `
+      attribute float aSeed;
+      uniform float uTime, uSize;
+      varying float vTw;
+      void main() {
+        vec3 p = position;
+        p.y += mod(uTime * 0.35 + aSeed * 1.4, 5.0);   // slow rise + wrap
+        p.x += sin(uTime * 0.5 + aSeed) * 0.6;
+        p.z += cos(uTime * 0.4 + aSeed * 1.3) * 0.6;
+        vTw = 0.5 + 0.5 * sin(uTime * 1.6 + aSeed * 3.0);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = uSize * vTw / -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor;
+      varying float vTw;
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        if (d > 0.5) discard;
+        gl_FragColor = vec4(uColor, smoothstep(0.5, 0.0, d) * vTw * 0.9);
+      }`
+  });
+  ffPoints = new THREE.Points(geo, ffMat);
+  ffPoints.frustumCulled = false;
+  s.add(ffPoints);
+}
+
+function tickFireflies(dtMs) {
+  if (ffMat) ffMat.uniforms.uTime.value += dtMs * 0.001;
 }
 
 function getScene() { return scene; }
@@ -847,5 +948,6 @@ window.CTD3Scene = {
   sync, raycastFromNormalizedPointer,
   flashTower,
   paintTileDebug,
-  setLowPowerShadows
+  setLowPowerShadows,
+  tickFireflies
 };

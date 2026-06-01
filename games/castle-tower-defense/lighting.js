@@ -6,21 +6,24 @@
    ═══════════════════════════════════════════════════════════════ */
 import * as THREE from 'three';
 
-// Two phase presets (day = build/prepWave, night = inWave).
+// Two phase presets (day = build/prepWave, dusk = inWave). ADR-034 Group 2
+// §B — warm sun + sage-grey hemi, revives the dead prepWave→inWave tween.
+// Cool-blue hemi 0xb0d4f1 was the biggest reason kit purples read as neon;
+// pulling it sage-grey is most of the fix on its own.
 const PRESETS = {
-  prepWave: {
-    sunColor:   0xffe6b3,
-    sunIntensity: 1.1,
-    hemiSkyColor: 0xb0d4f1,
-    hemiGroundColor: 0x9d7f5a,
-    hemiIntensity: 0.7
+  prepWave: {                     // day — building phase
+    sunColor:        0xffd9a0,    // golden-hour, lower colour temp
+    sunIntensity:    1.18,        // small bump offsets AgX midtones
+    hemiSkyColor:    0x9fb6c4,    // sage-grey (was cold blue 0xb0d4f1)
+    hemiGroundColor: 0x6a5536,    // warmer bark bounce
+    hemiIntensity:   0.62
   },
-  inWave: {
-    sunColor:   0xffe6b3,
-    sunIntensity: 1.1,
-    hemiSkyColor: 0xb0d4f1,
-    hemiGroundColor: 0x9d7f5a,
-    hemiIntensity: 0.7
+  inWave: {                       // dusk — combat phase, cooler/tenser
+    sunColor:        0xffc987,
+    sunIntensity:    0.95,
+    hemiSkyColor:    0x7d93a0,
+    hemiGroundColor: 0x5e4a30,
+    hemiIntensity:   0.50
   }
 };
 

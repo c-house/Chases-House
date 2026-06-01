@@ -492,6 +492,7 @@ function tick(ts) {
 
   // Always-on
   window.CTD3Lighting.update(dtRaw);
+  window.CTD3Scene.tickFireflies(dtRaw);
   window.CTD3Renderer.trackFrame(dtRaw);
 
   if (isPlaying && state) {
