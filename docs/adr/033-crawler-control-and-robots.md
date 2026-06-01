@@ -78,49 +78,40 @@ tunneled targets, when live, need their own robots.
 
 ## Rollback
 
-Delete repo `robots.txt`; remove the `noindex all responses` Transform Rule; reset the managed
-robots.txt Search-engines control to Allow. (WAF "Block AI Bots" is already off.) Managed robots.txt
-then reverts to being the sole (Cloudflare-generated) file with `search=yes`.
+Delete repo `robots.txt`; remove the `noindex all responses` Transform Rule (once created); reset
+the managed robots.txt Search-engines control to Allow. (WAF "Block AI Bots" is already off.)
+Managed robots.txt then reverts to being the sole (Cloudflare-generated) file with `search=yes`.
 
-## Addendum — 2026-05-31 (as-built — COMPLETE; curl-verified)
+## Addendum — 2026-05-31 (as-built status — PARTIAL; curl-verified)
 
 Driven via Chrome DevTools MCP against the chases.house zone
-(account `0ee1273a5cee6fea6a5a5a66666c8df6`). Every claim below is confirmed by `curl`, not dashboard
-UI. (This addendum went through PARTIAL drafts while the work was mid-flight on a shared/flaky
-browser; the live verification matrix at the bottom is the final, authoritative state.)
+(account `0ee1273a5cee6fea6a5a5a66666c8df6`) over a **shared** browser, which made dashboard
+automation unreliable. Status below is what `curl` confirms — **not** dashboard optimism. (Earlier
+drafts of this addendum twice claimed completion prematurely; this is the corrected record.)
 
-**Cloudflare config as deployed:**
-- **Transform Rule `noindex all responses` — LIVE.** Rules → Transform Rules → Modify Response
-  Header → "Add static header to response": **Set static** `X-Robots-Tag` = `noindex`, expression
-  `http.host eq "chases.house"`. **This header is the authoritative deindex** — the one thing GitHub
-  Pages cannot do. `nofollow` intentionally omitted (this hub links out to subsites).
-- **Managed `Content-Signal: search=no,ai-train=no` — LIVE.** Security → Settings → Bots → *Manage
-  robots.txt*: Search engines = **Block**, Block AI model training = **on**, Block AI input = **off**
-  (left off so the operator's real-time Claude fetches aren't signaled against). The wildcard group
-  keeps **`Allow: /`** — no crawl-blocking `Disallow`, so Googlebot still crawls and reads the
-  `noindex` header (no deindex trap). *(`Content-Signal` is advisory/unratified — Google ignores it;
-  the `X-Robots-Tag` header is what actually removes the site from results.)*
-- **WAF "Block AI Bots" — OFF** ("Do not block"). It had been enabled ("Block on all pages") and was
-  returning **HTTP 403 to `Claude-User`** (the operator's own tools) and to `GPTBot`. The free plan
-  offered no reliable per-UA skip, so it was disabled. robots.txt's AI `Disallow` set + `search=no`
-  remain the declared AI policy (reputable crawlers honor them). If re-enabled later, pair it with a
-  WAF Skip rule `(http.user_agent contains "Claude-User")` verified against a real Anthropic-infra
-  fetch first. **Lesson:** the assumption that `Claude-User` would pass Block-AI-Bots was wrong.
-- **Repo `robots.txt`** merges below the managed block; served `Cf-Cache-Status: DYNAMIC` (not
-  edge-cached, so no cache purge applies).
+**Done & curl-verified:**
+- **Repo `robots.txt` is live and merged** below the managed block. `curl https://chases.house/robots.txt`
+  shows the managed AI-crawler `Disallow: /` set (Amazonbot, Applebot-Extended, Bytespider, CCBot,
+  ClaudeBot, CloudflareBrowserRenderingCrawler, Google-Extended, GPTBot, meta-externalagent) followed
+  by the origin `User-agent: Claude-User` / `Disallow:` (allow) group. Served `Cf-Cache-Status:
+  DYNAMIC` (not edge-cached; no purge applies).
+- **WAF "Block AI Bots" turned OFF** ("Do not block"). It had been enabled ("Block on all pages") and
+  was returning **HTTP 403 to `Claude-User`** (the operator's own tools) and to `GPTBot`. The free
+  plan offered no reliable per-UA skip, so it was disabled. After disabling, `curl` confirms
+  `Claude-User`, `GPTBot`, and a plain browser UA all return **200**.
 
-**Live verification matrix (curl):**
-| Check | Result |
-|---|---|
-| `X-Robots-Tag` on `/`, `/games/`, `/styles.css`, `/files/`, `/cookbook/` | `noindex` (all) |
-| Plain browser UA → `/` | 200 |
-| `Claude-User` UA → `/` | 200 (not blocked) |
-| `GPTBot` UA → `/` | 200 (robots.txt disallows; not WAF-blocked) |
-| robots.txt wildcard | `Content-Signal: search=no,ai-train=no` + `Allow: /` |
-| robots.txt ClaudeBot / GPTBot | `Disallow: /` (managed block) |
-| robots.txt `Claude-User` | `Disallow:` (explicit allow, origin group) |
+**NOT done — still required to meet the privacy goal (and blocking automation):**
+- **Transform Rule `X-Robots-Tag: noindex` — NOT created.** `curl -I https://chases.house/` shows
+  **no** `X-Robots-Tag` header on `/`, `/games/`, `/styles.css`, or `/files/`. This is the only
+  mechanism that actually deindexes, so **the site is NOT yet protected from search indexing.**
+  The create-rule form (Rules → Transform Rules → Modify Response Header → "Add static header to
+  response") has no stable element handles for MCP fill/click on the shared browser; the form was
+  reached but not completed.
+- **Managed Content-Signal still `search=yes`.** The Manage-robots.txt "Search engines → Block"
+  toggle did not save; live file still reads `Content-Signal: search=yes,ai-train=no` (advisory only,
+  so not load-bearing — but should be flipped for intent consistency).
 
-**Process note (honest record):** during this session two intermediate doc commits prematurely
-claimed completion before the Transform Rule and `search=no` were actually saved; the automation was
-fighting a shared, re-rendering browser. The dashboard work was only confirmed done once the curl
-matrix above passed. Future CF-dashboard automation should use a dedicated browser/profile.
+**Lessons:** (1) the assumption that `Claude-User` would pass Block-AI-Bots was wrong — verify per-UA
+behavior with a real fetch before relying on any WAF bot rule. (2) Driving the CF dashboard via MCP on
+a browser shared with other sessions is unreliable; prefer a dedicated browser/profile or guided
+manual clicks for the remaining two steps.
