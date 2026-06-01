@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Card · Forest</title>
+<style>
+  body { margin: 0; background: #0d1410; padding: 22px 28px; font-family: 'Bricolage Grotesque', sans-serif; color: #f0e6d3;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 40%, rgba(232,183,90,0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 80% at 80% 70%, rgba(122,148,96,0.035) 0%, transparent 60%);
+  }
+  .label { font-size: 9px; color: #5a6a5e; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 660px; }
+  .card { display: flex; flex-direction: column; padding: 28px 24px; background: #1f3329; border: 1px solid #a06828; border-radius: 6px; text-decoration: none; color: inherit; box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3); }
+  .card.hover { border-color: #e8b75a; box-shadow: 0 8px 32px rgba(232,183,90,0.14), 0 2px 8px rgba(0,0,0,0.45); transform: translateY(-4px); }
+  .icon { font-size: 1.8rem; margin-bottom: 0.6rem; opacity: 0.9; }
+  .title { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40; font-size: 1.3rem; font-weight: 500; color: #faf3e6; margin-bottom: 0.3rem; }
+  .desc { font-size: 0.92rem; color: #9aa89a; line-height: 1.5; flex: 1; margin-bottom: 0.8rem; }
+  .tag { display: inline-block; padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #e8b75a; border: 1px solid #a06828; border-radius: 3px; align-self: flex-start; }
+</style></head>
+<body>
+  <div class="label">Room / Game card · default & hover · resting on moss</div>
+  <div class="grid">
+    <div class="card">
+      <span class="icon">&#9818;</span>
+      <span class="title">Chess</span>
+      <span class="desc">Full chess with all rules — castling, en passant, promotion, and more.</span>
+      <span class="tag">vs AI</span>
+    </div>
+    <div class="card hover">
+      <span class="icon">&#10067;</span>
+      <span class="title">Jeopardy</span>
+      <span class="desc">Host a Jackbox-style trivia game on the big screen. Players buzz in on their phones.</span>
+      <span class="tag">multiplayer</span>
+    </div>
+  </div>
+</body></html>

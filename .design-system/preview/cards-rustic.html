@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Card · Rustic Recipe</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #f3ead8; padding: 24px 28px; font-family: 'Lora', serif; color: #2b1e14;
+    background-image:
+      radial-gradient(at 12% 8%, rgba(184,80,42,0.05) 0, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(94,107,58,0.06) 0, transparent 50%);
+  }
+  .label { font-family: 'Cormorant Garamond', serif; font-size: 10px; color: #8a7354; text-transform: uppercase; letter-spacing: 0.24em; font-weight: 600; margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 600px; }
+  .card { background: #f3ead8; cursor: pointer; }
+  .card.tilt-1 { transform: rotate(-0.4deg); }
+  .card.tilt-2 { transform: rotate(0.3deg); }
+  .thumb { aspect-ratio: 4/3; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04), 0 2px 12px rgba(60,40,20,0.10); }
+  .body { padding: 14px 4px 0; }
+  .smallcaps { font-family: 'Cormorant Garamond', serif; text-transform: uppercase; letter-spacing: 0.24em; font-weight: 600; font-size: 10px; color: #b8502a; }
+  .title { font-family: 'Cormorant Garamond', serif; font-size: 22px; line-height: 1.1; margin: 4px 0 6px; font-weight: 500; }
+  .blurb { font-size: 13px; color: #5a4630; font-style: italic; line-height: 1.45; margin-bottom: 10px; }
+  .meta { display: flex; gap: 14px; font-size: 11px; color: #8a7354; align-items: center; }
+  .meta .gold { color: #c08a2e; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .heart { color: #6b2736; font-size: 14px; }
+</style></head>
+<body>
+  <div class="label">Recipe card · 4/3 thumb, slight tilt</div>
+  <div class="grid">
+    <div class="card tilt-1">
+      <div class="thumb" style="background-image:url(../assets/keller-chicken.png)"></div>
+      <div class="body">
+        <div class="row"><div class="smallcaps">Mains</div><div class="heart">♡</div></div>
+        <div class="title">Roast Chicken with Root Vegetables</div>
+        <div class="blurb">From Ad Hoc at Home — bronzed bird nested over leeks and rutabagas.</div>
+        <div class="meta"><span>⏱ 120 min</span><span>👥 4</span><span class="gold">★ 4.9</span></div>
+      </div>
+    </div>
+    <div class="card tilt-2">
+      <div class="thumb" style="background-image:url(../assets/blueberry-ice-cream.png)"></div>
+      <div class="body">
+        <div class="row"><div class="smallcaps">Desserts</div><div style="color:#8a7354">♡</div></div>
+        <div class="title">Blueberry Ice Cream</div>
+        <div class="blurb">Deep purple summer berries simmered, strained to satin, folded into half-and-half.</div>
+        <div class="meta"><span>⏱ 50 min</span><span>👥 6</span><span class="gold">★ 4.7</span></div>
+      </div>
+    </div>
+  </div>
+</body></html>

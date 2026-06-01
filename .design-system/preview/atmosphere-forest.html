@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Atmosphere — Cabin in the Woods</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { font-family: 'Bricolage Grotesque', sans-serif; color: #f0e6d3; background: #0d1410; overflow: hidden; }
+  .stage { position: relative; width: 100%; height: 100vh; min-height: 380px; }
+  .stage::before {
+    content: ""; position: absolute; inset: 0;
+    background: url("../assets/forest-house-landscape.png") center/cover no-repeat #0d1410;
+  }
+  .stage::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(13,20,16,0.55) 0%, rgba(13,20,16,0) 18%, rgba(13,20,16,0) 75%, rgba(13,20,16,0.85) 100%);
+  }
+  .frame { position: relative; height: 100%; padding: 22px 28px; box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: space-between; z-index: 1; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .brand { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 36, 'WONK' 1, 'SOFT' 50; font-weight: 400; font-size: 1.4rem; letter-spacing: -0.01em; color: #faf3e6; }
+  .brand .accent { color: #e8b75a; text-shadow: 0 0 22px rgba(232,183,90,0.55); }
+  .label { font-size: 9px; color: #a8bfaf; text-transform: uppercase; letter-spacing: 0.18em; font-weight: 600; }
+  .caption { max-width: 380px; padding: 14px 16px; background: linear-gradient(180deg, rgba(40,40,44,0.78), rgba(30,30,33,0.88)); border: 1px solid #a06828; border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3); backdrop-filter: blur(2px); }
+  .caption-title { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 28, 'WONK' 1, 'SOFT' 40; font-size: 1.05rem; font-weight: 500; color: #faf3e6; margin: 0 0 4px; }
+  .caption-body { font-size: 11.5px; line-height: 1.55; color: #f0e6d3; margin: 0; }
+  .caption-body em { color: #f4cc6e; font-style: normal; }
+
+  /* Drifting motes */
+  .mote { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #f4cc6e; box-shadow: 0 0 6px 1px rgba(232,183,90,0.55); animation: drift 16s linear infinite; opacity: 0; }
+  .mote:nth-child(1) { left: 12%; bottom: -10px; animation-delay: 0s; animation-duration: 16s; }
+  .mote:nth-child(2) { left: 32%; bottom: -10px; animation-delay: 4s; animation-duration: 19s; }
+  .mote:nth-child(3) { left: 58%; bottom: -10px; animation-delay: 7s; animation-duration: 14s; background:#b05a3a; box-shadow: 0 0 6px 1px rgba(176,90,58,0.45); }
+  .mote:nth-child(4) { left: 80%; bottom: -10px; animation-delay: 2s; animation-duration: 21s; }
+  @keyframes drift {
+    0%   { transform: translate(0,0) scale(0.6); opacity: 0; }
+    10%  { opacity: 0.85; }
+    50%  { transform: translate(15px,-55vh) scale(1); opacity: 0.6; }
+    100% { transform: translate(-8px,-110vh) scale(0.5); opacity: 0; }
+  }
+</style></head>
+<body>
+  <div class="stage">
+    <span class="mote"></span><span class="mote"></span><span class="mote"></span><span class="mote"></span>
+    <div class="frame">
+      <div class="top">
+        <div class="brand">Chase's <span class="accent">House</span></div>
+        <div class="label">Atmosphere · the dark scope</div>
+      </div>
+      <div class="caption">
+        <p class="caption-title">The painting is the hero.</p>
+        <p class="caption-body">Forest backdrop · <em>#0d1410</em> canopy fallback · top + bottom 55–85% gradient anchors chrome · cards float in front with a deep grounding shadow · a few <em>fireflies</em> drift past on a 14–21s loop. Type stays in the upper thirds so the cabin keeps its punch.</p>
+      </div>
+    </div>
+  </div>
+</body></html>

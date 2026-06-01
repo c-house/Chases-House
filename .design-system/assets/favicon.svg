@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="windowGlow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#f4cc6e"></stop>
+      <stop offset="60%" stop-color="#e8b75a"></stop>
+      <stop offset="100%" stop-color="#a06828"></stop>
+    </radialGradient>
+    <radialGradient id="mistGlow" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#e8b75a" stop-opacity="0.35"></stop>
+      <stop offset="100%" stop-color="#e8b75a" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+
+  
+  <circle cx="16" cy="16" r="15" fill="#152821"></circle>
+
+  
+  <path d="M3 28 L5 18 L4 18 L6 12 L5 12 L7 6 L9 12 L8 12 L10 18 L9 18 L11 28 Z" fill="#0d1410" opacity="0.85"></path>
+  <path d="M22 28 L24 18 L23 18 L25 12 L24 12 L26 6 L28 12 L27 12 L29 18 L28 18 L29 28 Z" fill="#0d1410" opacity="0.85"></path>
+
+  
+  <circle cx="16" cy="18" r="9" fill="url(#mistGlow)"></circle>
+
+  
+  <path d="M19 9c-1-2 1-3 1-4" fill="none" stroke="#6e8a7a" stroke-width="0.8" stroke-linecap="round" opacity="0.7"></path>
+
+  
+  <rect x="18.5" y="11" width="2.6" height="3.4" fill="#3a2a1c" stroke="#a06828" stroke-width="0.6" stroke-linejoin="round"></rect>
+
+  
+  <path d="M16 10 L8 17 H10 V25 H22 V17 H24 L16 10Z" fill="#3a2a1c" stroke="#a06828" stroke-width="1.1" stroke-linejoin="round"></path>
+
+  
+  <rect x="13.5" y="18" width="5" height="5" rx="0.5" fill="url(#windowGlow)"></rect>
+</svg>

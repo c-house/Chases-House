@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Buttons — Forest</title>
+<style>
+  body { margin: 0; background: #0d1410; padding: 22px 28px; font-family: 'Bricolage Grotesque', sans-serif; color: #f0e6d3; }
+  .label { font-size: 9px; color: #5a6a5e; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 10px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+  .btn { padding: 0.8rem 1.5rem; font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 20, 'WONK' 1, 'SOFT' 40; font-size: 1rem; font-weight: 500; letter-spacing: 0.04em; border: 1px solid #e8b75a; border-radius: 6px; cursor: pointer; }
+  .btn-primary { background: #e8b75a; color: #152821; border-color: #e8b75a; }
+  .btn-primary.hover { background: #f4cc6e; transform: translateY(-1px); border-color: #f4cc6e; }
+  .btn-disabled { background: transparent; color: #5a6a5e; border-color: #5a6a5e; }
+  .btn-link { background: transparent; border: none; color: #9aa89a; font-family: 'Bricolage Grotesque'; font-size: 0.85rem; text-decoration: underline; text-underline-offset: 2px; padding: 0.3rem 0.5rem; }
+  .meta { font-family: 'SFMono-Regular', monospace; font-size: 9px; color: #9aa89a; }
+</style></head>
+<body>
+  <div class="label">Primary · the lit window · Fraunces 500 · 0.04em</div>
+  <div class="row">
+    <button class="btn btn-primary">Decrypt</button>
+    <button class="btn btn-primary hover">Decrypt</button>
+    <button class="btn btn-disabled" disabled>Decrypt</button>
+    <span class="meta">default · hover · disabled</span>
+  </div>
+  <div class="label">Link button · Bricolage 0.85rem</div>
+  <div class="row">
+    <button class="btn-link">Cancel</button>
+    <button class="btn-link" style="color:#b05a3a">Cancel</button>
+    <span class="meta">default · hover (terracotta)</span>
+  </div>
+</body></html>

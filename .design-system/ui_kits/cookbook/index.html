@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cookbook — UI Kit</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <style>
+    html, body { margin: 0; }
+    body { font-family: var(--font-body-rustic, 'Lora', serif); background: #ead9bd; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2rem 1.6rem;
+      margin-top: 1.2rem;
+    }
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; padding: 1rem 0 0.5rem; align-items: center; }
+    .filters .label {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.24em;
+      color: #8a7354;
+      font-weight: 600;
+      margin-right: 0.6rem;
+    }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Page.jsx"></script>
+  <script type="text/babel" src="Header.jsx"></script>
+  <script type="text/babel" src="RecipeCard.jsx"></script>
+  <script type="text/babel" src="Chip.jsx"></script>
+  <script type="text/babel" src="Buttons.jsx"></script>
+  <script type="text/babel" src="RecipeView.jsx"></script>
+
+  <script type="text/babel">
+    const RECIPES = [
+      {
+        id: "chicken",
+        section: "Mains",
+        title: "Roast Chicken with Root Vegetables",
+        tagline: "from Ad Hoc at Home",
+        blurb: "From Ad Hoc at Home — bronzed bird nested over leeks and rutabagas.",
+        img: "../../assets/keller-chicken.png",
+        time: "120 min",
+        serves: "4",
+        heat: "475°F",
+        rating: "4.9",
+        fav: true,
+        ingredients: [
+          { qty: "1 (4 lb)", name: "whole chicken, patted dry" },
+          { qty: "3½ tbsp", name: "unsalted butter, melted" },
+          { qty: "1", name: "lemon, halved" },
+          { qty: "6 sprigs", name: "fresh thyme" },
+          { qty: "2 lbs", name: "root vegetables (leek, rutabaga, carrot)" },
+          { qty: "to taste", name: "kosher salt + black pepper" },
+        ],
+        note: "Don't truss the bird. Let the legs splay — they'll cook faster, and you want everything done at the same time.",
+        method: [
+          "Heat oven to 475°F. Pat the chicken extremely dry — wetter skin steams instead of crisping. Salt heavily, inside and out.",
+          "Tuck the lemon halves and thyme into the cavity. Brush butter all over the skin.",
+          "Toss the root vegetables with salt and a glug of oil. Make a little raft in the roasting pan.",
+          "Set the chicken on top of the vegetables. Roast 50–60 minutes until thigh juices run clear.",
+          "Rest 10 minutes — this is non-negotiable. Carve and spoon the buttery pan drippings over everything.",
+        ],
+      },
+      {
+        id: "icecream",
+        section: "Desserts",
+        title: "Blueberry Ice Cream",
+        tagline: "deep summer in a freezer",
+        blurb: "Deep purple berries simmered, strained to satin, folded into half-and-half.",
+        img: "../../assets/blueberry-ice-cream.png",
+        time: "50 min + freeze",
+        serves: "6",
+        heat: "low",
+        rating: "4.7",
+        ingredients: [
+          { qty: "2 cups", name: "fresh blueberries" },
+          { qty: "¾ cup", name: "sugar, divided" },
+          { qty: "2 cups", name: "half-and-half" },
+          { qty: "4", name: "egg yolks" },
+          { qty: "1 tsp", name: "vanilla" },
+          { qty: "pinch", name: "salt" },
+        ],
+        method: [
+          "Simmer blueberries with ¼ cup sugar until thick and glossy, about 12 minutes. Push through a sieve. Cool.",
+          "Whisk yolks with remaining sugar until pale. Heat the half-and-half just to a wisp of steam.",
+          "Temper the yolks with the warm cream, then return to the pot. Cook on low until it coats a spoon.",
+          "Strain. Stir in vanilla, salt, and the cooled blueberry purée. Chill thoroughly — overnight is ideal.",
+          "Churn until thick. Freeze 4+ hours. Eat within a week, if you can wait that long.",
+        ],
+      },
+      {
+        id: "potroast",
+        section: "Mains",
+        title: "Sunday Pot Roast",
+        tagline: "low and slow",
+        blurb: "Beef shoulder braised in red wine until the fork is the only utensil you'll need.",
+        img: "../../assets/pot-roast.png",
+        time: "3 hr 30 min",
+        serves: "6",
+        heat: "325°F",
+        rating: "4.8",
+        ingredients: [
+          { qty: "3 lbs", name: "beef chuck, tied" },
+          { qty: "1 large", name: "yellow onion, halved" },
+          { qty: "4 cloves", name: "garlic, smashed" },
+          { qty: "2 cups", name: "dry red wine" },
+          { qty: "2 cups", name: "beef stock" },
+          { qty: "3", name: "carrots, in big chunks" },
+        ],
+        method: [
+          "Salt the chuck heavily 2 hours before cooking. Pat dry. Sear hard in a Dutch oven, all sides.",
+          "Pull the meat. Cook the onion cut-side down until deeply caramelized. Add garlic for 30 seconds.",
+          "Deglaze with the wine. Scrape every dark bit. Add stock, return the meat. Cover and slide into the oven.",
+          "Three hours later, add the carrots. Another 30 minutes — until everything yields to a spoon.",
+          "Rest the meat. Skim the fat from the braising liquid. Reduce by half. Pour over and serve.",
+        ],
+      },
+      {
+        id: "artichokes",
+        section: "Starters",
+        title: "Fried Artichoke Hearts",
+        tagline: "crispy, lemony, addictive",
+        blurb: "Frozen hearts squeezed dry, dredged, fried golden. Lemon and flake salt at the end.",
+        img: "../../assets/fried-artichoke-hearts.png",
+        time: "30 min",
+        serves: "4",
+        heat: "350°F",
+        rating: "4.6",
+        ingredients: [
+          { qty: "1 (12 oz)", name: "bag frozen artichoke hearts, thawed" },
+          { qty: "½ cup", name: "all-purpose flour" },
+          { qty: "1 tsp", name: "garlic powder" },
+          { qty: "2 cups", name: "neutral oil for frying" },
+          { qty: "1", name: "lemon, in wedges" },
+          { qty: "to finish", name: "flaky salt + parsley" },
+        ],
+        method: [
+          "Squeeze the artichokes — really squeeze. They're full of water and water is the enemy of crisp.",
+          "Toss in seasoned flour. Knock off the excess.",
+          "Fry in batches at 350°F until deeply golden, 3–4 minutes. Drain on a rack, never paper towels.",
+          "Hit immediately with flake salt. Squeeze lemon. Eat hot, standing in the kitchen.",
+        ],
+      },
+      {
+        id: "yumyum",
+        section: "Sauces",
+        title: "Yum Yum Sauce",
+        tagline: "the hibachi house special",
+        blurb: "Mayo, ketchup, butter, paprika. Better than the restaurant. Don't argue.",
+        img: "../../assets/yum-yum-sauce.png",
+        time: "10 min + chill",
+        serves: "1 cup",
+        heat: "—",
+        rating: "5.0",
+        ingredients: [
+          { qty: "¾ cup", name: "Kewpie mayo" },
+          { qty: "2 tbsp", name: "ketchup" },
+          { qty: "1 tbsp", name: "melted butter" },
+          { qty: "1 tsp", name: "smoked paprika" },
+          { qty: "½ tsp", name: "garlic powder" },
+          { qty: "splash", name: "rice vinegar" },
+        ],
+        method: [
+          "Whisk it all together until uniformly salmon-pink.",
+          "Chill at least an hour. The flavors need to meet.",
+          "Serve with anything fried, grilled, or breathing.",
+        ],
+      },
+    ];
+
+    const SECTIONS = ["all", "starters", "mains", "desserts", "sauces"];
+    const TILTS = [-0.4, 0.3, -0.3, 0.5, -0.2];
+
+    function App() {
+      const [open, setOpen] = React.useState(null);
+      const [filter, setFilter] = React.useState("all");
+
+      const visible = React.useMemo(
+        () => RECIPES.filter((r) => filter === "all" || r.section.toLowerCase() === filter),
+        [filter]
+      );
+
+      if (open) {
+        return (
+          <Page>
+            <RecipeView recipe={open} onBack={() => setOpen(null)} />
+          </Page>
+        );
+      }
+
+      return (
+        <Page>
+          <Header />
+          <div className="filters">
+            <span className="label">browse —</span>
+            {SECTIONS.map((s) => (
+              <Chip key={s} active={filter === s} onClick={() => setFilter(s)}>
+                {s}
+              </Chip>
+            ))}
+          </div>
+          <div className="grid">
+            {visible.map((r, i) => (
+              <RecipeCard key={r.id} recipe={r} tilt={TILTS[i % TILTS.length]} onOpen={setOpen} />
+            ))}
+          </div>
+          <div style={{ textAlign: "center", marginTop: "3rem", paddingTop: "2rem", borderTop: "1px dotted #c9b48d" }}>
+            <span className="script" style={{ fontFamily: "'Caveat', cursive", fontSize: "1.4rem", color: "#b8502a" }}>
+              bon appétit, my friends
+            </span>
+          </div>
+        </Page>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Spacing & Radii — Forest</title>
+<style>
+  body { margin: 0; background: #0d1410; padding: 22px 28px; font-family: 'Bricolage Grotesque', sans-serif; color: #f0e6d3; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .label { font-size: 9px; color: #5a6a5e; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+  .stack { display: flex; align-items: flex-end; gap: 8px; }
+  .stack .box { background: #1f3329; border: 1px solid #a06828; border-radius: 6px; }
+  .meta { font-family: 'SFMono-Regular', monospace; font-size: 10px; color: #9aa89a; margin-top: 4px; text-align: center; }
+  .radii { display: flex; gap: 14px; align-items: center; }
+  .r { width: 56px; height: 56px; background: #1f3329; border: 1px solid #a06828; display: flex; align-items: center; justify-content: center; }
+  .note { font-size: 10px; color: #9aa89a; font-style: italic; margin-top: 14px; max-width: 520px; line-height: 1.5; }
+</style></head>
+<body>
+  <div class="grid">
+    <div>
+      <div class="label">Spacing · clamp() rhythm</div>
+      <div class="stack">
+        <div><div class="box" style="width:8px;height:8px"></div><div class="meta">8</div></div>
+        <div><div class="box" style="width:16px;height:16px"></div><div class="meta">16</div></div>
+        <div><div class="box" style="width:24px;height:24px"></div><div class="meta">24</div></div>
+        <div><div class="box" style="width:40px;height:40px"></div><div class="meta">40</div></div>
+        <div><div class="box" style="width:64px;height:64px"></div><div class="meta">64</div></div>
+      </div>
+      <div class="meta" style="text-align:left;margin-top:10px;color:#5a6a5e">page-x: clamp(1.5rem, 5vw, 4rem)</div>
+      <div class="meta" style="text-align:left;color:#5a6a5e">page-y: clamp(4rem, 12vh, 10rem)</div>
+    </div>
+    <div>
+      <div class="label">Radii · notched-log restraint</div>
+      <div class="radii">
+        <div><div class="r" style="border-radius:3px"></div><div class="meta">3 · sm</div></div>
+        <div><div class="r" style="border-radius:6px"></div><div class="meta">6 · md</div></div>
+        <div><div class="r" style="border-radius:8px"></div><div class="meta">8 · lg</div></div>
+        <div><div class="r" style="border-radius:100px;width:80px"></div><div class="meta">100 · pill</div></div>
+      </div>
+      <div class="note">Small radii read as notched logs, not pillows. The 100px pill belongs only to filter chips.</div>
+    </div>
+  </div>
+</body></html>

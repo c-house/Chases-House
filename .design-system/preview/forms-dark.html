@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Forms — Forest</title>
+<style>
+  body { margin: 0; background: #0d1410; padding: 22px 28px; font-family: 'Bricolage Grotesque', sans-serif; color: #f0e6d3; }
+  .label { font-size: 9px; color: #5a6a5e; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; gap: 0.45rem; max-width: 380px; margin-bottom: 18px; }
+  .field-label { font-size: 0.85rem; font-weight: 500; color: #9aa89a; letter-spacing: 0.04em; text-transform: uppercase; }
+  .field-wrap { display: flex; align-items: stretch; gap: 0.5rem; border: 1px solid #a06828; border-radius: 6px; background: #152821; }
+  .field-wrap.focus { border-color: #e8b75a; }
+  .field-wrap input { flex: 1; padding: 0.75rem 0.9rem; background: transparent; border: none; outline: none; color: #f0e6d3; font-family: inherit; font-size: 1rem; }
+  .field-toggle { padding: 0 0.9rem; background: transparent; border: none; color: #9aa89a; font-size: 1rem; cursor: pointer; }
+  .progress { height: 6px; border-radius: 3px; background: #2a4234; overflow: hidden; max-width: 380px; }
+  .progress > div { height: 100%; background: linear-gradient(90deg, #a06828, #e8b75a); border-radius: 3px; }
+</style></head>
+<body>
+  <div class="label">Field · ember log-frame border, gold focus</div>
+  <div class="field">
+    <span class="field-label">Passphrase</span>
+    <span class="field-wrap focus">
+      <input type="password" value="••••••••" />
+      <button class="field-toggle">&#128065;</button>
+    </span>
+  </div>
+  <div class="label">Progress · ember → window-gold</div>
+  <div class="progress"><div style="width:62%"></div></div>
+</body></html>

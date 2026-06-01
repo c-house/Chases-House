@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Rustic Paper Palette</title>
+<style>
+  body { margin: 0; background: #f3ead8; padding: 22px 24px; font-family: 'Lora', serif; color: #2b1e14;
+    background-image:
+      radial-gradient(at 12% 8%, rgba(184,80,42,0.05) 0, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(94,107,58,0.06) 0, transparent 50%);
+  }
+  .label { font-family: 'Cormorant Garamond', serif; font-size: 10px; color: #8a7354; text-transform: uppercase; letter-spacing: 0.24em; font-weight: 600; margin-bottom: 8px; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .swatch { display: flex; align-items: center; gap: 10px; }
+  .chip { width: 26px; height: 26px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.06); flex-shrink: 0; }
+  .name { font-size: 12px; line-height: 1.2; color: #2b1e14; }
+  .hex { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8a7354; }
+</style></head>
+<body>
+  <div class="label">Paper</div>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#f3ead8"></div><div><div class="name">paper</div><div class="hex">#f3ead8</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#ead9bd"></div><div><div class="name">paper-2</div><div class="hex">#ead9bd</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#e2cfae"></div><div><div class="name">paper-deep</div><div class="hex">#e2cfae</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#c9b48d"></div><div><div class="name">line</div><div class="hex">#c9b48d</div></div></div>
+  </div>
+  <div class="label">Ink</div>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#2b1e14"></div><div><div class="name">ink</div><div class="hex">#2b1e14</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#5a4630"></div><div><div class="name">ink-soft</div><div class="hex">#5a4630</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#8a7354"></div><div><div class="name">ink-mute</div><div class="hex">#8a7354</div></div></div>
+  </div>
+  <div class="label">Accents</div>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#b8502a"></div><div><div class="name">terracotta</div><div class="hex">#b8502a</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#8c3a1e"></div><div><div class="name">terracotta-deep</div><div class="hex">#8c3a1e</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#5e6b3a"></div><div><div class="name">olive</div><div class="hex">#5e6b3a</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#6b2736"></div><div><div class="name">burgundy</div><div class="hex">#6b2736</div></div></div>
+  </div>
+</body></html>

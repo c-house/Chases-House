@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Chase's House — UI Kit</title>
+  <link rel="stylesheet" href="../../colors_and_type.css">
+  <style>
+    html, body { margin: 0; background: #0d1410; color: var(--text-primary); font-family: var(--font-body); min-height: 100vh; }
+    main {
+      position: relative;
+      background: var(--bg-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    /* Forest cottage backdrop. Two illustrations — landscape (2752×1536)
+       for wide viewports, portrait (1664×2592) for tall viewports — swapped
+       via orientation media query. Edge color #0d1410 (--bg-deep) matches
+       both images so the surround blends seamlessly into the artwork. */
+    main::before {
+      content: "";
+      position: fixed; inset: 0;
+      background-image: url("../../assets/forest-house-landscape.png");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-color: #0d1410;
+      opacity: 1;
+      pointer-events: none;
+      z-index: 0;
+    }
+    @media (orientation: portrait), (max-aspect-ratio: 1/1) {
+      main::before {
+        background-image: url("../../assets/forest-house-portrait.png");
+      }
+    }
+    /* Subtle protective vignette — keeps the image's bright fog visible in
+       the middle while anchoring the top nav and bottom footer chrome. */
+    main::after {
+      content: "";
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(13,20,16,0.55) 0%, rgba(13,20,16,0) 15%, rgba(13,20,16,0) 78%, rgba(13,20,16,0.85) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    main > * { position: relative; z-index: 1; }
+
+    /* Drifting firefly motes behind the hero */
+    .motes { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .mote {
+      position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      background: var(--accent-glow);
+      box-shadow: 0 0 6px 1px rgba(232, 176, 74, 0.5);
+      opacity: 0;
+      animation: drift 14s linear infinite;
+    }
+    .mote:nth-child(1) { left: 8%;  bottom: -10px; animation-delay: 0s;   animation-duration: 16s; }
+    .mote:nth-child(2) { left: 22%; bottom: -10px; animation-delay: 3s;   animation-duration: 19s; }
+    .mote:nth-child(3) { left: 41%; bottom: -10px; animation-delay: 7s;   animation-duration: 14s; background: var(--terracotta); box-shadow: 0 0 6px 1px rgba(176, 90, 58, 0.45); }
+    .mote:nth-child(4) { left: 64%; bottom: -10px; animation-delay: 1s;   animation-duration: 21s; }
+    .mote:nth-child(5) { left: 78%; bottom: -10px; animation-delay: 9s;   animation-duration: 17s; }
+    .mote:nth-child(6) { left: 92%; bottom: -10px; animation-delay: 5s;   animation-duration: 15s; background: var(--accent-ember); }
+    @keyframes drift {
+      0%   { transform: translate(0, 0)        scale(0.6); opacity: 0; }
+      10%  { opacity: 0.9; }
+      50%  { transform: translate(20px, -55vh) scale(1);   opacity: 0.7; }
+      90%  { opacity: 0.4; }
+      100% { transform: translate(-10px, -110vh) scale(0.5); opacity: 0; }
+    }
+
+    /* Card upgrades — inner ember edge, deeper hover */
+    .grid > a, .grid > * {
+      position: relative;
+      background: linear-gradient(180deg, rgba(40, 40, 44, 0.85) 0%, rgba(30, 30, 33, 0.92) 100%) !important;
+      backdrop-filter: blur(2px);
+    }
+    .grid > a::before {
+      content: "";
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      box-shadow: inset 0 1px 0 rgba(232, 176, 74, 0.08);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: clamp(1rem, 2vw, 1.5rem);
+      padding: 0 clamp(1.5rem, 5vw, 4rem) clamp(2rem, 6vh, 5rem);
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      box-sizing: border-box;
+    }
+    .decrypt-card {
+      max-width: 520px;
+      margin: 2rem auto 4rem;
+      padding: 2.4rem 2rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-lg);
+      display: flex; flex-direction: column; gap: 1.2rem;
+    }
+    .decrypt-card h2 {
+      font-family: var(--font-display); font-variation-settings: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+      font-weight: 350; font-size: 2rem; margin: 0; color: var(--text-heading);
+      letter-spacing: -0.01em;
+    }
+    .decrypt-card p { margin: 0; color: var(--text-muted); font-size: 0.95rem; line-height: 1.55; }
+    .row { display: flex; gap: 0.8rem; align-items: center; }
+    .toggle {
+      display: inline-flex; gap: 0.6rem; padding: 0.45rem 0; margin-bottom: 1.4rem;
+    }
+    .toggle button {
+      background: transparent; border: 1px solid var(--accent-ember); color: var(--text-muted);
+      padding: 0.5rem 1rem; border-radius: 100px; font-family: var(--font-body); font-size: 0.85rem;
+      letter-spacing: 0.04em; cursor: pointer; transition: all 200ms;
+    }
+    .toggle button.active { background: var(--accent-gold); color: var(--bg-deep); border-color: var(--accent-gold); }
+    .toggle-wrap { display: flex; justify-content: center; padding-top: 1.5rem; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="Nav.jsx"></script>
+  <script type="text/babel" src="Hero.jsx"></script>
+  <script type="text/babel" src="RoomCard.jsx"></script>
+  <script type="text/babel" src="Button.jsx"></script>
+  <script type="text/babel" src="Field.jsx"></script>
+  <script type="text/babel" src="Banner.jsx"></script>
+
+  <script type="text/babel">
+    const ROOMS = [
+      { icon: "♞", title: "Chess", desc: "Full chess with all rules — castling, en passant, promotion, and more.", tag: "vs AI" },
+      { icon: "🐍", title: "Snake", desc: "Eat the apples. Grow longer. Don't bite your tail.", tag: "solo" },
+      { icon: "🍳", title: "Cookbook", desc: "Family recipes worth keeping. Crispy skin, deep flavor, butter & patience.", tag: "browse" },
+      { icon: "▦",  title: "Sudoku", desc: "Fresh boards every day. Pencil marks, hints, undo.", tag: "solo" },
+      { icon: "▭",  title: "Crossword", desc: "Mini and themed grids. Solve solo or pass the keyboard.", tag: "co-op" },
+      { icon: "?",  title: "Jeopardy", desc: "Host a Jackbox-style trivia game on the big screen. Players buzz in on their phones.", tag: "multiplayer" },
+      { icon: "☉",  title: "Pac-Man", desc: "Chomp dots. Dodge ghosts. Power-up.", tag: "solo" },
+      { icon: "♡",  title: "Files", desc: "Drop a `.age` file to decrypt — nothing leaves your browser.", tag: "tool" },
+      { icon: "♪",  title: "Music", desc: "On when the hi-fi is on. A small server upstairs.", tag: "sometimes" },
+    ];
+
+    function App() {
+      const [view, setView] = React.useState("home");
+      const [pass, setPass] = React.useState("");
+      const [busy, setBusy] = React.useState(false);
+      const [progress, setProgress] = React.useState(0);
+      const [status, setStatus] = React.useState(null); // null | 'success' | 'error'
+
+      function decrypt() {
+        if (!pass) return;
+        if (pass.toLowerCase() === "wrong") {
+          setStatus("error"); return;
+        }
+        setBusy(true); setProgress(0); setStatus(null);
+        let p = 0;
+        const t = setInterval(() => {
+          p += 8 + Math.random() * 12;
+          if (p >= 100) { p = 100; clearInterval(t); setBusy(false); setStatus("success"); }
+          setProgress(Math.min(100, p));
+        }, 120);
+      }
+
+      return (
+        <main>
+          <div className="motes" aria-hidden="true">
+            <span className="mote"></span><span className="mote"></span><span className="mote"></span>
+            <span className="mote"></span><span className="mote"></span><span className="mote"></span>
+          </div>
+          <Nav active={view === "home" ? "Home" : view === "files" ? "Files" : "Games"} />
+
+          {view === "home" && (
+            <Hero
+              title="Chase's"
+              accent="House."
+              blurb="Browser-based games to play when you need a break. A cookbook of recipes worth keeping. A small tool for sharing files privately."
+            />
+          )}
+
+          {view === "games" && (
+            <Hero
+              title="The games"
+              accent="room."
+              blurb="Click a tile. No accounts, no ads, no nonsense. Just things to do."
+            />
+          )}
+
+          {view === "files" && (
+            <Hero
+              title="Decrypt a"
+              accent=".age file."
+              blurb="Drop the file, type the passphrase, save the result. Nothing leaves your browser."
+            />
+          )}
+
+          <div className="toggle-wrap">
+            <div className="toggle">
+              <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}>Home</button>
+              <button className={view === "games" ? "active" : ""} onClick={() => setView("games")}>Games</button>
+              <button className={view === "files" ? "active" : ""} onClick={() => setView("files")}>Files</button>
+            </div>
+          </div>
+
+          {(view === "home" || view === "games") && (
+            <div className="grid">
+              {ROOMS.map((r) => (
+                <RoomCard key={r.title} {...r} onClick={() => {}} />
+              ))}
+            </div>
+          )}
+
+          {view === "files" && (
+            <div className="decrypt-card">
+              <h2>Decrypt a file</h2>
+              <p>This tool decrypts <code>age</code> files entirely in your browser. Drop the file below — nothing is uploaded.</p>
+              <Banner kind="warn"><strong>Use Chrome, Edge, or Firefox 111+.</strong> This tool needs the File System Access API.</Banner>
+              <Field label="Passphrase" type="password" value={pass} onChange={setPass} placeholder="••••••••" />
+              {busy && <Progress value={progress} />}
+              {status === "success" && <Banner kind="success"><strong>Decrypted.</strong> Your file was saved to <em>Downloads</em>.</Banner>}
+              {status === "error" && <Banner kind="error"><strong>Wrong passphrase.</strong> Try again — or check the channel where it was sent.</Banner>}
+              <div className="row">
+                <Button onClick={decrypt} disabled={busy || !pass}>{busy ? "Decrypting…" : "Decrypt"}</Button>
+                <LinkButton onClick={() => { setPass(""); setStatus(null); }}>Cancel</LinkButton>
+              </div>
+            </div>
+          )}
+
+          <Footer />
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

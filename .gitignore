@@ -3,6 +3,7 @@ temp/screenshots/
 docs/screenshots/
 docs/sfx-preview/
 
-# Local design-exploration artifacts (theme-factory output) — not part of the served site
-.design-system/
+# Design-system source zips — extracted into .design-system/, originals discarded.
+# The extracted .design-system/ tree IS tracked (Chase's House Design System snapshot).
+# Refresh process: pull a new zip from Claude Design, extract over .design-system/, delete zip.
 *.zip

@@ -1,0 +1,259 @@
+/* Chase's House — Design Tokens
+ * Two scoped systems coexist in the brand:
+ *  1. :root — the dark "Cabin in the Woods" chrome (chases.house homepage,
+ *     games, files). Deep pine + moss + fog, with a single warm gold note —
+ *     the cabin's lit window — used sparingly. Read the README for the
+ *     metaphor before touching the gold.
+ *  2. .rustic — the warm-paper Cookbook scope (light, serif, hand-drawn).
+ *     Sun-on-paper inside the cabin.
+ *
+ * Both come from the production styles.css and cookbook/directions/rustic.jsx,
+ * with the dark scope's neutrals retoned to match the forest illustration in
+ * `assets/forest-house-{landscape,portrait}.png` (canopy edge `#0d1410`).
+ *
+ * Scope rule of thumb: dark = outside, looking at the cabin. Rustic = inside,
+ * at the kitchen table.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Caveat:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+/* ─────────────────────────────────────────────────────────────
+ * 1. CABIN IN THE WOODS (dark) — the house chrome
+ *
+ * Read the painting: a near-black canopy at the edges, foggy
+ * sage in the middle distance, mossy ground, and a single warm
+ * window. The token ladder mirrors that: deep night → pine →
+ * moss → fern → fog, with gold reserved for the window.
+ * ───────────────────────────────────────────────────────────── */
+:root {
+  /* Background ladder — canopy edge → forest interior */
+  --bg-deep:     #0d1410;   /* canopy / page edge — matches artwork outer ring */
+  --bg-main:     #152821;   /* pine shadow — main canvas */
+  --bg-surface:  #1f3329;   /* moss stone — cards rest on the forest floor */
+  --bg-elevated: #2a4234;   /* fern — dragover, active, popovers */
+
+  /* Atmosphere — the fog between trees, the bark on a trunk */
+  --fog:         #6e8a7a;   /* mid-green haze, used for muted structure */
+  --mist:        #a8bfaf;   /* lightest green-gray, for distant text-on-art */
+  --bark:        #3a2a1c;   /* warm brown — structural lines, log walls */
+  --bark-soft:   rgba(58, 42, 28, 0.35);
+
+  /* Text — warm cabin light spilling out of the window. Paper-warm
+   * cream stays legible against forest greens and reads as the
+   * "interior" color leaking outward. Never pure white. */
+  --text-primary: #f0e6d3;
+  --text-heading: #faf3e6;
+  --text-muted:   #9aa89a;  /* lichen — slightly green-gray, ties text to forest */
+  --text-faint:   #5a6a5e;  /* deep moss — captions, labels in the gloom */
+
+  /* Accents — fire, ember, growth.
+   *
+   * Gold = the cabin window. It is the ONLY warm light in this scene.
+   * Use it sparingly — primary CTAs, the active nav, the brand mark,
+   * a single glowing element per view. Overuse breaks the spell.
+   *
+   * Sage = forest growth, success, "alive."
+   * Terracotta = warning, the chimney's orange, used at low saturation.
+   * Ember = warm structural border (logs, window frame). */
+  --accent-gold:  #e8b75a;  /* primary / lit window / button — slightly brighter, the cabin glow needs to punch through fog */
+  --accent-glow:  #f4cc6e;  /* hover — like the window flickering up */
+  --accent-ember: #a06828;  /* borders, dividers, log-frame stroke */
+  --terracotta:   #b05a3a;  /* warning, error tone — the chimney's orange */
+  --sage:         #7a9460;  /* success / growth — pulled toward the artwork's fern green */
+  --moss:         #4a6a4e;  /* secondary structural green, for soft borders */
+
+  /* Type stacks (dark chrome) */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
+
+  /* Semantic type — sizes mirror the production fluid clamps */
+  --h1-size:    clamp(2.8rem, 7vw + 0.5rem, 6rem);
+  --h1-weight:  350;
+  --h1-vsetting: 'opsz' 48, 'WONK' 1, 'SOFT' 50;
+
+  --h2-size:    clamp(2.4rem, 6vw + 0.5rem, 4.5rem);
+  --h2-weight:  350;
+
+  --h3-size:    1.3rem;
+  --h3-weight:  500;
+  --h3-vsetting: 'opsz' 28, 'WONK' 1, 'SOFT' 40;
+
+  --nav-size:   clamp(0.85rem, 1.2vw, 1.05rem);
+  --nav-weight: 450;
+  --nav-vsetting: 'opsz' 24, 'WONK' 1, 'SOFT' 40;
+
+  --tag-size:   0.7rem;
+  --tag-weight: 600;
+  --tag-spacing: 0.08em;
+
+  --body-size:  1rem;
+  --body-line:  1.6;
+
+  --code-size:  0.9em;
+  --code-font:  'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  /* Spacing rhythm (used across pages) */
+  --pad-page-x: clamp(1.5rem, 5vw, 4rem);
+  --pad-page-y: clamp(4rem, 12vh, 10rem);
+  --gap-cards:  clamp(1rem, 2vw, 1.5rem);
+  --gap-section: clamp(2rem, 4vw, 3rem);
+
+  /* Radii — small and restrained, like notched logs */
+  --radius-sm: 3px;   /* pills, tiny tags */
+  --radius-md: 6px;   /* cards, buttons, fields */
+  --radius-lg: 8px;   /* prominent cards (decrypt-card) */
+
+  /* Shadows — warm window-glow on hover, never cool gray */
+  --shadow-card-hover: 0 8px 32px rgba(232, 183, 90, 0.14), 0 2px 8px rgba(0, 0, 0, 0.45);
+  --shadow-glow-soft:  0 0 0 4px rgba(232, 183, 90, 0.10);
+  --shadow-card-rest:  0 12px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+}
+
+/* Semantic helpers — copy/paste rather than hard dependency */
+.h1 {
+  font-family: var(--font-display);
+  font-variation-settings: var(--h1-vsetting);
+  font-size: var(--h1-size);
+  font-weight: var(--h1-weight);
+  color: var(--text-heading);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+}
+.h2 {
+  font-family: var(--font-display);
+  font-variation-settings: var(--h1-vsetting);
+  font-size: var(--h2-size);
+  font-weight: var(--h2-weight);
+  color: var(--text-heading);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.h3 {
+  font-family: var(--font-display);
+  font-variation-settings: var(--h3-vsetting);
+  font-size: var(--h3-size);
+  font-weight: var(--h3-weight);
+  color: var(--text-heading);
+}
+.nav-text {
+  font-family: var(--font-display);
+  font-variation-settings: var(--nav-vsetting);
+  font-size: var(--nav-size);
+  font-weight: var(--nav-weight);
+  letter-spacing: 0.03em;
+}
+.body-text {
+  font-family: var(--font-body);
+  font-size: var(--body-size);
+  line-height: var(--body-line);
+  color: var(--text-primary);
+}
+.muted     { color: var(--text-muted); }
+.faint     { color: var(--text-faint); }
+.heading   { color: var(--text-heading); }
+.gold      { color: var(--accent-gold); }
+.glow      { color: var(--accent-glow); }
+.ember     { color: var(--accent-ember); }
+.sage-text { color: var(--sage); }
+.fog-text  { color: var(--fog); }
+
+.tag {
+  font-family: var(--font-body);
+  font-size: var(--tag-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tag-spacing);
+  color: var(--accent-gold);
+}
+code, .code {
+  font-family: var(--code-font);
+  font-size: var(--code-size);
+  padding: 0.1rem 0.35rem;
+  background: rgba(232, 183, 90, 0.08);
+  border-radius: var(--radius-sm);
+  color: var(--accent-glow);
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * 2. RUSTIC PAPER (light) — the cookbook scope
+ *
+ * This is "inside the cabin," at the kitchen table. Same gold
+ * note (now sun-on-paper, terracotta, gold-leaf-on-stars), but
+ * everything else is warm cream + ink-brown + olive — paper that
+ * has been flipped through a hundred times.
+ *
+ * Apply by adding class="rustic" to a wrapping element.
+ * ───────────────────────────────────────────────────────────── */
+.rustic {
+  --paper:        #f3ead8;  /* main paper */
+  --paper-2:      #ead9bd;  /* hover surface */
+  --paper-deep:   #e2cfae;  /* call-out / chef's note */
+  --ink:          #2b1e14;  /* primary text, primary button */
+  --ink-soft:     #5a4630;  /* secondary text */
+  --ink-mute:     #8a7354;  /* tertiary / metadata */
+
+  --terracotta:      #b8502a;  /* primary accent (note: brighter than dark scope's terracotta) */
+  --terracotta-deep: #8c3a1e;
+  --olive:           #5e6b3a;  /* success — same family as the dark scope's sage */
+  --burgundy:        #6b2736;  /* favorite / saved */
+  --gold:            #c08a2e;  /* star ratings */
+
+  --line:        #c9b48d;
+  --line-soft:   rgba(139, 108, 61, 0.22);
+
+  --font-display-rustic: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-body-rustic:    'Lora', 'Iowan Old Style', Georgia, serif;
+  --font-script:         'Caveat', 'Marker Felt', cursive;
+  --font-mono-rustic:    'IBM Plex Mono', ui-monospace, monospace;
+
+  color: var(--ink);
+  font-family: var(--font-body-rustic);
+  background: var(--paper);
+  line-height: 1.55;
+}
+.rustic .display   { font-family: var(--font-display-rustic); font-weight: 500; letter-spacing: -0.01em; }
+.rustic .script    { font-family: var(--font-script); }
+.rustic .mono      { font-family: var(--font-mono-rustic); }
+.rustic .smallcaps {
+  font-family: var(--font-display-rustic);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * 3. Shared keyframes (used across both scopes)
+ * ───────────────────────────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* The window through the trees pulses faintly — a 5–8s loop, never
+ * a fast flicker. Use on one element per view at most. */
+@keyframes windowGlow {
+  0%, 100% { text-shadow: 0 0 30px rgba(232, 183, 90, 0.30); }
+  50%      { text-shadow: 0 0 60px rgba(232, 183, 90, 0.55), 0 0 110px rgba(232, 183, 90, 0.18); }
+}
+/* Backwards-compat alias for older code referring to warmGlow */
+@keyframes warmGlow {
+  0%, 100% { text-shadow: 0 0 30px rgba(232, 183, 90, 0.30); }
+  50%      { text-shadow: 0 0 60px rgba(232, 183, 90, 0.55), 0 0 110px rgba(232, 183, 90, 0.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
