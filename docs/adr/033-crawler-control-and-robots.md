@@ -87,3 +87,32 @@ tunneled targets, when live, need their own robots.
 
 Delete repo `robots.txt`; remove the Transform Rule; turn off "Block AI Bots". Managed robots.txt
 reverts to being the sole (Cloudflare-generated) file.
+
+## Addendum — 2026-05-31 (as-built + verification)
+
+Executed end-to-end via Chrome DevTools MCP against the chases.house zone
+(account `0ee1273a5cee6fea6a5a5a66666c8df6`). Deltas from the plan above:
+
+- **Transform Rule** created exactly as specified (`http.host eq "chases.house"` →
+  Set static `X-Robots-Tag: noindex`). Verified live: `noindex` returns on the homepage,
+  `/games/`, and `styles.css`. **`nofollow` was not added** (per the plan).
+- **Managed robots.txt — search signal flipped to `no`.** Via Security → Settings → Bots →
+  *Manage robots.txt*, set "Search engines: **Block**". Confirmed via the panel's Preview that
+  this only changes the wildcard group to `Content-Signal: search=no,ai-train=no` and **keeps
+  `Allow: /`** — it does *not* add a crawl-blocking `Disallow`, so Googlebot still crawls and
+  reads the `noindex` header (no deindex trap). "Block AI input" left **unchecked** so the
+  operator's real-time Claude fetches aren't signaled against.
+- **WAF "Block AI Bots"** enabled, "Block on all pages". **No `Claude-User` Skip rule was
+  needed:** a real fetch from Anthropic infrastructure (`WebFetch`, UA `Claude-User …`) returned
+  the normal site (HTTP 200), confirming Cloudflare does not classify `Claude-User` as a blocked
+  AI crawler. The Skip rule (`http.user_agent contains "Claude-User"`, action Skip) remains the
+  documented remedy **only if** CF later reclassifies it.
+- **No cache purge applies.** `chases.house/robots.txt` is `Cf-Cache-Status: DYNAMIC` — generated
+  per-request by managed-robots, not edge-cached. The origin (repo) file is **appended below**
+  the managed block; getting the newly-added origin file to merge required clicking **Save** in
+  the Manage robots.txt panel (which re-runs origin detection). For future repo `robots.txt`
+  edits: if the change doesn't appear, re-save that panel to force re-detection.
+- **Live merged result verified:** managed block (`search=no,ai-train=no`; `Disallow: /` for
+  Amazonbot, Applebot-Extended, Bytespider, CCBot, ClaudeBot, CloudflareBrowserRenderingCrawler,
+  Google-Extended, GPTBot, meta-externalagent) **+** the origin `User-agent: Claude-User` /
+  `Disallow:` (allow) group.
