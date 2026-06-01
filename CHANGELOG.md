@@ -2,14 +2,17 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
-## 2026-05-31 — Crawler control: repo robots.txt + Cloudflare hardening (PARTIAL)
+## 2026-05-31 — Crawler control: robots.txt + Cloudflare noindex (deployed & curl-verified)
 
-- Add a version-controlled `robots.txt` at the repo root. Deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Verified live: the repo group merges below the managed block
-- **WAF "Block AI Bots" turned OFF** (curl-verified): it had been enabled but returned HTTP 403 to the operator's own `Claude-User` tools (and GPTBot); Cloudflare's free path gave no reliable per-UA skip, so it was disabled. All UAs now return 200. robots.txt disallows remain the declared AI policy (reputable crawlers honor them)
+- The site is now kept **out of search results** while staying publicly reachable, and AI training crawlers are disallowed — all curl-verified live
+- Add a version-controlled `robots.txt` at the repo root. Deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Live: the repo group merges below the managed block
+- **Cloudflare zone-wide `X-Robots-Tag: noindex` Transform Rule** (`http.host eq "chases.house"`, Set static) — the authoritative deindex, since GitHub Pages can't emit headers. Verified live on `/`, `/games/`, `/styles.css`, `/files/`, `/cookbook/`
+- **Managed Content-Signal flipped to `search=no,ai-train=no`** via AI Crawl Control / Manage robots.txt (wildcard keeps `Allow: /`, so Googlebot still crawls and reads the noindex header — no deindex trap). Advisory only; the header does the real work
+- **WAF "Block AI Bots" turned OFF**: it had been enabled but returned HTTP 403 to the operator's own `Claude-User` tools (and GPTBot); Cloudflare's free path gave no reliable per-UA skip, so it was disabled. All UAs now return 200. robots.txt disallows remain the declared AI policy (reputable crawlers honor them)
 - Audit finding that prompted this: a `robots.txt` already served live, generated entirely by Cloudflare managed-robots, but it set `Content-Signal: search=yes` (inviting indexing) and lived nowhere in git
 - `chases.house/robots.txt` is served dynamically by managed-robots (`Cf-Cache-Status: DYNAMIC`, not cacheable); no purge applies
-- **STILL TODO** (the actual search-suppression layer; tracked in ADR-033's addendum): create the zone-wide `X-Robots-Tag: noindex` Transform Rule (the authoritative deindex; GitHub Pages can't emit headers) — **not yet created, so the site is NOT deindexed yet**; and flip the managed Content-Signal to `search=no` (still `search=yes`). Both stalled on unreliable MCP automation of a shared browser
-- Add ADR-033 (with an honest PARTIAL as-built addendum)
+- Add ADR-033 (with a curl-verified as-built addendum + live verification matrix)
+- Note: if any pages were already indexed, the `noindex` header removes them on the next crawl; expedite via Google Search Console if needed
 
 ## 2026-05-30 — Music nav points at thewiseguy.ai apex
 
