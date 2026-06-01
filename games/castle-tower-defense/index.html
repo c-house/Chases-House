@@ -70,8 +70,8 @@
     .return-link {
       position: fixed; top: 1rem; left: 1.1rem; z-index: 50;
       font-family: var(--font-body, 'Bricolage Grotesque'), system-ui, sans-serif;
-      font-size: 0.78rem; letter-spacing: 0.16em; text-transform: uppercase;
-      color: rgba(240, 230, 211, 0.55);
+      font-size: 0.78rem; letter-spacing: 0.10em; text-transform: uppercase;
+      color: var(--text-muted);
       text-decoration: none;
       padding: 0.35rem 0.7rem;
       transition: color var(--dur-fade) ease;
@@ -120,7 +120,7 @@
     .help-modal {
       background: rgba(40,28,18,0.97);
       border: 1px solid var(--aged-gold);
-      border-radius: 10px;
+      border-radius: var(--radius-lg);
       padding: 1.6rem 1.6rem 1.2rem;
       max-width: 520px;
       width: 100%;
@@ -138,11 +138,11 @@
     .help-modal > .body::-webkit-scrollbar { width: 6px; }
     .help-modal > .body::-webkit-scrollbar-track {
       background: rgba(40,28,18,0.4);
-      border-radius: 3px;
+      border-radius: var(--radius-sm);
     }
     .help-modal > .body::-webkit-scrollbar-thumb {
       background: var(--aged-gold);
-      border-radius: 3px;
+      border-radius: var(--radius-sm);
     }
     .help-modal > .body::-webkit-scrollbar-thumb:hover { background: var(--ember); }
     .help-modal > .footer { flex: 0 0 auto; padding-top: 0.8rem; text-align: center; }
@@ -168,7 +168,7 @@
       letter-spacing: 0.18em;
       text-transform: uppercase;
       margin: 1rem 0 0.5rem;
-      border-bottom: 1px solid rgba(200,148,62,0.3);
+      border-bottom: 1px solid var(--accent-ember);
       padding-bottom: 0.3rem;
     }
     .legend-grid {
@@ -178,8 +178,8 @@
     }
     .legend-card {
       background: rgba(20,15,10,0.6);
-      border: 1px solid rgba(200,148,62,0.25);
-      border-radius: 5px;
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md);
       padding: 0.5rem 0.6rem;
       font-size: 0.78rem;
       color: var(--warm-stone);
@@ -230,7 +230,7 @@
       width: min(280px, 70vw);
       height: 4px;
       background: rgba(232, 213, 168, 0.15);
-      border-radius: 2px;
+      border-radius: var(--radius-sm);
       overflow: hidden;
       margin: 1rem auto;
     }
@@ -241,7 +241,7 @@
     }
     .loading-status {
       font-size: 0.78rem;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.10em;
       text-transform: uppercase;
       opacity: 0.6;
     }
@@ -254,7 +254,8 @@
     }
     .title-card .eyebrow {
       font-size: 0.78rem;
-      letter-spacing: 0.22em;
+      font-weight: 600;
+      letter-spacing: 0.10em;
       text-transform: uppercase;
       color: var(--aged-gold);
       margin-bottom: 0.8rem;
@@ -263,7 +264,7 @@
       font-family: var(--font-display, 'Fraunces'), serif;
       font-size: clamp(2rem, 7vw, 3.6rem);
       font-weight: 600;
-      font-variation-settings: 'WONK' 1;
+      font-variation-settings: 'SOFT' 50;
       letter-spacing: -0.01em;
       margin: 0 0 1rem;
       color: var(--warm-stone);
@@ -281,7 +282,7 @@
       color: var(--warm-stone);
       background: rgba(40, 28, 18, 0.6);
       border: 1px solid var(--aged-gold);
-      border-radius: 4px;
+      border-radius: var(--radius-md);
       cursor: pointer;
       transition: background var(--dur-fade) ease, transform var(--dur-snap) var(--ease-snap);
       margin: 0.3rem;
@@ -323,7 +324,7 @@
       padding: 0.9rem 1.1rem;
       background: rgba(40, 28, 18, 0.95);
       border: 1px solid var(--aged-gold);
-      border-radius: 6px;
+      border-radius: var(--radius-md);
       color: var(--warm-stone);
       font-size: 0.86rem;
       line-height: 1.4;
@@ -343,7 +344,7 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       cursor: pointer;
-      border-radius: 3px;
+      border-radius: var(--radius-sm);
     }
     .first-load-notice button:hover { border-color: var(--aged-gold); }
 
@@ -393,8 +394,8 @@
       flex: 0 0 64px; min-height: 64px;
       padding: 0.3rem;
       background: rgba(40, 28, 18, 0.6);
-      border: 1px solid rgba(200, 148, 62, 0.5);
-      border-radius: 4px;
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md);
       text-align: center;
       cursor: pointer;
       color: var(--warm-stone);
@@ -418,7 +419,7 @@
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      border-radius: 4px;
+      border-radius: var(--radius-md);
       cursor: pointer;
     }
     .ctrl-btn.active { background: var(--aged-gold); color: var(--ink); }
@@ -460,7 +461,7 @@
     .sheet .pip-row { display: inline-flex; gap: 4px; margin-left: 0.5rem; vertical-align: middle; }
     .sheet .pip {
       width: 10px; height: 10px; border-radius: 50%;
-      background: rgba(232,213,168,0.2); border: 1px solid rgba(200,148,62,0.5);
+      background: rgba(232,213,168,0.2); border: 1px solid var(--accent-ember);
     }
     .sheet .pip.filled { background: var(--aged-gold); border-color: var(--aged-gold); }
     .sheet .close-x {
@@ -475,8 +476,8 @@
     }
     .sheet .pick {
       background: rgba(20, 14, 10, 0.7);
-      border: 1px solid rgba(200,148,62,0.4);
-      border-radius: 5px;
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md);
       padding: 0.5rem 0.3rem;
       color: var(--warm-stone);
       cursor: pointer;
@@ -535,7 +536,11 @@
 
   <a href="/games/" class="return-link" aria-label="Return to map select">GAMES</a>
 
-  <!-- ── ?test=1 dev overlay (hidden unless URL has ?test=1) ───── -->
+  <!-- ── ?test=1 dev overlay (hidden unless URL has ?test=1) ─────
+       Dev-overlay — exempt from cabin brand scope; cyan #9fe and the
+       2px/4px radii on dev buttons are deliberate dev-only contrast,
+       not subject to ADR-034 token-snapping. -->
+
   <div id="test-overlay" style="display:none;position:fixed;top:0.5rem;right:0.5rem;z-index:80;background:rgba(0,0,0,0.7);color:#9fe;font:11px/1.4 ui-monospace,monospace;padding:0.4rem 0.6rem;border:1px solid rgba(159,238,255,0.3);border-radius:4px;pointer-events:auto;max-width:200px;">
     <div><span data-bind="test-fps">--</span> fps · <span data-bind="test-ft">--</span> ms</div>
     <div><span data-bind="test-low-power">norm</span> · towers <span data-bind="test-towers">0</span> · enemies <span data-bind="test-enemies">0</span> · projs <span data-bind="test-projs">0</span></div>
@@ -656,7 +661,7 @@
 
   <!-- ── Pause ────────────────────────────────────────────────────── -->
   <div class="screen pause">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Paused</h2>
       <button class="btn primary" data-action="resume">Resume</button>
       <button class="btn" data-action="show-restart-confirm">Restart</button>
@@ -687,7 +692,7 @@
 
   <!-- ── Game over ────────────────────────────────────────────────── -->
   <div class="screen game-over">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 data-bind="resultHeading" style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">—</h2>
       <div data-bind="mapDifficulty" style="font-size:0.84rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;margin-bottom:1rem;"></div>
       <div data-bind="starsRow" style="font-size:1.6rem;margin:0.8rem 0;color:var(--aged-gold);"></div>
@@ -703,7 +708,7 @@
 
   <!-- ── Tutorial popups (gated by ctd3:tutorialSeen) ────────────── -->
   <div class="screen tutorial">
-    <div data-bind="tutorialPopup" style="background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:1rem 1.4rem;color:var(--warm-stone);max-width:380px;">
+    <div data-bind="tutorialPopup" style="background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:1rem 1.4rem;color:var(--warm-stone);max-width:380px;">
       <p data-bind="tutorialText" style="margin:0 0 0.8rem;line-height:1.5;">
         Welcome to the watch. The road runs left to right, and the keep stands at its end.
         <br><br>
@@ -748,7 +753,7 @@
        Wraps the existing actions.restart() to prevent accidental
        mid-wave wipes from the pause menu. -->
   <div class="screen restart-confirm" data-screen="restart-confirm">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:8px;padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Restart will erase current progress.</h2>
       <button class="btn primary" data-action="confirm-restart">Restart</button>
       <button class="btn" data-action="cancel-restart">Cancel</button>
