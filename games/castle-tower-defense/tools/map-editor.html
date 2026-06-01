@@ -30,26 +30,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
   <style>
     :root {
-      --ink: #1a1410;
-      --ink-soft: #2d251c;
-      --ink-faint: #4a3f30;
-      --warm-stone: #e8d5a8;
-      --warm-paper: #f0e6d3;
-      --aged-gold: #c8943e;
-      --ember: #a06828;
-      --terracotta: #b05a3a;
-      --wine: #6e1f24;
-      --leaf: #5a7a3a;
-      --bg: #0a0a0b;
+      /* Editor legacy token names bridged to canonical cabin tokens in /styles.css. */
+      --aged-gold:  var(--accent-gold);
+      --ember:      var(--accent-ember);
+      --warm-stone: var(--text-primary);
+      --warm-paper: var(--text-primary);
+      --ink:        var(--bg-deep);
+      --bg:         var(--bg-deep);
+
+      /* CTD3-only structural ink layers (no canon equivalent yet). */
+      --ink-soft:   #2d251c;
+      --ink-faint:  #4a3f30;
 
       --canvas-plains:   #6a8447;
       --canvas-forest:   #3e5a3a;
       --canvas-mountain: #7b7a76;
 
       /* Decoration palette colors (ADR-030 §13 MIN-2 — distinct from
-         existing canvas colors: slot grey #9b9080, waypoint gold #c8943e,
+         existing canvas colors: slot grey #9b9080, waypoint gold #e8b75a,
          spawn green #5a7a3a). */
       --decor-tree:    #4a7a3a;
       --decor-rocks:   #8a7a6a;
@@ -94,7 +95,7 @@
       grid-area: topbar;
       display: flex; align-items: center;
       padding: 0 1rem;
-      background: linear-gradient(to bottom, #1a1410, #0a0a0b);
+      background: linear-gradient(to bottom, var(--bg-main), var(--bg-deep));
       border-bottom: 1px solid var(--ink-faint);
       gap: 1rem;
     }
@@ -157,7 +158,7 @@
     }
     .meta input, .meta textarea, .meta select {
       width: 100%;
-      background: #0a0a0b;
+      background: var(--bg-deep);
       border: 1px solid var(--ink-faint);
       color: var(--warm-stone);
       font: inherit;
@@ -191,7 +192,7 @@
       margin: 0.5rem 0;
     }
     .meta .help code {
-      background: #0a0a0b;
+      background: var(--bg-deep);
       padding: 1px 4px;
       border-radius: 2px;
       color: var(--aged-gold);
@@ -272,7 +273,7 @@
       font-family: ui-monospace, monospace;
       font-size: 0.74rem;
       color: var(--warm-paper);
-      background: #0a0a0b;
+      background: var(--bg-deep);
       padding: 0.7rem;
       border-radius: 4px;
       border: 1px solid var(--ink-faint);
@@ -302,7 +303,7 @@
       font-family: ui-monospace, monospace;
       font-size: 0.72rem;
       padding: 1px 5px;
-      background: #0a0a0b;
+      background: var(--bg-deep);
       border: 1px solid var(--ink-faint);
       border-radius: 3px;
       color: var(--warm-stone);
@@ -387,7 +388,7 @@
       height: 220px;
       border: 1px solid var(--ink-faint);
       border-radius: 4px;
-      background: #0a0a0b;
+      background: var(--bg-deep);
     }
     .preview-pane .loading {
       padding: 0.6rem;
@@ -748,7 +749,7 @@
       const s = worldToScreen(p);
       ctx.fillStyle = (i === 0) ? '#5a7a3a'
                     : (i === state.path.length - 1) ? '#b05a3a'
-                    : '#c8943e';
+                    : '#e8b75a';
       ctx.strokeStyle = '#1a1410';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -814,7 +815,7 @@
       else if (sel.kind === 'decoration' && state.decorations[sel.idx]) world = state.decorations[sel.idx];
       if (world) {
         const s = worldToScreen(world);
-        ctx.strokeStyle = '#c8943e';
+        ctx.strokeStyle = '#e8b75a';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(s.x, s.y, 18, 0, Math.PI * 2);

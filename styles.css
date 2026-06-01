@@ -2,21 +2,30 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg-deep: #0a0a0b;
-  --bg-main: #141416;
-  --bg-surface: #1e1e21;
-  --bg-elevated: #28282c;
+  /* Cabin-in-the-Woods palette — values mirror .design-system/colors_and_type.css. */
+  --bg-deep:     #0d1410;
+  --bg-main:     #152821;
+  --bg-surface:  #1f3329;
+  --bg-elevated: #2a4234;
 
   --text-primary: #f0e6d3;
   --text-heading: #faf3e6;
-  --text-muted: #9a8e7a;
-  --text-faint: #5c5347;
+  --text-muted:   #9aa89a;
+  --text-faint:   #5a6a5e;
 
-  --accent-gold: #c8943e;
-  --accent-glow: #e8b04a;
+  --accent-gold:  #e8b75a;
+  --accent-glow:  #f4cc6e;
   --accent-ember: #a06828;
-  --terracotta: #b05a3a;
-  --sage: #6a7d5a;
+  --terracotta:   #b05a3a;
+  --sage:         #7a9460;
+  --moss:         #4a6a4e;
+  --fog:          #6e8a7a;
+  --mist:         #a8bfaf;
+  --bark:         #3a2a1c;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;

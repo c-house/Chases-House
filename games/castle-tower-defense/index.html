@@ -28,16 +28,19 @@
        ────────────────────────────────────────────────────────────────── */
 
     :root {
-      --ink:              #1a1410;
-      --ink-soft:         #2d251c;
-      --ink-faint:        #4a3f30;
-      --warm-stone:       #e8d5a8;
-      --aged-gold:        #c8943e;
-      --ember:            #a06828;
-      --terracotta:       #b05a3a;
-      --wine:             #6e1f24;
-      --leaf:             #5a7a3a;
+      /* CTD3 legacy token names bridged to canonical cabin tokens in /styles.css.
+         New CTD3 code should prefer the canonical names directly (--accent-gold,
+         --accent-ember, --text-primary, --bg-deep). */
+      --aged-gold:   var(--accent-gold);
+      --ember:       var(--accent-ember);
+      --warm-stone:  var(--text-primary);
+      --ink:         var(--bg-deep);
 
+      /* CTD3-only structural ink layers (no canon equivalent yet). */
+      --ink-soft:    #2d251c;
+      --ink-faint:   #4a3f30;
+
+      /* Motion tokens — CTD3-only. */
       --ease-snap:    cubic-bezier(0.34, 1.56, 0.64, 1);
       --ease-soft:    cubic-bezier(0.32, 0.72, 0.18, 1);
       --dur-snap:    180ms;
@@ -46,7 +49,7 @@
 
     html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
     body {
-      background-color: var(--bg-deep, #0a0a0b);
+      background-color: var(--bg-deep);
       font-family: var(--font-body, 'Bricolage Grotesque'), system-ui, sans-serif;
       color: var(--text-primary, #f0e6d3);
       -webkit-text-size-adjust: 100%;
@@ -107,11 +110,11 @@
     body[data-screen="play"]     .screen.play .hud-bottom { pointer-events: none; }
     body[data-screen="play"]     .screen.play .hud-bottom .tower-card,
     body[data-screen="play"]     .screen.play .hud-bottom .ctrl-btn { pointer-events: auto; }
-    body[data-screen="pause"]    .screen.pause  { display: grid; place-items: center; background: rgba(10,10,11,0.75); pointer-events: auto; }
-    body[data-screen="restart-confirm"] .screen.restart-confirm { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
-    body[data-screen="game-over"] .screen.game-over { display: grid; place-items: center; background: rgba(10,10,11,0.85); pointer-events: auto; }
+    body[data-screen="pause"]    .screen.pause  { display: grid; place-items: center; background: rgba(13,20,16,0.75); pointer-events: auto; }
+    body[data-screen="restart-confirm"] .screen.restart-confirm { display: grid; place-items: center; background: rgba(13,20,16,0.85); pointer-events: auto; }
+    body[data-screen="game-over"] .screen.game-over { display: grid; place-items: center; background: rgba(13,20,16,0.85); pointer-events: auto; }
     body[data-screen="tutorial"] .screen.tutorial { display: grid; place-items: end center; padding-bottom: 7rem; pointer-events: auto; }
-    body[data-screen="help"]     .screen.help     { display: grid; place-items: center; background: rgba(10,10,11,0.88); pointer-events: auto; overflow-y: auto; padding: 2rem 1rem; }
+    body[data-screen="help"]     .screen.help     { display: grid; place-items: center; background: rgba(13,20,16,0.88); pointer-events: auto; overflow-y: auto; padding: 2rem 1rem; }
 
     /* HOW TO PLAY modal — quick-reference legend */
     .help-modal {
