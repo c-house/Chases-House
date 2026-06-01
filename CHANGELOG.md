@@ -2,14 +2,17 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
-## 2026-05-31 — Crawler control: repo robots.txt + Cloudflare hardening (PARTIAL)
+## 2026-05-31 — Crawler control: robots.txt + Cloudflare noindex (deindex LIVE, curl-verified)
 
-- Add a version-controlled `robots.txt` at the repo root. Deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Verified live: the repo group merges below the managed block
-- **WAF "Block AI Bots" turned OFF** (curl-verified): it had been enabled but returned HTTP 403 to the operator's own `Claude-User` tools (and GPTBot); Cloudflare's free path gave no reliable per-UA skip, so it was disabled. All UAs now return 200. robots.txt disallows remain the declared AI policy (reputable crawlers honor them)
+- The site is now kept **out of search results** while staying publicly reachable, and AI training crawlers are disallowed — curl-verified live
+- **Cloudflare `X-Robots-Tag: noindex` Transform Rule** (Response Header Transform; matches all incoming requests) — the authoritative deindex, since GitHub Pages can't emit headers. Verified live (`x-robots-tag: noindex`) on `/`, `/games/`, `/styles.css`, `/files/`, `/cookbook/`; dashboard shows it Active; Rulesets API confirms it (rule id `9eb681edc71243098b7be69df71bfda9`). Note: the rule uses expression `true` (All incoming requests) rather than a host filter — equivalent for this single-host zone
+- Add a version-controlled `robots.txt` at the repo root. Deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Live: the repo group merges below the managed block
+- **WAF "Block AI Bots" turned OFF** (`ai_bots_protection: disabled`; curl-verified): it had been enabled but returned HTTP 403 to the operator's own `Claude-User` tools (and GPTBot); Cloudflare's free path gave no reliable per-UA skip, so it was disabled. All UAs now return 200. robots.txt disallows remain the declared AI policy (reputable crawlers honor them)
 - Audit finding that prompted this: a `robots.txt` already served live, generated entirely by Cloudflare managed-robots, but it set `Content-Signal: search=yes` (inviting indexing) and lived nowhere in git
 - `chases.house/robots.txt` is served dynamically by managed-robots (`Cf-Cache-Status: DYNAMIC`, not cacheable); no purge applies
-- **STILL TODO** (the actual search-suppression layer; tracked in ADR-033's addendum): create the zone-wide `X-Robots-Tag: noindex` Transform Rule (the authoritative deindex; GitHub Pages can't emit headers) — **not yet created, so the site is NOT deindexed yet**; and flip the managed Content-Signal to `search=no` (still `search=yes`). Both stalled on unreliable MCP automation of a shared browser
-- Add ADR-033 (with an honest PARTIAL as-built addendum)
+- **One advisory step left manual** (tracked in ADR-033): flip the managed Content-Signal `search=yes` → `search=no` via AI Crawl Control → Manage robots.txt. Advisory only (Google ignores Content-Signal; the noindex header does the real work); not forced via the undocumented managed-robots API to avoid risking the AI-crawler block
+- Add ADR-033 (with a curl-verified as-built addendum + verification matrix; the addendum also records, for honesty, that two earlier commits this session overclaimed completion before curl confirmed it)
+- Note: if any pages were already indexed, the `noindex` header removes them on the next crawl; expedite via Google Search Console if needed
 
 ## 2026-05-30 — Music nav points at thewiseguy.ai apex
 
