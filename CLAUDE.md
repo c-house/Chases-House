@@ -168,6 +168,8 @@ After building any UI component, page, or user flow:
 - `evaluate_script` must filter before returning (never return raw innerHTML)
 - `list_network_requests`: check status codes only unless debugging
 - `take_snapshot`: use default (non-verbose) unless diagnosing a11y
+- Stage explicit paths (`git add <files>`), never `git add -A` — the tree accumulates other-session artifacts, design dumps, and large zips; `-A` has swept a 48 MB zip into a commit here. `*.zip` is gitignored
+- Infra/deploy work (Cloudflare, DNS, Pages): the dashboard showing success ≠ it being live. `curl`-verify the real effect (header / status / robots.txt) BEFORE writing any "done"/"verified" claim in docs or a commit
 
 ---
 
