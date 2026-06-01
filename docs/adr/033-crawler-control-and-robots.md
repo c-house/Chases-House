@@ -128,6 +128,23 @@ note at the bottom records them.
 | robots.txt `Claude-User` | `Disallow:` (explicit allow, origin group) |
 | robots.txt wildcard Content-Signal | `search=yes` ⚠️ (advisory; flip to `search=no` manually) |
 
+## Monitoring — is it actually working, and by how much?
+
+- **AI crawler volume / block rate:** **AI Crawl Control → Metrics** (and **→ Overview**) shows
+  total AI-crawler requests vs allowed vs unsuccessful, a per-vendor breakdown (Anthropic, OpenAI,
+  Google-Extended, Bytespider, PerplexityBot, CCBot, …), most-crawled path, and how many `Claude-User`
+  requests were allowed. First reading (≈24h after deploy): 78 detected · 24 allowed · 54 unsuccessful
+  (35 HTTP 403) · 32 from `Claude-User` (all allowed). This quantifies the AI-blocking — but counts only
+  bots that *announce* themselves and largely those that *honor* robots.txt; truly rogue scrapers that
+  ignore it won't all register as "blocked" (that's what the now-OFF WAF toggle would have caught).
+- **All bot/WAF events (broader):** **Security → Analytics** / Events.
+- **The deindex specifically:** `X-Robots-Tag: noindex` is a *search-results* control, not a *block* —
+  it won't appear in the block counts above. Track its effect as pages dropping out of search via
+  **Google Search Console** (and use GSC's removal tool to expedite if anything was already indexed).
+- **Quick CLI re-check anytime:** `curl -I https://chases.house/ | grep -i x-robots-tag` → expect
+  `x-robots-tag: noindex`; `curl -s https://chases.house/robots.txt` → managed AI block + the
+  `Claude-User` allow group.
+
 **How the Transform Rule was actually created (honest process note):** DOM automation of the CF
 dashboard SPA via Chrome DevTools MCP failed repeatedly — `take_snapshot` UIDs went stale on each
 re-render and a OneTrust cookie modal intercepted clicks. An attempt to call the Rulesets API directly
