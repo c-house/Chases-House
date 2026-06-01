@@ -46,27 +46,27 @@ auto-updating AI blocklist**, **header = the actual deindex**:
      the paths, and would *prevent* the `noindex` header from reaching them. The header covers them.
 2. **Cloudflare managed robots.txt: leave ON** — its AI-bot list auto-updates, which a hand-kept
    repo list would not. The repo's no-wildcard design means the two files compose without conflict.
-3. **Cloudflare Transform Rule** — the authoritative, zone-wide deindex.
-4. **Cloudflare WAF "Block AI Bots"** — enforcement against crawlers that ignore `robots.txt`, with
-   a `Claude-User` carve-out so the operator's tools are never blocked.
+3. **Cloudflare Transform Rule** — the authoritative, zone-wide deindex (`X-Robots-Tag: noindex`).
+4. **Cloudflare WAF "Block AI Bots"** — was intended as enforcement against crawlers that ignore
+   `robots.txt`, but it blocked the operator's own `Claude-User` tools and the free plan offered no
+   reliable per-UA skip, so it is **left OFF** (see addendum). robots.txt's AI disallows remain the
+   declared AI policy; reputable AI crawlers honor them.
 
 ### Cloudflare config (dashboard-only — recorded verbatim for recoverability)
 
 > These live only in the Cloudflare dashboard (no CF API token on this box). Recreate exactly:
 
-- **Managed robots.txt:** Security → Settings → "Instruct AI bot traffic with robots.txt" = **ON**.
-  *(Optional: set the `*` Content-Signal to `search=no` for intent consistency — advisory only.)*
-- **Transform Rule** — Rules → Transform Rules → Modify Response Header → **Create**:
+- **Managed robots.txt:** AI Crawl Control → Overview → "Managed robots.txt" = **ON**. To also set
+  the search signal, use AI Crawl Control → *Manage robots.txt* → Search engines = **Block**.
+- **Transform Rule** — Rules → Transform Rules → Modify Response Header → **Create** ("Add static
+  header to response"):
   - Name: `noindex all responses`
   - If: `http.host eq "chases.house"`
   - Then: **Set static** response header `X-Robots-Tag` = `noindex`
   - *(`nofollow` intentionally omitted — this hub links out to subsites; `noindex` alone suffices.)*
-- **WAF "Block AI Bots"** — Security → Bots → "AI Scrapers and Crawlers" → **Block on all pages**.
-  - **Carve-out** (so the operator's Claude tools aren't blocked) — WAF custom rule, action **Skip**
-    (all remaining custom rules + Bot Fight Mode):
-    `(http.user_agent contains "Claude-User")`
-  - Documented rollback: if it still blocks the operator's tools, turn the toggle **off** —
-    `robots.txt` + the `noindex` header alone still meet the goal.
+- **WAF "Block AI Bots"** (Security → Settings → Bots) — currently **OFF / "Do not block"** (see
+  addendum for why). If ever re-enabled, pair it with a tested WAF Skip rule
+  `(http.user_agent contains "Claude-User")` verified against a real Anthropic-infra fetch.
 
 ## Scope (per-host)
 
@@ -76,46 +76,42 @@ covered by the header). `thewiseguy.ai` (Music) is a **separate zone** and needs
 desired — out of scope. Lookout/Shopping "coming-soon" spans live on chases.house (covered); their
 tunneled targets, when live, need their own robots.
 
-## Verification
-
-- Live `robots.txt` = managed AI block **+** the repo `Claude-User` group (after cache purge of
-  `https://chases.house/robots.txt`).
-- `curl -I https://chases.house/` (and a sub-page + an asset) shows `X-Robots-Tag: noindex`.
-- A Claude Code `WebFetch https://chases.house/` returns **200** (UA `Claude-User …` not blocked).
-
 ## Rollback
 
-Delete repo `robots.txt`; remove the Transform Rule; turn off "Block AI Bots". Managed robots.txt
-reverts to being the sole (Cloudflare-generated) file.
+Delete repo `robots.txt`; remove the `noindex all responses` Transform Rule (once created); reset
+the managed robots.txt Search-engines control to Allow. (WAF "Block AI Bots" is already off.)
+Managed robots.txt then reverts to being the sole (Cloudflare-generated) file with `search=yes`.
 
-## Addendum — 2026-05-31 (as-built status — PARTIAL)
+## Addendum — 2026-05-31 (as-built status — PARTIAL; curl-verified)
 
-Honest as-built state after a Chrome DevTools MCP session against the chases.house zone
-(account `0ee1273a5cee6fea6a5a5a66666c8df6`). The shared browser made dashboard automation
-unreliable; several intended steps are **not yet done**. Verified by `curl`, not by dashboard UI.
+Driven via Chrome DevTools MCP against the chases.house zone
+(account `0ee1273a5cee6fea6a5a5a66666c8df6`) over a **shared** browser, which made dashboard
+automation unreliable. Status below is what `curl` confirms — **not** dashboard optimism. (Earlier
+drafts of this addendum twice claimed completion prematurely; this is the corrected record.)
 
-**Done & verified (via curl):**
-- Repo `robots.txt` (this commit's file) is **live and merged** below Cloudflare's managed block.
-  `curl https://chases.house/robots.txt` shows the managed AI-crawler `Disallow: /` set
-  (Amazonbot, Applebot-Extended, Bytespider, CCBot, ClaudeBot, CloudflareBrowserRenderingCrawler,
-  Google-Extended, GPTBot, meta-externalagent) followed by the origin `User-agent: Claude-User` /
-  `Disallow:` (allow) group.
-- `chases.house/robots.txt` is served `Cf-Cache-Status: DYNAMIC` (managed-robots generates it
-  per-request) — it is **not** edge-cached, so no cache purge applies to it.
+**Done & curl-verified:**
+- **Repo `robots.txt` is live and merged** below the managed block. `curl https://chases.house/robots.txt`
+  shows the managed AI-crawler `Disallow: /` set (Amazonbot, Applebot-Extended, Bytespider, CCBot,
+  ClaudeBot, CloudflareBrowserRenderingCrawler, Google-Extended, GPTBot, meta-externalagent) followed
+  by the origin `User-agent: Claude-User` / `Disallow:` (allow) group. Served `Cf-Cache-Status:
+  DYNAMIC` (not edge-cached; no purge applies).
+- **WAF "Block AI Bots" turned OFF** ("Do not block"). It had been enabled ("Block on all pages") and
+  was returning **HTTP 403 to `Claude-User`** (the operator's own tools) and to `GPTBot`. The free
+  plan offered no reliable per-UA skip, so it was disabled. After disabling, `curl` confirms
+  `Claude-User`, `GPTBot`, and a plain browser UA all return **200**.
 
-**NOT done (still required to meet the privacy goal):**
+**NOT done — still required to meet the privacy goal (and blocking automation):**
 - **Transform Rule `X-Robots-Tag: noindex` — NOT created.** `curl -I https://chases.house/` shows
-  **no** `X-Robots-Tag` header. This is the only mechanism that actually deindexes, so **the site is
-  not yet protected from search indexing.** To create: Rules → Transform Rules → Modify Response
-  Header → Set static `X-Robots-Tag` = `noindex`, If `http.host eq "chases.house"`.
-- **Managed Content-Signal still `search=yes`.** The Manage-robots.txt "Search engines" control was
-  not successfully switched to Block; live file still reads `Content-Signal: search=yes,ai-train=no`.
-- **WAF "Block AI Bots" is ON and over-blocking.** It returns **HTTP 403 to `Claude-User`** (the
-  operator's own Claude tools) **and** to `GPTBot`; a normal browser UA gets 200. Per operator
-  decision this toggle is being **turned OFF** (the documented rollback). If WAF enforcement is
-  re-added later it needs a Skip rule `(http.user_agent contains "Claude-User")` **verified against
-  a real Anthropic-infra fetch** first.
+  **no** `X-Robots-Tag` header on `/`, `/games/`, `/styles.css`, or `/files/`. This is the only
+  mechanism that actually deindexes, so **the site is NOT yet protected from search indexing.**
+  The create-rule form (Rules → Transform Rules → Modify Response Header → "Add static header to
+  response") has no stable element handles for MCP fill/click on the shared browser; the form was
+  reached but not completed.
+- **Managed Content-Signal still `search=yes`.** The Manage-robots.txt "Search engines → Block"
+  toggle did not save; live file still reads `Content-Signal: search=yes,ai-train=no` (advisory only,
+  so not load-bearing — but should be flipped for intent consistency).
 
-**Correction:** an earlier version of this addendum claimed all three Cloudflare steps succeeded and
-that Claude-User was not blocked. That was inaccurate — those clicks hit stale element IDs and never
-saved. This section reflects curl-verified reality.
+**Lessons:** (1) the assumption that `Claude-User` would pass Block-AI-Bots was wrong — verify per-UA
+behavior with a real fetch before relying on any WAF bot rule. (2) Driving the CF dashboard via MCP on
+a browser shared with other sessions is unreliable; prefer a dedicated browser/profile or guided
+manual clicks for the remaining two steps.

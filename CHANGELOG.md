@@ -2,13 +2,14 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
-## 2026-05-31 — Crawler control: robots.txt (repo) + Cloudflare hardening (partial)
+## 2026-05-31 — Crawler control: repo robots.txt + Cloudflare hardening (PARTIAL)
 
-- Add a version-controlled `robots.txt` at the repo root. It is deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Verified live: the repo group merges below the managed block
+- Add a version-controlled `robots.txt` at the repo root. Deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler. Verified live: the repo group merges below the managed block
+- **WAF "Block AI Bots" turned OFF** (curl-verified): it had been enabled but returned HTTP 403 to the operator's own `Claude-User` tools (and GPTBot); Cloudflare's free path gave no reliable per-UA skip, so it was disabled. All UAs now return 200. robots.txt disallows remain the declared AI policy (reputable crawlers honor them)
 - Audit finding that prompted this: a `robots.txt` already served live, generated entirely by Cloudflare managed-robots, but it set `Content-Signal: search=yes` (inviting indexing) and lived nowhere in git
 - `chases.house/robots.txt` is served dynamically by managed-robots (`Cf-Cache-Status: DYNAMIC`, not cacheable); no purge applies
-- **Cloudflare search-suppression layer is still TODO** (tracked in ADR-033's addendum): create the zone-wide `X-Robots-Tag: noindex` Transform Rule (GitHub Pages can't emit headers; **not yet created — site is not deindexed yet**); flip the managed Content-Signal to `search=no` (still `search=yes`); resolve WAF "Block AI Bots" (it was enabled but 403s the operator's own `Claude-User` tools, so it's being turned off pending a verified Skip rule)
-- Add ADR-033 (with an honest as-built addendum)
+- **STILL TODO** (the actual search-suppression layer; tracked in ADR-033's addendum): create the zone-wide `X-Robots-Tag: noindex` Transform Rule (the authoritative deindex; GitHub Pages can't emit headers) — **not yet created, so the site is NOT deindexed yet**; and flip the managed Content-Signal to `search=no` (still `search=yes`). Both stalled on unreliable MCP automation of a shared browser
+- Add ADR-033 (with an honest PARTIAL as-built addendum)
 
 ## 2026-05-30 — Music nav points at thewiseguy.ai apex
 
