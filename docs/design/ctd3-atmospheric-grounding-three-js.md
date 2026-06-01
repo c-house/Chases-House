@@ -1,6 +1,6 @@
 # CTD3 — Atmospheric Grounding (Three.js spec)
 
-> **Source:** Claude Design round 3, 2026-05-31. Drop-in values for `scene.js` / `lighting.js` / `renderer.js`, tuned against the current code and the **Kenney Tower Defense Kit** (flat-shaded low-poly, `MeshStandardMaterial` + vertex colour). Because the kit lights normally, warm light + tone-mapping desaturate the baked purple toward a muted dusk-plum — **no GLB is repainted.** This is the canonical implementation reference for ADR-033 Group 2.
+> **Source:** Claude Design round 3, 2026-05-31. Drop-in values for `scene.js` / `lighting.js` / `renderer.js`, tuned against the current code and the **Kenney Tower Defense Kit** (flat-shaded low-poly, `MeshStandardMaterial` + vertex colour). Because the kit lights normally, warm light + tone-mapping desaturate the baked purple toward a muted dusk-plum — **no GLB is repainted.** This is the canonical implementation reference for ADR-034 Group 2.
 
 **Apply in this order** (each later step assumes the earlier ones): B lights → C fog/bg → D ground → E CSS grounding → A tone-mapping (dial last) → F fireflies → G Warden. Tone-mapping changes every colour, so set exposure *after* the lights look right.
 

@@ -1,9 +1,9 @@
-# ADR-033: CTD3 UI/UX Remediation v2 — Design-System Alignment
+# ADR-034: CTD3 UI/UX Remediation v2 — Design-System Alignment
 
 **Date:** 2026-05-31
 **Status:** Proposed
 **Supersedes scope of:** ADR-028 §UI (visual polish only — gameplay/architecture decisions stand)
-**Note on number:** Briefing originally drafted this as ADR-033, then anticipated `033-crawler-control-and-robots.md` had slid in and renamed to 034. On final filing the next free number is 033 — keeping it here.
+**Note on number:** Synthesis dispatched against a local clone that pre-dated `033-crawler-control-and-robots.md` landing on the remote, so the workflow drafted this as 033. On reconciliation the collision was real (crawler-control 033 has 5 commits already), so this ADR is filed as 034 and all in-content references updated. The commit subject of `378f9ab` still refers to "ADR-033" — that was the original push; the rename + reference updates land in a follow-up commit.
 
 ---
 
@@ -468,8 +468,8 @@ The seven groups carry uneven shipping risk. Order them as:
 | `games/castle-tower-defense/ui.js` | aria-selected on tabs + flash-good dispatch + star aria-label wrap + wave-counter seed + inert toggle on setScreen + map-card system render | M | 4, 6 |
 | `games/castle-tower-defense/tools/map-editor.html` | Token bridge + canvas re-ground + validator rewrite + right-rail checklist + JSON `<details>` + Waves divider + responsive shell (above existing 1100px collapse) + theme→WFC wire + 3D preview theme bg + Decor Size pill + canvas pill simplification + action reorder + topbar treatment + shortcut overlay + history ring | XL | 1, 7 |
 | `games/castle-tower-defense/wfc-rules.js` | Theme-keyed palettes for plains / forest / mountain | M | 7 |
-| `tower_*_t*.glb` / `tile_*.glb` / `detail_*.glb` / `enemy_*.glb` | **DO NOT EDIT.** Kit assets are immutable per ADR-033 Decision C. | — | — |
-| `docs/adr/033-...md` | This ADR | — | all |
+| `tower_*_t*.glb` / `tile_*.glb` / `detail_*.glb` / `enemy_*.glb` | **DO NOT EDIT.** Kit assets are immutable per ADR-034 Decision C. | — | — |
+| `docs/adr/034-ctd3-ui-ux-remediation-v2.md` | This ADR | — | all |
 
 ---
 
