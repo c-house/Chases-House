@@ -8,6 +8,7 @@
 - **Domain**: chases.house (DNS via GoDaddy A records → GitHub Pages IPs)
 - **Games**: Browser games in `games/` — each self-contained with inline CSS
 - **Subsites**: Some nav links (Music → thewiseguy.ai, Lookout) point to Cloudflare-tunneled services hosted off-repo; `files.chases.house` is another tunneled subsite (ADR-013). This repo carries only their nav links / static front-ends, not the tunnels
+- **Crawler control**: thin repo `robots.txt` (allows `Claude-User`; Cloudflare managed-robots prepends the auto-updating AI-crawler block above it). Search suppression is a Cloudflare zone-wide `X-Robots-Tag: noindex` Transform Rule + WAF "Block AI Bots" (with a `Claude-User` Skip carve-out) — *not* in `robots.txt`, which cannot deindex, and not at GitHub Pages, which can't emit headers. These dashboard-only settings are recorded verbatim in ADR-033. After editing `robots.txt`, purge `https://chases.house/robots.txt` from the CF cache
 
 ## Folder Structure
 

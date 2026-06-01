@@ -2,3 +2,7 @@ ralph/archived/ralph-testing/screenshots/
 temp/screenshots/
 docs/screenshots/
 docs/sfx-preview/
+
+# Local design-exploration artifacts (theme-factory output) — not part of the served site
+.design-system/
+*.zip

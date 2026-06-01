@@ -1,0 +1,19 @@
+# robots.txt for chases.house
+#
+# Cloudflare's "managed robots.txt" PREPENDS an auto-updating block of AI-crawler
+# Disallow rules above this file (ClaudeBot, GPTBot, CCBot, Google-Extended, …).
+# This file intentionally defines NO `User-agent: *` group, to avoid creating a
+# second, conflicting wildcard group alongside Cloudflare's.
+#
+# Search suppression is NOT done here — robots.txt cannot deindex. It is enforced
+# by a zone-wide `X-Robots-Tag: noindex` response header (Cloudflare Transform
+# Rule), since GitHub Pages cannot emit custom headers.
+#
+# Full rationale + the verbatim Cloudflare rule specs:
+#   docs/adr/033-crawler-control-and-robots.md
+
+# Explicitly allow the operator's user-initiated Claude fetches.
+# This is Claude-User (e.g. "Claude-User (claude-code/…; +https://support.anthropic.com/)"),
+# NOT the ClaudeBot training crawler — that one stays blocked by the managed block above.
+User-agent: Claude-User
+Disallow:

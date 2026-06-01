@@ -2,6 +2,14 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-05-31 — Crawler control: robots.txt + noindex + AI-bot blocking
+
+- Add a version-controlled `robots.txt` at the repo root. It is deliberately *thin* — no `User-agent: *` group (Cloudflare's managed robots.txt prepends one and its auto-updating AI-crawler block above this file) and no path `Disallow`s. Its only directive is an explicit allow for `Claude-User`, the operator's user-initiated Claude fetches (verified UA `Claude-User (claude-code/…)`), so they're never caught alongside the `ClaudeBot` training crawler
+- Search suppression is enforced at the Cloudflare layer, not in `robots.txt` (which cannot deindex): a zone-wide `X-Robots-Tag: noindex` response-header Transform Rule (GitHub Pages can't emit headers), plus the WAF "Block AI Bots" toggle with a `Claude-User` Skip carve-out. These dashboard-only settings are recorded verbatim in ADR-033 for recoverability
+- Audit finding that prompted this: a `robots.txt` already served live, generated entirely by Cloudflare managed-robots, but it set `Content-Signal: search=yes` (inviting indexing) and lived nowhere in git
+- After deploy, purge `https://chases.house/robots.txt` from the Cloudflare cache
+- Add ADR-033
+
 ## 2026-05-30 — Music nav points at thewiseguy.ai apex
 
 - Switch the Music nav health-probe in `nav-health.js` from `dj.thewiseguy.ai/health` to the apex `thewiseguy.ai/health` (WebDJ rebrand to canonical apex). The existing `healthUrl.replace(/\/health$/,'')` auto-derives the live link href, so the upgraded Music link now points at `https://thewiseguy.ai`
