@@ -7,9 +7,30 @@
    ═══════════════════════════════════════════════════════════════ */
 import * as THREE from 'three';
 
+// ─── Brand palette (ADR-034 Group 3) ───────────────────────
+// Canonical cabin tokens mirrored from .design-system/colors_and_type.css.
+// New per-effect color literals should reference TOKENS.X rather than raw
+// hex. WARDEN_AURA value duplicates WARDEN_AURA_COLOR (Group 2-owned, kept
+// at its declaration site for the Decision A comment block).
+const TOKENS = {
+  BG_DEEP:      0x0d1410,
+  BG_MAIN:      0x152821,
+  BG_SURFACE:   0x1f3329,
+  ACCENT_GOLD:  0xe8b75a,
+  ACCENT_GLOW:  0xf4cc6e,
+  ACCENT_EMBER: 0xa06828,
+  TERRACOTTA:   0xb05a3a,
+  SAGE:         0x7a9460,
+  MOSS:         0x4a6a4e,
+  FOG:          0x6e8a7a,
+  BARK:         0x3a2a1c,
+  TEXT_PRIMARY: 0xf0e6d3,
+  WARDEN_AURA:  0x8fc6cf
+};
+
 // ─── Animation constants (ADR-030 Appendix A) ───────────────
 const MUZZLE_FLASH_MS = 80;
-const MUZZLE_FLASH_EMISSIVE_HEX = 0xc8943e;
+const MUZZLE_FLASH_EMISSIVE_HEX = TOKENS.ACCENT_GOLD;
 const MUZZLE_FLASH_INTENSITY = 0.6;
 const WARDEN_AURA_PERIOD_MS = 800;
 const WARDEN_AURA_SCALE_AMP = 0.05;
@@ -364,7 +385,7 @@ function paintTerrain(map) {
     // Slab — flat stone tile, ground-aware. Warm cream contrasts grass green.
     const slabGeo = new THREE.BoxGeometry(0.95, 0.22, 0.95);
     const slabMat = new THREE.MeshStandardMaterial({
-      color: 0xd4c498, roughness: 0.88, metalness: 0.0
+      color: 0xd8c8b0, roughness: 0.88, metalness: 0.0
     });
     const slab = new THREE.Mesh(slabGeo, slabMat);
     slab.position.set(slot.x, 0.11, slot.z);
@@ -375,7 +396,7 @@ function paintTerrain(map) {
     // Rim — wider darker base so the slab reads as inset / mortared.
     const rimGeo = new THREE.BoxGeometry(1.08, 0.06, 1.08);
     const rimMat = new THREE.MeshStandardMaterial({
-      color: 0x6a5a40, roughness: 0.95
+      color: 0x6a4a28, roughness: 0.95
     });
     const rim = new THREE.Mesh(rimGeo, rimMat);
     rim.position.set(slot.x, 0.03, slot.z);
@@ -643,9 +664,9 @@ function syncProjectiles(state) {
       const geo = pr.kind === 'cannonball'
         ? new THREE.SphereGeometry(0.18, 8, 8)
         : new THREE.SphereGeometry(0.12, 6, 6);
-      const color = pr.kind === 'cannonball' ? 0x1a1410
-                  : pr.kind === 'magebolt'   ? 0xc8943e
-                  : 0xe8d5a8;
+      const color = pr.kind === 'cannonball' ? TOKENS.BARK
+                  : pr.kind === 'magebolt'   ? TOKENS.ACCENT_GOLD
+                  : TOKENS.TEXT_PRIMARY;
       const mat = new THREE.MeshBasicMaterial({ color });
       node = new THREE.Mesh(geo, mat);
       projNodes.set(pr.id, node);
@@ -676,12 +697,12 @@ function syncEffects(state) {
       if (ef.kind === 'splash') {
         const geo = new THREE.RingGeometry((ef.r || 1) * 0.8, (ef.r || 1), 24);
         geo.rotateX(-Math.PI / 2);
-        const mat = new THREE.MeshBasicMaterial({ color: 0xa06828, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
+        const mat = new THREE.MeshBasicMaterial({ color: TOKENS.ACCENT_EMBER, transparent: true, opacity: 0.6, side: THREE.DoubleSide });
         node = new THREE.Mesh(geo, mat);
       } else {
         // Default: tiny pulsing point as a stand-in (e.g., goldPopup)
         const geo = new THREE.SphereGeometry(0.18, 6, 6);
-        const mat = new THREE.MeshBasicMaterial({ color: 0xc8943e, transparent: true });
+        const mat = new THREE.MeshBasicMaterial({ color: TOKENS.ACCENT_GOLD, transparent: true });
         node = new THREE.Mesh(geo, mat);
       }
       effectNodes.set(ef.id, node);
@@ -772,7 +793,7 @@ function syncDecals(state) {
   // Selected tower → range circle
   const sel = state.selectedTowerId && state.towers.find(t => t.id === state.selectedTowerId);
   if (sel && sel.behavior === 'projectile' && sel.range > 0) {
-    decalsGroup.add(makeRing(sel.x, sel.z, sel.range, 0xc8943e, 0.4));
+    decalsGroup.add(makeRing(sel.x, sel.z, sel.range, TOKENS.ACCENT_GOLD, 0.4));
   }
   // Empty buildable slots get TWO affordances:
   //   - Always-on: subtle aged-gold ring outline (visible without selection).
@@ -785,10 +806,10 @@ function syncDecals(state) {
       if (occupied) continue;
       // Always-on aged-gold ring around the slab — affordance without palette.
       // Slab is 0.95×0.22×0.95 centered at y=0.11; ring sits just above the top.
-      decalsGroup.add(makeRing(slot.x, slot.z, 0.62, 0xc8943e, 0.85, 0.24));
+      decalsGroup.add(makeRing(slot.x, slot.z, 0.62, TOKENS.ACCENT_GOLD, 0.85, 0.24));
       if (state.paletteSelection) {
         // Bright vivid-green pulsing disc when palette tower is selected
-        decalsGroup.add(makeDisc(slot.x, slot.z, 1.1, 0x6aff5a, pulse, 0.25));
+        decalsGroup.add(makeDisc(slot.x, slot.z, 1.1, TOKENS.ACCENT_GLOW, pulse, 0.25));
       }
     }
   }
@@ -800,7 +821,7 @@ function syncDecals(state) {
       const def = window.CTD3Entities.TOWERS[state.paletteSelection];
       const tier0 = def.tiers[0];
       const r = def.behavior === 'aura' ? tier0.auraRadius : tier0.range;
-      const color = def.behavior === 'aura' ? 0x9bb0d4 : 0xa06828;
+      const color = def.behavior === 'aura' ? TOKENS.WARDEN_AURA : TOKENS.ACCENT_EMBER;
       decalsGroup.add(makeRing(slot.x, slot.z, r, color, 0.4));
     }
   }
@@ -913,14 +934,14 @@ function paintTileDebug() {
   }
   // Origin reference cube (so "front of +x" is unambiguous).
   const oGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-  const oMat = new THREE.MeshBasicMaterial({ color: 0xff0066 });
+  const oMat = new THREE.MeshBasicMaterial({ color: TOKENS.TERRACOTTA });
   const o = new THREE.Mesh(oGeo, oMat);
   o.position.set(0, 0.5, 5);
   pathGroup.add(o);
   // Arrow ahead of origin marker pointing +x — the kit's default front for straight tiles.
   const aGeo = new THREE.ConeGeometry(0.2, 0.6, 4);
   aGeo.rotateZ(-Math.PI / 2);
-  const aMat = new THREE.MeshBasicMaterial({ color: 0xc8943e });
+  const aMat = new THREE.MeshBasicMaterial({ color: TOKENS.ACCENT_GOLD });
   const arrow = new THREE.Mesh(aGeo, aMat);
   arrow.position.set(0.6, 0.5, 5);
   pathGroup.add(arrow);
@@ -930,9 +951,9 @@ function makeLabelTexture(text) {
   const canvas = document.createElement('canvas');
   canvas.width = 256; canvas.height = 64;
   const cx = canvas.getContext('2d');
-  cx.fillStyle = 'rgba(20,15,10,0.85)';
+  cx.fillStyle = 'rgba(13,20,16,0.88)';
   cx.fillRect(0, 0, canvas.width, canvas.height);
-  cx.fillStyle = '#c8943e';
+  cx.fillStyle = '#e8b75a';
   cx.font = 'bold 28px monospace';
   cx.textAlign = 'center';
   cx.textBaseline = 'middle';
