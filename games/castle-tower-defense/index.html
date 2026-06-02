@@ -119,7 +119,7 @@
     /* HOW TO PLAY modal — quick-reference legend */
     .help-modal {
       background: rgba(40,28,18,0.97);
-      border: 1px solid var(--aged-gold);
+      border: 1px solid var(--accent-ember);
       border-radius: var(--radius-lg);
       padding: 1.6rem 1.6rem 1.2rem;
       max-width: 520px;
@@ -165,7 +165,7 @@
       font-family: var(--font-display), serif;
       color: var(--aged-gold);
       font-size: 0.86rem;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.10em;
       text-transform: uppercase;
       margin: 1rem 0 0.5rem;
       border-bottom: 1px solid var(--accent-ember);
@@ -260,6 +260,20 @@
       color: var(--aged-gold);
       margin-bottom: 0.8rem;
     }
+    /* ADR-034 Group 4a — header underline pattern: faint ember gradient
+       below the headline. Title h1, map-select h1, sheet h3 only. */
+    .title-card h1::after,
+    .map-select h1::after,
+    .sheet h3::after {
+      content: '';
+      display: block;
+      height: 1px;
+      width: 56%;
+      margin: 0.5rem auto 0;
+      background: linear-gradient(90deg, transparent, var(--accent-ember), transparent);
+      opacity: 0.3;
+    }
+    .sheet h3::after { margin-left: 0; margin-right: 0; width: 36%; }
     .title-card h1 {
       font-family: var(--font-display, 'Fraunces'), serif;
       font-size: clamp(2rem, 7vw, 3.6rem);
@@ -281,7 +295,7 @@
       text-transform: uppercase;
       color: var(--warm-stone);
       background: rgba(40, 28, 18, 0.6);
-      border: 1px solid var(--aged-gold);
+      border: 1px solid var(--accent-ember);
       border-radius: var(--radius-md);
       cursor: pointer;
       transition: background var(--dur-fade) ease, transform var(--dur-snap) var(--ease-snap);
@@ -323,7 +337,7 @@
       max-width: min(420px, 90vw);
       padding: 0.9rem 1.1rem;
       background: rgba(40, 28, 18, 0.95);
-      border: 1px solid var(--aged-gold);
+      border: 1px solid var(--accent-ember);
       border-radius: var(--radius-md);
       color: var(--warm-stone);
       font-size: 0.86rem;
@@ -336,15 +350,15 @@
     .first-load-notice button {
       margin-top: 0.5rem;
       background: transparent;
-      border: 1px solid rgba(232, 213, 168, 0.4);
+      border: 1px solid var(--accent-ember);
       color: var(--warm-stone);
       padding: 0.3rem 0.7rem;
       font-family: inherit;
       font-size: 0.78rem;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.10em;
       text-transform: uppercase;
       cursor: pointer;
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-md);
     }
     .first-load-notice button:hover { border-color: var(--aged-gold); }
 
@@ -413,7 +427,7 @@
       min-width: 44px; min-height: 44px;
       padding: 0.4rem 0.6rem;
       background: rgba(40, 28, 18, 0.6);
-      border: 1px solid var(--aged-gold);
+      border: 1px solid var(--accent-ember);
       color: var(--warm-stone);
       font-size: 0.76rem;
       font-weight: 600;
@@ -430,7 +444,7 @@
       position: fixed; left: 0; right: 0; bottom: 0;
       z-index: 30;
       background: rgba(40, 28, 18, 0.96);
-      border-top: 1px solid var(--aged-gold);
+      border-top: 1px solid var(--accent-ember);
       padding: 0.9rem 1rem 1.1rem;
       color: var(--warm-stone);
       transform: translateY(110%);
@@ -661,7 +675,7 @@
 
   <!-- ── Pause ────────────────────────────────────────────────────── -->
   <div class="screen pause">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--accent-ember);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Paused</h2>
       <button class="btn primary" data-action="resume">Resume</button>
       <button class="btn" data-action="show-restart-confirm">Restart</button>
@@ -692,7 +706,7 @@
 
   <!-- ── Game over ────────────────────────────────────────────────── -->
   <div class="screen game-over">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--accent-ember);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 data-bind="resultHeading" style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">—</h2>
       <div data-bind="mapDifficulty" style="font-size:0.84rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;margin-bottom:1rem;"></div>
       <div data-bind="starsRow" style="font-size:1.6rem;margin:0.8rem 0;color:var(--aged-gold);"></div>
@@ -708,7 +722,7 @@
 
   <!-- ── Tutorial popups (gated by ctd3:tutorialSeen) ────────────── -->
   <div class="screen tutorial">
-    <div data-bind="tutorialPopup" style="background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:1rem 1.4rem;color:var(--warm-stone);max-width:380px;">
+    <div data-bind="tutorialPopup" style="background:rgba(40,28,18,0.95);border:1px solid var(--accent-ember);border-radius:var(--radius-lg);padding:1rem 1.4rem;color:var(--warm-stone);max-width:380px;">
       <p data-bind="tutorialText" style="margin:0 0 0.8rem;line-height:1.5;">
         Welcome to the watch. The road runs left to right, and the keep stands at its end.
         <br><br>
@@ -753,7 +767,7 @@
        Wraps the existing actions.restart() to prevent accidental
        mid-wave wipes from the pause menu. -->
   <div class="screen restart-confirm" data-screen="restart-confirm">
-    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--aged-gold);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
+    <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--accent-ember);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">Restart will erase current progress.</h2>
       <button class="btn primary" data-action="confirm-restart">Restart</button>
       <button class="btn" data-action="cancel-restart">Cancel</button>
