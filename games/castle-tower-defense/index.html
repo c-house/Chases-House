@@ -574,6 +574,68 @@
       position: fixed; inset: 0; z-index: 1; pointer-events: none;
       box-shadow: inset 0 0 320px 80px rgba(5, 8, 6, 0.85);
     }
+
+    /* ── ADR-034 Group 4b — chrome hero painting + drifting motes ───────
+       The cabin-in-the-woods painting renders above the 3D canvas while
+       data-screen is title or map-select. On gameplay screens these
+       three layers fade to opacity 0 so the Group 2 atmospheric stack
+       reads alone. */
+    .hero-art {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--dur-fade) ease;
+    }
+    .hero-overlay {
+      position: fixed; inset: 0; z-index: 3; pointer-events: none;
+      background: linear-gradient(180deg,
+        rgba(13, 20, 16, 0.55) 0%,
+        transparent 15%,
+        transparent 78%,
+        rgba(13, 20, 16, 0.80) 100%);
+      opacity: 0;
+      transition: opacity var(--dur-fade) ease;
+    }
+    body[data-screen="title"] .hero-art,
+    body[data-screen="map-select"] .hero-art,
+    body[data-screen="title"] .hero-overlay,
+    body[data-screen="map-select"] .hero-overlay { opacity: 1; }
+
+    .motes {
+      position: fixed; inset: 0; z-index: 4; pointer-events: none;
+      display: none;
+    }
+    body[data-screen="title"] .motes,
+    body[data-screen="map-select"] .motes { display: block; }
+    .motes span {
+      position: absolute;
+      bottom: -10vh;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--accent-glow);
+      box-shadow: 0 0 8px rgba(232, 183, 90, 0.45);
+      opacity: 0;
+      animation: moteDrift 17s linear infinite;
+    }
+    .motes span:nth-child(1) { left: 12%; animation-duration: 14s; animation-delay: 0s; }
+    .motes span:nth-child(2) { left: 28%; animation-duration: 19s; animation-delay: 3s; }
+    .motes span:nth-child(3) { left: 45%; animation-duration: 21s; animation-delay: 6s; }
+    .motes span:nth-child(4) { left: 62%; animation-duration: 16s; animation-delay: 2s; }
+    .motes span:nth-child(5) { left: 78%; animation-duration: 18s; animation-delay: 5s; }
+    .motes span:nth-child(6) { left: 90%; animation-duration: 15s; animation-delay: 8s; }
+    @keyframes moteDrift {
+      0%   { transform: translateY(0)      scale(0.7); opacity: 0; }
+      10%  { opacity: 0.8; }
+      90%  { opacity: 0.8; }
+      100% { transform: translateY(-120vh) scale(1);   opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .motes span { animation: none; opacity: 0.5; bottom: auto; top: 20vh; }
+    }
+    body.reduced-motion .motes span { animation: none; opacity: 0.5; bottom: auto; top: 20vh; }
   </style>
 </head>
 <body data-screen="loading">
@@ -598,6 +660,14 @@
 
   <!-- ADR-034 Group 2 §E atmospheric overlays. -->
   <div id="grounding" aria-hidden="true"></div>
+
+  <!-- ADR-034 Group 4b chrome hero — painting + gradient + motes; only
+       visible on title and map-select (CSS toggles via data-screen). -->
+  <img class="hero-art" src="/assets/forest-house-landscape.png" alt="" aria-hidden="true">
+  <div class="hero-overlay" aria-hidden="true"></div>
+  <div class="motes" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
 
   <!-- The single 3D canvas. -->
   <canvas id="canvas"></canvas>
