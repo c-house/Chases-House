@@ -313,7 +313,7 @@
       transition: background var(--dur-fade) ease, transform var(--dur-snap) var(--ease-snap);
       margin: 0.3rem;
     }
-    .btn:hover { background: rgba(200, 148, 62, 0.18); }
+    .btn:hover { background: rgba(200, 148, 62, 0.18); transform: translateY(-2px); }
     .btn:active { transform: scale(0.96); }
 
     /* Keyboard-focus indicator — applies to every interactive element
@@ -433,6 +433,7 @@
     .tower-card .cost { color: var(--aged-gold); font-weight: 600; }
     .tower-card.selected { background: rgba(200, 148, 62, 0.25); border-color: var(--aged-gold); }
     .tower-card.disabled { opacity: 0.4; cursor: not-allowed; }
+    .tower-card:hover:not(.disabled) { transform: translateY(-4px); border-color: var(--aged-gold); }
     .tower-card:active { transform: scale(0.95); }
     .ctrl-stack { display: flex; flex-direction: column; gap: 0.3rem; }
     .ctrl-btn {
@@ -510,11 +511,13 @@
       text-align: center;
       font-family: inherit; font-size: 0.78rem;
       min-height: 76px;
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
     .sheet .pick img { width: 40px; height: 40px; display: block; margin: 0 auto; }
     .sheet .pick .name { font-weight: 600; }
     .sheet .pick .cost { color: var(--aged-gold); font-size: 0.74rem; }
     .sheet .pick.disabled { opacity: 0.4; cursor: not-allowed; }
+    .sheet .pick:hover:not(.disabled) { border-color: var(--aged-gold); transform: translateY(-4px); }
     .sheet .pick:active { transform: scale(0.95); }
 
     /* ── Wave-clear flourish: gold-bar wipe (review m-2; no 3D bird) ── */
