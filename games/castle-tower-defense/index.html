@@ -145,7 +145,19 @@
       border-radius: var(--radius-sm);
     }
     .help-modal > .body::-webkit-scrollbar-thumb:hover { background: var(--ember); }
-    .help-modal > .footer { flex: 0 0 auto; padding-top: 0.8rem; text-align: center; }
+    .help-modal > .footer {
+      flex: 0 0 auto;
+      padding-top: 0.8rem;
+      text-align: center;
+      /* ADR-034 Group 6 T11 — sticky footer pattern on short viewports.
+         The flex column above already keeps the body scrollable; the
+         visual top border + elevated bg distinguish the footer when
+         content scrolls under it. */
+      border-top: 1px solid var(--accent-ember);
+      background: var(--bg-elevated);
+      margin: 0.8rem -1.6rem -1.2rem;
+      padding: 0.8rem 1.6rem;
+    }
     .help-modal h2 {
       font-family: var(--font-display), serif;
       color: var(--aged-gold);
@@ -526,6 +538,24 @@
     body.reduced-motion .sheet            { animation: none; transition: none; }
     body.reduced-motion #stat-gold.flash  { animation: none; }
 
+    /* ADR-034 Group 6 T13 — OS-level prefers-reduced-motion in addition
+       to the user-toggled body.reduced-motion class above. Preserves
+       hover-lift transforms on .game-card / .btn (brand affordance,
+       expressible without animation) — only animated transitions are
+       neutered. Firefly motion is gated at initFireflies() in scene.js
+       (skip-create path); aura pulse + enemy bob still animate live
+       under this query but stop when body.reduced-motion is set. */
+    @media (prefers-reduced-motion: reduce) {
+      .sheet,
+      .loading-bar,
+      .wave-clear-wipe,
+      .hud-top .stat.flash .v,
+      #stat-gold.flash {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
     /* ── ADR-034 Group 2 §E — atmospheric grounding overlays ──────────
        #grounding sits behind the canvas (renderer.alpha=true lets it
        show through). Three radial gradients + warm-pine base: gold
@@ -637,7 +667,7 @@
       </span>
       <span class="stat" id="stat-lives">
         <span style="font-size:0.78rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.55);">Lives</span>
-        <span class="v" data-bind="lives" aria-live="polite" aria-atomic="true">0</span>
+        <span class="v" data-bind="lives" aria-live="assertive" aria-atomic="true">0</span>
       </span>
       <button class="cog" data-action="pause" aria-label="Pause / settings">⚙</button>
     </div>
@@ -645,7 +675,7 @@
       <div class="palette" data-bind="palette"></div>
       <div class="ctrl-stack">
         <button class="ctrl-btn next-wave" data-action="send-next-wave" aria-label="Send next wave">▶ Send wave</button>
-        <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward">2×</button>
+        <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward" aria-label="Toggle fast-forward">2×</button>
       </div>
     </div>
   </div>
@@ -685,17 +715,17 @@
       <div style="text-align:left;font-size:0.84rem;color:rgba(240,230,211,0.78);">
         <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">Music</span>
-          <input type="range" min="0" max="100" step="1" data-bind="slider-music" style="flex:1;accent-color:var(--aged-gold);">
+          <input type="range" min="0" max="100" step="1" data-bind="slider-music" aria-label="Music volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-music" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">40%</span>
         </div>
         <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">SFX</span>
-          <input type="range" min="0" max="100" step="1" data-bind="slider-sfx" style="flex:1;accent-color:var(--aged-gold);">
+          <input type="range" min="0" max="100" step="1" data-bind="slider-sfx" aria-label="SFX volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-sfx" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">80%</span>
         </div>
         <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">Ambient</span>
-          <input type="range" min="0" max="100" step="1" data-bind="slider-ambient" style="flex:1;accent-color:var(--aged-gold);">
+          <input type="range" min="0" max="100" step="1" data-bind="slider-ambient" aria-label="Ambient volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-ambient" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">25%</span>
         </div>
         <div style="margin-top:0.7rem;"><label style="cursor:pointer;"><input type="checkbox" data-bind="reduced-motion-toggle" style="accent-color:var(--aged-gold);margin-right:0.4rem;"> Reduced motion</label></div>

@@ -250,7 +250,12 @@
   }
 
   function motionAllowed() {
-    return !body.classList.contains('reduced-motion');
+    // ADR-034 Group 6 T13 — honor both the user-toggled body.reduced-motion
+    // class AND the OS-level prefers-reduced-motion media query. Either
+    // suppresses aura pulse, enemy bob, and other in-tick animations.
+    if (body.classList.contains('reduced-motion')) return false;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    return true;
   }
 
   function updateNextWaveButton(state) {
