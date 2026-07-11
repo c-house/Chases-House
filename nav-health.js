@@ -42,4 +42,9 @@
   // Shopping: same-origin path-based (chases.house/shop/health behind the
   // chases-house-router Worker → Smart-Shopper tunnel). Mirrors Lookout.
   enableNavWhenLive('shop-nav',    '/shop/health',                    'Shopping');
+
+  // Counting House: own subdomain via a dedicated Tunnel; cross-origin probe.
+  // /health sends ACAO https://chases.house and bypasses the site's Access
+  // gate (members-only otherwise — Music pattern). See ADR-035.
+  enableNavWhenLive('countinghouse-nav', 'https://countinghouse.chases.house/health', 'Counting House');
 })();
