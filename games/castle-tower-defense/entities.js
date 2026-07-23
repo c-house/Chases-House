@@ -91,9 +91,12 @@
   // bountyMult couples reward to risk (ADR-036 D3/lesson 2, ETD-style):
   // spirited's +35% HP and lean start are offset by paying more per kill,
   // instead of compounding punishment on both axes.
+  // earlyCallRate: gold per second of prep countdown remaining when the
+  // player calls the wave early (ADR-036 D4 — interest adapted for the
+  // self-paced campaign). Spirited pays a higher rate, same D3 coupling.
   const DIFFICULTY = {
-    quiet:    { hpMult: 0.85, startGold: 220, startLives: 18, bountyMult: 1.0 },
-    spirited: { hpMult: 1.15, startGold: 180, startLives: 12, bountyMult: 1.25 }
+    quiet:    { hpMult: 0.85, startGold: 220, startLives: 18, bountyMult: 1.0,  earlyCallRate: 1.5 },
+    spirited: { hpMult: 1.15, startGold: 180, startLives: 12, bountyMult: 1.25, earlyCallRate: 2.5 }
   };
 
   // Per-map difficulty overrides (Phase 3 of editor-promotion plan).
@@ -109,7 +112,8 @@
       hpMult:     (o.hpMult     != null) ? o.hpMult     : base.hpMult,
       startGold:  (o.startGold  != null) ? o.startGold  : base.startGold,
       startLives: (o.startLives != null) ? o.startLives : base.startLives,
-      bountyMult: (o.bountyMult != null) ? o.bountyMult : base.bountyMult
+      bountyMult: (o.bountyMult != null) ? o.bountyMult : base.bountyMult,
+      earlyCallRate: (o.earlyCallRate != null) ? o.earlyCallRate : base.earlyCallRate
     };
   }
 
@@ -121,6 +125,16 @@
     const mult = (state && state.difficultyMult && state.difficultyMult.bountyMult != null)
       ? state.difficultyMult.bountyMult : 1;
     return Math.max(1, Math.round(enemyDef.bounty * mult));
+  }
+
+  // ADR-036 D4 — the gold paid for calling the next wave with
+  // secondsRemaining still on the prep countdown. Shared by engine
+  // (payment in sendNextWave) and HUD (live chip preview) so the
+  // displayed and paid amounts can never drift.
+  function earlyCallBonus(secondsRemaining, state) {
+    const rate = (state && state.difficultyMult && state.difficultyMult.earlyCallRate != null)
+      ? state.difficultyMult.earlyCallRate : 0;
+    return Math.max(0, Math.floor(secondsRemaining * rate));
   }
 
   // ─── HELPERS ─────────────────────────────────────────────────
@@ -256,7 +270,7 @@
 
   window.CTD3Entities = {
     TOWERS, ENEMIES, DIFFICULTY, TOWER_FIRE_SFX,
-    mergedDifficulty, bountyFor,
+    mergedDifficulty, bountyFor, earlyCallBonus,
     towerInvested, towerSellValue, canTarget, applyDamage,
     refreshTowerSnapshot,
     makeTower, makeEnemy, makeProjectile, makeEffect

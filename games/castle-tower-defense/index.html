@@ -452,6 +452,35 @@
     .ctrl-btn.active { background: var(--aged-gold); color: var(--ink); }
     .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* ── Early-call bonus chip (ADR-036 D4) ─────────────────────── */
+    .early-call {
+      text-align: center;
+      padding: 0.2rem 0.4rem;
+      background: rgba(40, 28, 18, 0.6);
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md);
+      pointer-events: none;
+    }
+    .early-call .ec-label {
+      display: block;
+      font-size: 0.62rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.55);
+    }
+    .early-call .ec-value {
+      font-family: var(--font-display, 'Fraunces'), serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--aged-gold);
+    }
+    #stat-gold.bonus-pulse .v { animation: goldFlash 0.4s var(--ease-snap); }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
     /* ── Action sheets (ADR-028 §12 — mobile-first) ─────────────── */
     .sheet {
       position: fixed; left: 0; right: 0; bottom: 0;
@@ -540,6 +569,7 @@
     body.reduced-motion button:active     { transform: none; }
     body.reduced-motion .sheet            { animation: none; transition: none; }
     body.reduced-motion #stat-gold.flash  { animation: none; }
+    body.reduced-motion #stat-gold.bonus-pulse .v { animation: none; }
 
     /* ADR-034 Group 6 T13 — OS-level prefers-reduced-motion in addition
        to the user-toggled body.reduced-motion class above. Preserves
@@ -553,7 +583,8 @@
       .loading-bar,
       .wave-clear-wipe,
       .hud-top .stat.flash .v,
-      #stat-gold.flash {
+      #stat-gold.flash,
+      #stat-gold.bonus-pulse .v {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
       }
@@ -747,8 +778,13 @@
     <div class="hud-bottom">
       <div class="palette" data-bind="palette"></div>
       <div class="ctrl-stack">
+        <div class="early-call" data-bind="early-call" hidden>
+          <span class="ec-label">Early call</span>
+          <span class="ec-value" data-bind="early-call-value">+0g · 20s</span>
+        </div>
         <button class="ctrl-btn next-wave" data-action="send-next-wave" aria-label="Send next wave">▶ Send wave</button>
         <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward" aria-label="Toggle fast-forward">2×</button>
+        <span class="sr-only" role="status" data-bind="early-call-announce"></span>
       </div>
     </div>
   </div>

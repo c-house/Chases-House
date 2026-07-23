@@ -178,14 +178,19 @@ const POLICIES = {
 };
 
 // ─── Sim runner ──────────────────────────────────────────────
-function runScripted(mapId, difficulty, policyName) {
+// opts.slowCall: wait out the ADR-036 D4 early-call countdown before each
+// send (forfeits every bonus) — the control arm for the early-call check.
+function runScripted(mapId, difficulty, policyName, opts) {
   const state = Eng.createState(mapId, difficulty);
   const policy = POLICIES[policyName];
+  const slowCall = !!(opts && opts.slowCall);
   const kills = {};
   let elapsed = 0;
   while (state.fsm !== 'wonRun' && state.fsm !== 'lostRun' && elapsed < MAX_SIM_MS) {
     policy(state);
-    if (Eng.canSendNextWave(state)) Eng.sendNextWave(state);
+    if (Eng.canSendNextWave(state) && (!slowCall || state.prepCountdownMs <= 0)) {
+      Eng.sendNextWave(state);
+    }
     Eng.step(state, TICK_MS);
     for (const ev of state.events) if (ev.kind === 'kill') kills[ev.enemyType] = (kills[ev.enemyType] || 0) + 1;
     state.events.length = 0;
@@ -349,6 +354,16 @@ for (const map of maps) {
   const ok = (q.won && s.won) ? s.goldEarned > q.goldEarned : s.goldEarned >= q.goldEarned;
   check('bounty-coupling-total:' + map.id, ok,
     'earned quiet ' + q.goldEarned + 'g vs spirited ' + s.goldEarned + 'g');
+}
+
+// 5c. ADR-036 CH-4: an early-calling build banks more gold than one that
+// waits out every countdown (same map/difficulty/policy — the only delta
+// is tempo, so the difference is exactly the early-call bonuses).
+{
+  const fast = results['plains/quiet/ranger-heavy'];
+  const slow = runScripted('plains', 'quiet', 'ranger-heavy', { slowCall: true });
+  check('early-call-banks-more', fast.won && slow.won && fast.goldEarned > slow.goldEarned,
+    'early-caller ' + fast.goldEarned + 'g vs slow-caller ' + slow.goldEarned + 'g');
 }
 
 // 6. Curve CSVs + attrition monotonicity (ADR-036 D2: no mid-run decline w2→w7).

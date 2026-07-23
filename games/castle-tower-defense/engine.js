@@ -18,6 +18,7 @@
   const DEFEAT_FRAMES_DELAY  = 900;
   const AURA_SLOW_FLOOR_MS   = 250;   // Per-tick minimum slow duration (NOT an execution interval)
   const FIXED_STEP_MS        = 1000 / 60;
+  const PREP_COUNTDOWN_MS    = 20000; // ADR-036 D4 early-call window (skipped for wave 1)
 
   // ─── Map baking ──────────────────────────────────────────────
   function bakeMap(map) {
@@ -76,6 +77,9 @@
       waveIndex: 0,
       waveTotal: map.waves.length,
       waveProgress: null,
+      // Early-call countdown (ADR-036 D4). 0 = no bonus window; wave 1's
+      // prep (and the tutorial) never starts one — it arms on wave clear.
+      prepCountdownMs: 0,
       fastForward: false,
       gameOverDelayMs: 0,
       gameOverTriggered: false,
@@ -151,6 +155,15 @@
 
   function sendNextWave(state) {
     if (!canSendNextWave(state)) return 'invalid';
+    if (state.prepCountdownMs > 0) {
+      const bonus = E().earlyCallBonus(state.prepCountdownMs / 1000, state);
+      if (bonus > 0) {
+        state.gold += bonus;
+        state.goldEarned += bonus;
+        state.events.push({ kind: 'earlyCallBonus', amount: bonus });
+      }
+      state.prepCountdownMs = 0;
+    }
     startCurrentWave(state);
     return 'ok';
   }
@@ -213,6 +226,7 @@
       } else {
         state.waveIndex += 1;
         state.fsm = 'prepWave';
+        state.prepCountdownMs = PREP_COUNTDOWN_MS;
       }
     }
   }
@@ -221,6 +235,9 @@
   function step(state, dtMs) {
     if (state.paused) return;
     if (state.fsm === 'wonRun' || state.fsm === 'lostRun') return;
+    if (state.fsm === 'prepWave' && state.prepCountdownMs > 0) {
+      state.prepCountdownMs = Math.max(0, state.prepCountdownMs - dtMs);
+    }
     const dtSec = dtMs / 1000;
 
     stepEnemies(state, dtSec);
@@ -527,6 +544,6 @@
     canSendNextWave,
     step, computeScore, computeStars,
     BEHAVIOR_HANDLERS,
-    AURA_SLOW_FLOOR_MS, FIXED_STEP_MS, DEFEAT_FRAMES_DELAY
+    AURA_SLOW_FLOOR_MS, FIXED_STEP_MS, DEFEAT_FRAMES_DELAY, PREP_COUNTDOWN_MS
   };
 })();

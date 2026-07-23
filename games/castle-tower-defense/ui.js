@@ -13,6 +13,7 @@
   let totalStarsEl, maxStarsEl;
   let hudGold, hudLives, hudWaveNum, hudWaveOf;
   let nextWaveBtn, fastFwdBtn;
+  let earlyCallChip, earlyCallValue, earlyCallAnnounce;
   let sheetSlot, sheetTower, sheetSlotIdLabel, sheetPicks, sheetTowerName, sheetTierPips, sheetStats, sheetUpgradeBtn, sheetSellBtn;
   let activeSheet = null;       // 'slot' | 'tower' | null
   let sheetTargetSlotId = null; // for slot sheet
@@ -57,6 +58,9 @@
     hudWaveOf    = $('[data-bind="waveOf"]');
     nextWaveBtn  = $('[data-action="send-next-wave"]');
     fastFwdBtn   = $('[data-action="toggle-fast-forward"]');
+    earlyCallChip     = $('[data-bind="early-call"]');
+    earlyCallValue    = $('[data-bind="early-call-value"]');
+    earlyCallAnnounce = $('[data-bind="early-call-announce"]');
 
     gameOverBindings = {
       heading:        $('[data-bind="resultHeading"]'),
@@ -246,6 +250,7 @@
     updatePalette(state);
     updateNextWaveButton(state);
     updateFastFwdButton(state);
+    updateEarlyCall(state);
     updateGoldFlash();
   }
 
@@ -267,6 +272,32 @@
   function updateFastFwdButton(state) {
     if (!fastFwdBtn) return;
     fastFwdBtn.classList.toggle('active', state.fastForward);
+  }
+
+  // ─── Early-call bonus chip (ADR-036 D4) ──────────────────────
+  // The ticking readout is deliberately NOT aria-live (it changes every
+  // second); the award is announced once through the separate
+  // role="status" region in announceEarlyCallBonus.
+  function updateEarlyCall(state) {
+    if (!earlyCallChip) return;
+    // In the browser, pause hides the whole play screen (game.js swaps
+    // data-screen), so the !paused term only matters for headless/embedded
+    // callers that drive engine.togglePause directly.
+    const show = state.fsm === 'prepWave' && state.prepCountdownMs > 0 && !state.paused;
+    earlyCallChip.hidden = !show;
+    if (!show || !earlyCallValue) return;
+    const secs = Math.ceil(state.prepCountdownMs / 1000);
+    const bonus = window.CTD3Entities.earlyCallBonus(state.prepCountdownMs / 1000, state);
+    earlyCallValue.textContent = '+' + bonus + 'g · ' + secs + 's';
+  }
+  function announceEarlyCallBonus(amount) {
+    if (earlyCallAnnounce) earlyCallAnnounce.textContent = 'Early call bonus +' + amount + ' gold';
+    const goldStat = document.getElementById('stat-gold');
+    if (goldStat && motionAllowed()) {
+      goldStat.classList.remove('bonus-pulse');
+      void goldStat.offsetWidth; // restart the animation on back-to-back awards
+      goldStat.classList.add('bonus-pulse');
+    }
   }
 
   // ─── Gold-deficit flash (ADR-028 §C-3) ───────────────────────
@@ -516,7 +547,7 @@
     hydrateMapSelect, fillGameOver,
     setMapTab, getActiveMapTab,
     flashWaveClear,
-    setGoldFlash,
+    setGoldFlash, announceEarlyCallBonus,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,
     setLoadingProgress,
     fillHelpScreen,

@@ -488,7 +488,9 @@ function tick(ts) {
   lastTs = ts;
   const screen = document.body.getAttribute('data-screen');
   const isPlaying = (screen === 'play' || screen === 'tutorial');
-  const dt = dtRaw * (state && state.fastForward ? 2 : 1);
+  // Fast-forward only accelerates combat — during prepWave it would
+  // silently drain the ADR-036 early-call countdown at 2×.
+  const dt = dtRaw * (state && state.fastForward && state.fsm === 'inWave' ? 2 : 1);
 
   // Always-on
   window.CTD3Lighting.update(dtRaw);
@@ -544,6 +546,8 @@ function consumeEngineEvents(state) {
   for (const ev of state.events) {
     if (ev.kind === 'waveClear') {
       window.CTD3Ui.flashWaveClear();
+    } else if (ev.kind === 'earlyCallBonus') {
+      window.CTD3Ui.announceEarlyCallBonus(ev.amount);
     } else if (ev.kind === 'phaseTransition') {
       window.CTD3Lighting.beginPhase(ev.to, 1200);
     } else if (ev.kind === 'fire' && ev.towerId) {
