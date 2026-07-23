@@ -14,6 +14,7 @@
   let hudGold, hudLives, hudWaveNum, hudWaveOf;
   let nextWaveBtn, fastFwdBtn;
   let earlyCallChip, earlyCallValue, earlyCallAnnounce;
+  let interestChip, interestValue, interestAnnounce, buyLifeBtn, buyLifeCost;
   let sheetSlot, sheetTower, sheetSlotIdLabel, sheetPicks, sheetTowerName, sheetTierPips, sheetStats, sheetUpgradeBtn, sheetSellBtn;
   let activeSheet = null;       // 'slot' | 'tower' | null
   let sheetTargetSlotId = null; // for slot sheet
@@ -61,6 +62,11 @@
     earlyCallChip     = $('[data-bind="early-call"]');
     earlyCallValue    = $('[data-bind="early-call-value"]');
     earlyCallAnnounce = $('[data-bind="early-call-announce"]');
+    interestChip     = $('[data-bind="interest"]');
+    interestValue    = $('[data-bind="interest-value"]');
+    interestAnnounce = $('[data-bind="interest-announce"]');
+    buyLifeBtn       = $('[data-bind="buy-life"]');
+    buyLifeCost      = $('[data-bind="buy-life-cost"]');
 
     gameOverBindings = {
       heading:        $('[data-bind="resultHeading"]'),
@@ -68,7 +74,15 @@
       starsRow:       $('[data-bind="starsRow"]'),
       livesRemaining: $('[data-bind="livesRemaining"]'),
       score:          $('[data-bind="score"]'),
-      bestScore:      $('[data-bind="bestScore"]')
+      bestScore:      $('[data-bind="bestScore"]'),
+      campaignResult: $('[data-bind="campaignResult"]'),
+      endlessResult:  $('[data-bind="endlessResult"]'),
+      endlessWaves:   $('[data-bind="endlessWaves"]'),
+      endlessBestLine: $('[data-bind="endlessBestLine"]'),
+      endlessEarned:  $('[data-bind="endlessEarned"]'),
+      endlessInterest: $('[data-bind="endlessInterest"]'),
+      endlessLivesBought: $('[data-bind="endlessLivesBought"]'),
+      endlessSeed:    $('[data-bind="endlessSeed"]')
     };
 
     sheetSlot         = $('#sheet-slot');
@@ -301,6 +315,33 @@
     if (!hudGold) return;
     hudGold.textContent  = String(state.gold);
     hudLives.textContent = String(Math.max(0, state.lives));
+    updateWaveCounter(state);
+    updatePalette(state);
+    updateNextWaveButton(state);
+    updateFastFwdButton(state);
+    updateEarlyCall(state);
+    updateInterest(state);
+    updateBuyLife(state);
+    updateGoldFlash();
+  }
+
+  // ─── Wave counter ────────────────────────────────────────────
+  // Campaign reads "Wave 3 of 8". Endless has no denominator, and "of ∞"
+  // is a maths symbol in a game that speaks in watches and gates. The slot
+  // instead carries what an endless player actually needs to plan for: how
+  // far it is to the next boss anchor (ADR-037 D9 pins one every 10th wave).
+  function updateWaveCounter(state) {
+    if (!hudWaveNum || !hudWaveOf) return;
+    if (state.endless) {
+      const wave = state.waveIndex + 1;
+      const cadence = window.CTD3Endless ? window.CTD3Endless.BOSS_CADENCE : 10;
+      const untilBoss = (cadence - (wave % cadence)) % cadence;
+      hudWaveNum.textContent = String(wave);
+      hudWaveOf.textContent  = untilBoss === 0 ? '· boss wave' : `· boss in ${untilBoss}`;
+      hudWaveOf.className    = untilBoss === 0 ? 'anchor boss' : 'anchor';
+      return;
+    }
+    hudWaveOf.className = '';
     if (state.waveTotal) {
       const display = Math.min(state.waveIndex + 1, state.waveTotal);
       hudWaveNum.textContent = String(display);
@@ -309,11 +350,56 @@
       hudWaveNum.textContent = '';
       hudWaveOf.textContent  = '';
     }
-    updatePalette(state);
-    updateNextWaveButton(state);
-    updateFastFwdButton(state);
-    updateEarlyCall(state);
-    updateGoldFlash();
+  }
+
+  // ─── Interest readout (ADR-037 D9) ───────────────────────────
+  // Beside the gold counter because it is a property OF the bank. Like the
+  // early-call chip, the ticking value is NOT aria-live — announceInterest
+  // handles the award through a separate role="status" region.
+  function updateInterest(state) {
+    if (!interestChip) return;
+    if (!state.endless) { interestChip.hidden = true; return; }
+    interestChip.hidden = false;
+    if (!interestValue) return;
+    const Eng = window.CTD3Engine;
+    const secs = Math.ceil(Eng.interestNextMs(state) / 1000);
+    interestValue.textContent = '+' + Eng.interestPreview(state) + 'g · ' + secs + 's';
+  }
+
+  function announceInterest(amount) {
+    // Clear-then-set, for the reason announceDenial documents: identical
+    // back-to-back text inside one a11y update cycle is coalesced and never
+    // announced. Interest is capped, so past a certain bank EVERY payment is
+    // the same number — without this the region would go quiet for good
+    // exactly when the mechanic matters most.
+    if (interestAnnounce) {
+      interestAnnounce.textContent = '';
+      setTimeout(() => { interestAnnounce.textContent = 'Interest paid +' + amount + ' gold'; }, 50);
+    }
+    if (!interestChip || !motionAllowed()) return;
+    interestChip.classList.remove('paying');
+    void interestChip.offsetWidth; // restart the flash on back-to-back payments
+    interestChip.classList.add('paying');
+  }
+
+  // ─── Buy-a-life (ADR-037 D9) ─────────────────────────────────
+  // Available in prep AND mid-wave: a leak you are watching happen is
+  // exactly when you want to buy the life back.
+  function updateBuyLife(state) {
+    if (!buyLifeBtn) return;
+    if (!state.endless) { buyLifeBtn.hidden = true; return; }
+    buyLifeBtn.hidden = false;
+    const cost = window.CTD3Engine.buyLifeCost(state);
+    const affordable = state.gold >= cost;
+    if (buyLifeCost) buyLifeCost.textContent = cost + 'g';
+    // aria-disabled, not disabled: the control must stay focusable so the
+    // reason it can't be used is actually reachable. Pressing it while
+    // unaffordable announces the denial rather than doing nothing silently.
+    buyLifeBtn.setAttribute('aria-disabled', String(!affordable));
+    buyLifeBtn.setAttribute('aria-label', affordable
+      ? `Buy one life for ${cost} gold`
+      : `Buy one life — costs ${cost} gold, you have ${state.gold}`);
+    buyLifeBtn.title = affordable ? '' : `Needs ${cost - state.gold} more gold`;
   }
 
   function motionAllowed() {
@@ -350,7 +436,14 @@
     if (!show || !earlyCallValue) return;
     const secs = Math.ceil(state.prepCountdownMs / 1000);
     const bonus = window.CTD3Entities.earlyCallBonus(state.prepCountdownMs / 1000, state);
-    earlyCallValue.textContent = '+' + bonus + 'g · ' + secs + 's';
+    // In endless the countdown is not an idle timer — it sends itself when it
+    // runs out (ADR-037 D8.2). The chip has to say so, or the player reads a
+    // clock they think they control and gets a wave they did not ask for.
+    const label = earlyCallChip.querySelector('.ec-label');
+    if (label) label.textContent = state.endless ? `Sends in ${secs}s` : 'Early call';
+    earlyCallValue.textContent = state.endless
+      ? 'call early +' + bonus + 'g'
+      : '+' + bonus + 'g · ' + secs + 's';
   }
   // ADR-034 T9 — screen-reader denial announcement. The gold counter's own
   // aria-live only reports the number changing; a denied action changes
@@ -387,7 +480,7 @@
 
   // ─── Map select ──────────────────────────────────────────────
   function renderMapCard(map, opts) {
-    const { scores, unlocked, showUnlockHint, showDelete } = opts;
+    const { scores, unlocked, showUnlockHint, showDelete, endlessBests } = opts;
     const mapScores = scores[map.id] || {};
     const sQuiet    = (mapScores.quiet    && mapScores.quiet.stars)    || 0;
     const sSpirited = (mapScores.spirited && mapScores.spirited.stars) || 0;
@@ -415,11 +508,43 @@
       row.appendChild(delBtn);
     }
     card.appendChild(row);
+    card.appendChild(endlessEntryRow(map.id, unlocked, endlessBests));
 
     if (showUnlockHint) {
       card.appendChild(el('div', { style: 'text-align:center;margin-top:0.5rem;opacity:0.8;' }, ['Awaits ' + map.unlockRequirement + '★']));
     }
     return card;
+  }
+
+  // ─── Endless entry (ADR-037 C-2) ─────────────────────────────
+  // A quiet second row rather than two more buttons in the difficulty row:
+  // the campaign remains the primary read, and endless is available on every
+  // map in every tab (D10 — running endless on authored maps is this cycle's
+  // substitute for generated ones).
+  function endlessEntryRow(mapId, unlocked, endlessBests) {
+    const row = el('div', { class: 'endless-entry' });
+    const best = bestFor(endlessBests, mapId);
+    row.appendChild(el('span', { class: 'ee-label' },
+      [best > 0 ? `Endless · best ${best}` : 'Endless']));
+    ['quiet', 'spirited'].forEach(diff => {
+      const btn = el('button', {
+        class: 'btn', 'data-action': 'start-endless',
+        'data-map-id': mapId, 'data-difficulty': diff
+      }, [diff[0].toUpperCase() + diff.slice(1)]);
+      if (!unlocked) btn.disabled = true;
+      row.appendChild(btn);
+    });
+    return row;
+  }
+  // Best waves across both difficulties — the map card shows one number.
+  function bestFor(endlessBests, mapId) {
+    if (!endlessBests) return 0;
+    let n = 0;
+    ['quiet', 'spirited'].forEach(d => {
+      const rec = endlessBests[mapId + ':' + d];
+      if (rec && rec.waves > n) n = rec.waves;
+    });
+    return n;
   }
 
   // Tab state lives on the function — simple module-private store.
@@ -486,10 +611,23 @@
       class: 'btn primary', 'data-action': 'import-community', 'data-community-code': map._communityCode
     }, ['Import to My Maps']));
     card.appendChild(row);
+    // Endless on a community map (ADR-037 C-2). A community entry is not a
+    // registered map — byId only resolves official and user maps — so the
+    // only honest path to playing one is the import the card already offers.
+    // The button says so rather than pretending to launch from thin air.
+    const endlessRow = el('div', { class: 'endless-entry' });
+    endlessRow.appendChild(el('span', { class: 'ee-label' }, ['Endless']));
+    ['quiet', 'spirited'].forEach(diff => {
+      endlessRow.appendChild(el('button', {
+        class: 'btn', 'data-action': 'start-endless-community',
+        'data-community-code': map._communityCode, 'data-difficulty': diff
+      }, ['Import & play · ' + diff[0].toUpperCase() + diff.slice(1)]));
+    });
+    card.appendChild(endlessRow);
     return card;
   }
 
-  function hydrateMapSelect(scores, isMapUnlocked, isHardUnlocked, totalStars) {
+  function hydrateMapSelect(scores, isMapUnlocked, isHardUnlocked, totalStars, endlessBests) {
     if (!mapGrid) return;
     if (totalStarsEl) totalStarsEl.textContent = String(totalStars());
     if (maxStarsEl)   maxStarsEl.textContent   = String(window.CTD3Maps.maxStars());
@@ -500,7 +638,7 @@
       MAPS.forEach(map => {
         const unlocked = isMapUnlocked(map.id);
         mapGrid.appendChild(renderMapCard(map, {
-          scores, unlocked, showUnlockHint: !unlocked, showDelete: false
+          scores, unlocked, showUnlockHint: !unlocked, showDelete: false, endlessBests
         }));
       });
     } else if (_activeMapTab === 'mine') {
@@ -510,7 +648,7 @@
       } else {
         USER.forEach(map => {
           mapGrid.appendChild(renderMapCard(map, {
-            scores, unlocked: true, showUnlockHint: false, showDelete: true
+            scores, unlocked: true, showUnlockHint: false, showDelete: true, endlessBests
           }));
         });
       }
@@ -523,9 +661,45 @@
   function fillGameOver(opts) {
     const { won, mapName, difficulty, stars, livesRemaining, startLives, score, bestScore } = opts;
     if (!gameOverBindings.heading) return;
+    const g = gameOverBindings;
+    const diffLabel = `${mapName} · ${difficulty[0].toUpperCase() + difficulty.slice(1)}`;
+
+    // ── Endless results (ADR-037 D5: stars do not apply) ──────
+    // Every endless run ends in defeat by construction, so the question the
+    // screen answers is "how far did the watch hold", not "did you win".
+    if (opts.endless) {
+      const e = opts.endless;
+      if (g.campaignResult) g.campaignResult.hidden = true;
+      if (g.endlessResult)  g.endlessResult.hidden  = false;
+      g.heading.textContent = 'The Watch Ends';
+      g.heading.style.color = 'var(--terracotta)';
+      g.mapDifficulty.textContent = `${diffLabel} · Endless`;
+      if (g.endlessWaves) g.endlessWaves.textContent = String(e.waves);
+      if (g.endlessBestLine) {
+        // Three states, because "a new best — the last stood 0" is nonsense
+        // on a first run and an empty record deserves an invitation, not a
+        // zero.
+        // Named by difficulty, because the map card shows the best across
+        // BOTH difficulties — without the qualifier the two numbers look
+        // like the same statistic disagreeing.
+        const d = difficulty[0].toUpperCase() + difficulty.slice(1);
+        g.endlessBestLine.textContent =
+          !e.isBest            ? `Your best here on ${d}: ${e.previousBest} waves`
+          : e.previousBest > 0 ? `A new best on ${d} — the last watch stood ${e.previousBest}.`
+          :                      `Your first watch here on ${d}. The mark is set.`;
+      }
+      if (g.endlessEarned)      g.endlessEarned.textContent      = e.goldEarned.toLocaleString();
+      if (g.endlessInterest)    g.endlessInterest.textContent    = e.interestEarned.toLocaleString();
+      if (g.endlessLivesBought) g.endlessLivesBought.textContent = String(e.livesBought);
+      if (g.endlessSeed)        g.endlessSeed.textContent        = String(e.seed);
+      return;
+    }
+    if (g.campaignResult) g.campaignResult.hidden = false;
+    if (g.endlessResult)  g.endlessResult.hidden  = true;
+
     gameOverBindings.heading.textContent       = won ? 'The Watch Holds' : 'The Gate Has Fallen';
     gameOverBindings.heading.style.color       = won ? 'var(--aged-gold)' : 'var(--terracotta)';
-    gameOverBindings.mapDifficulty.textContent = `${mapName} · ${difficulty[0].toUpperCase() + difficulty.slice(1)}`;
+    gameOverBindings.mapDifficulty.textContent = diffLabel;
     gameOverBindings.starsRow.replaceChildren(
       el('span', { role: 'img', 'aria-label': `${stars} of 3 stars` }, ['★'.repeat(stars) + '☆'.repeat(3 - stars)])
     );
@@ -622,7 +796,7 @@
     hydrateMapSelect, fillGameOver,
     setMapTab, getActiveMapTab,
     flashWaveClear,
-    setGoldFlash, announceEarlyCallBonus, announceDenial,
+    setGoldFlash, announceEarlyCallBonus, announceDenial, announceInterest,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,
     setLoadingProgress,
     fillHelpScreen,

@@ -10,7 +10,14 @@ const FIXED_STEP_MS = 1000 / 60;
 const KEYS = {
   scores:        'ctd3:scores',
   settings:      'ctd3:settings',
-  tutorialSeen:  'ctd3:tutorialSeen'
+  tutorialSeen:  'ctd3:tutorialSeen',
+  // ADR-037 C-2 — endless records live under their OWN key and never touch
+  // ctd3:scores. totalStars() sums `stars` across every difficulty key under
+  // each non-`user:` map in that object, and that total gates campaign
+  // unlocks (unlockRequirement), so an endless record written there would
+  // corrupt which maps a player can open.
+  // Shape: { '<mapId>:<difficulty>': { waves, gold, lives, at } }.
+  endless:       'ctd3:endless'
 };
 const SETTINGS_DEFAULTS = {
   musicVolume: 0.40, sfxVolume: 0.80, ambientVolume: 0.25,
@@ -32,6 +39,8 @@ function loadSettings() {
 function saveSettings(s) { window.SharedStorage.safeSet(KEYS.settings, s); }
 function tutorialSeen()    { return !!window.SharedStorage.safeGet(KEYS.tutorialSeen, false); }
 function markTutorialSeen() { window.SharedStorage.safeSet(KEYS.tutorialSeen, true); }
+function loadEndlessBests()  { return window.SharedStorage.safeGet(KEYS.endless, {}); }
+function saveEndlessBests(b) { window.SharedStorage.safeSet(KEYS.endless, b); }
 
 function totalStars() {
   const all = loadScores();
@@ -202,7 +211,8 @@ function firstClickAudio() {
 }
 
 function refreshMapSelect() {
-  window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+  window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars,
+    loadEndlessBests());
 }
 
 // ─── FSM transitions ─────────────────────────────────────────
@@ -211,10 +221,19 @@ function go(screen) {
   if (screen === 'map-select') refreshMapSelect();
 }
 
-function startMap(mapId, difficulty) {
+function startMap(mapId, difficulty, opts) {
   if (!isMapUnlocked(mapId)) return;
-  const useTutorial = !tutorialSeen() && mapId === 'plains';
-  state = window.CTD3Engine.createState(mapId, difficulty, { tutorial: useTutorial });
+  const endless = !!(opts && opts.endless);
+  // The tutorial is suppressed in endless, and not only for tone: while it is
+  // active stepWave refuses to spawn, but the endless prep countdown would
+  // still auto-send — leaving a run wedged in a wave that never spawns.
+  const useTutorial = !endless && !tutorialSeen() && mapId === 'plains';
+  // Fresh seed per run, so "Play again" is a new watch rather than a rerun.
+  // Surfaced on the results screen: a reproducible run is the seam the
+  // cycle-3 daily seeded challenge needs.
+  const seed = endless ? ((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0) : 0;
+  state = window.CTD3Engine.createState(mapId, difficulty,
+    endless ? { endless: true, seed } : { tutorial: useTutorial });
   // A sheet left open by the previous run would keep the fresh HUD inert (T14).
   window.CTD3Ui.closeSheets();
   window.CTD3Scene.clearPlayfield();
@@ -310,12 +329,53 @@ function handleAction(name, el) {
     case 'quit-to-map-select':     backToMapSelect(); window.CTD3Audio.uiSfx('click'); break;
     case 'dismiss-tutorial':       actions.dismissTutorial(); window.CTD3Audio.uiSfx('click'); break;
     case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); window.CTD3Audio.uiSfx('click'); break;
+    case 'start-endless':          startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet', { endless: true }); window.CTD3Audio.uiSfx('click'); break;
+    case 'buy-life':               actions.buyLife(); break;
+    case 'start-endless-community': {
+      // A community entry isn't a registered map, so playing one means
+      // importing it first — the same path the Import button takes. Named
+      // honestly on the button so the save isn't a surprise side effect.
+      const code = el.dataset.communityCode;
+      const difficulty = el.dataset.difficulty || 'quiet';
+      if (!code || typeof window.SharedFirebase === 'undefined') break;
+      window.SharedFirebase.ref('ctd3-community/' + code).once('value').then(snap => {
+        const val = snap.val();
+        if (!val || !val.map) { window.alert('Map ' + code + ' not found.'); return; }
+        const combined = {
+          map: Object.assign({}, val.map),
+          decorations: val.decorations || [],
+          meta: val.meta || {}
+        };
+        // STABLE id, deliberately not the timestamped one the plain Import
+        // action mints: saveUserMap replaces by id, so a fresh id per click
+        // would append a duplicate every time and — because endless bests are
+        // keyed by mapId — reset the personal best on every single play.
+        combined.map.id = 'user:community-' + code;
+        if (!window.CTD3Maps.saveUserMap(combined)) {
+          window.alert('That map could not be read. Nothing was imported.');
+          return;
+        }
+        // Land on My Maps, where the map now lives — quitting the run would
+        // otherwise return to the Community tab with it nowhere in sight.
+        window.CTD3Ui.setMapTab('mine');
+        startMap(combined.map.id, difficulty, { endless: true });
+      }).catch(e => {
+        // Log as well as alert: this .then covers the whole game-boot path
+        // (saveUserMap, createState, paintTerrain), so a programming error in
+        // there would otherwise surface only as a network-shaped alert with
+        // no stack to debug from.
+        console.error('[ctd3] start-endless-community failed:', e);
+        window.alert('Could not start that map: ' + (e && e.message));
+      });
+      window.CTD3Audio.uiSfx('click');
+      break;
+    }
     case 'delete-user-map': {
       const mapId = el.dataset.mapId;
       const map = window.CTD3Maps.byId(mapId);
       if (map && window.confirm('Delete "' + map.displayName + '"? This cannot be undone.')) {
         window.CTD3Maps.deleteUserMap(mapId);
-        window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+        refreshMapSelect();
       }
       window.CTD3Audio.uiSfx('click');
       break;
@@ -323,7 +383,7 @@ function handleAction(name, el) {
     case 'map-tab': {
       const tab = el.dataset.tab;
       window.CTD3Ui.setMapTab(tab);
-      window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+      refreshMapSelect();
       window.CTD3Audio.uiSfx('click');
       break;
     }
@@ -343,7 +403,7 @@ function handleAction(name, el) {
         if (window.confirm('Import "' + (val.map.displayName || code) + '" by ' + ((val.meta && val.meta.authorName) || 'anonymous') + '?')) {
           window.CTD3Maps.saveUserMap(combined);
           window.CTD3Ui.setMapTab('mine');
-          window.CTD3Ui.hydrateMapSelect(loadScores(), isMapUnlocked, isHardUnlocked, totalStars);
+          refreshMapSelect();
         }
       }).catch(e => window.alert('Import failed: ' + (e && e.message)));
       window.CTD3Audio.uiSfx('click');
@@ -361,7 +421,12 @@ function handleAction(name, el) {
     case 'test-grant-gold': if (window.CastleTowerDefense._test) window.CastleTowerDefense._test.grantGold(500); break;
     case 'test-set-lives':  if (window.CastleTowerDefense._test && state) state.lives = Math.min(99, state.lives + 10); break;
     case 'test-jump-last':
-      if (state) { state.waveIndex = state.waveTotal - 1; state.fsm = 'prepWave'; }
+      // waveTotal is Infinity in endless, so the campaign form would set
+      // waveIndex to Infinity and the wave generator would then be asked for
+      // wave NaN. Jump a fixed distance instead — "the last wave" has no
+      // meaning in a mode that has no last wave.
+      if (state && state.endless) { jumpEndlessTo(state.waveIndex + 10); }
+      else if (state) { state.waveIndex = state.waveTotal - 1; state.fsm = 'prepWave'; }
       break;
     case 'test-kill-all':
       if (state) { state.enemies.forEach(en => { en.hp = 0; }); }
@@ -478,8 +543,18 @@ const actions = {
   },
   restart() {
     if (!state) return;
-    const m = state.mapId, d = state.difficulty;
-    startMap(m, d);
+    const m = state.mapId, d = state.difficulty, endless = state.endless;
+    startMap(m, d, { endless });
+  },
+  buyLife() {
+    if (!state) return;
+    const result = window.CTD3Engine.buyLife(state);
+    if (result === 'unaffordable') {
+      window.CTD3Ui.setGoldFlash(true);
+      window.CTD3Ui.announceDenial('Not enough gold for a life');
+      window.CTD3Audio.uiSfx('error');
+    }
+    // 'invalid' is silent — the control is only rendered in endless anyway.
   },
   dismissTutorial() {
     if (!state) return;
@@ -557,6 +632,11 @@ function consumeEngineEvents(state) {
       window.CTD3Ui.flashWaveClear();
     } else if (ev.kind === 'earlyCallBonus') {
       window.CTD3Ui.announceEarlyCallBonus(ev.amount);
+    } else if (ev.kind === 'interest') {
+      window.CTD3Ui.announceInterest(ev.amount);
+    } else if (ev.kind === 'buyLife') {
+      window.CTD3Audio.uiSfx('click');
+      window.CTD3Ui.announceDenial('Life bought for ' + ev.cost + ' gold. ' + ev.lives + ' remaining.');
     } else if (ev.kind === 'phaseTransition') {
       window.CTD3Lighting.beginPhase(ev.to, 1200);
     } else if (ev.kind === 'fire' && ev.towerId) {
@@ -575,10 +655,57 @@ function consumeEngineEvents(state) {
   state.events.length = 0;
 }
 
+// Dev-surface wave jump for endless. The engine stamps endlessScale on each
+// wave advance, so moving waveIndex by hand without re-stamping it would give
+// wave-30 compositions wave-20 HP — a dev tool that quietly lies about the
+// curve is worse than none.
+function jumpEndlessTo(waveIndex) {
+  if (!state || !state.endless) return;
+  state.waveIndex = Math.max(0, waveIndex);
+  state.endlessScale = window.CTD3Endless.scaleFor(state.waveIndex);
+  state.fsm = 'prepWave';
+  state.prepCountdownMs = window.CTD3Engine.PREP_COUNTDOWN_MS;
+  state.prepArmed = true;
+}
+
 function showGameOver(state) {
   if (state._goSettled) return;
   state._goSettled = true;
   window.CTD3Ui.closeSheets();
+
+  // ── Endless (ADR-037 C-2) ─────────────────────────────────
+  // Returns BEFORE commitResult: endless must never write ctd3:scores,
+  // because totalStars() over that object drives campaign unlock gating.
+  if (state.endless) {
+    const result = window.CTD3Engine.endlessScore(state);
+    const bests = loadEndlessBests();
+    const key = state.mapId + ':' + state.difficulty;
+    const prior = bests[key] || null;
+    const isBest = window.CTD3Engine.endlessBetter(result, prior) > 0;
+    if (isBest) {
+      bests[key] = { waves: result.waves, gold: result.gold, lives: result.lives, at: Date.now() };
+      saveEndlessBests(bests);
+    }
+    // Only the fields the endless branch reads — passing stars: 0 would say
+    // "you earned zero stars" rather than "stars do not apply here".
+    window.CTD3Ui.fillGameOver({
+      won: false,
+      mapName: state.mapDef.displayName,
+      difficulty: state.difficulty,
+      endless: {
+        waves: result.waves,
+        goldEarned: result.goldEarned,
+        interestEarned: result.interestEarned,
+        livesBought: result.livesBought,
+        isBest,
+        previousBest: prior ? prior.waves : 0,
+        seed: state.endlessSeed
+      }
+    });
+    window.CTD3Ui.setScreen('game-over');
+    return;
+  }
+
   const won = state.fsm === 'wonRun';
   const stars = window.CTD3Engine.computeStars(state);
   const score = window.CTD3Engine.computeScore(state);
@@ -611,7 +738,11 @@ window.CastleTowerDefense = {
     getState: () => state,
     setLives: (n) => { if (state) state.lives = n; },
     grantGold: (n) => { if (state) state.gold += n; },
-    jumpToWave: (idx) => { if (state) { state.waveIndex = idx; state.fsm = 'prepWave'; } }
+    jumpToWave: (idx) => {
+      if (!state) return;
+      if (state.endless) { jumpEndlessTo(idx); return; }
+      state.waveIndex = idx; state.fsm = 'prepWave';
+    }
   } : undefined
 };
 

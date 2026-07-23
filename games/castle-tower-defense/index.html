@@ -475,6 +475,99 @@
       color: var(--aged-gold);
     }
     #stat-gold.bonus-pulse .v { animation: goldFlash 0.4s var(--ease-snap); }
+
+    /* ── Endless mode (ADR-037 C-2) ──────────────────────────────
+       Every element here reuses an idiom already on the page: the
+       ember-outlined chip with a SMALLCAPS label and a Fraunces value.
+       No new hues, and no new gold FILL — .ctrl-btn.active remains the
+       HUD's only one, so buy-a-life (a spend) takes terracotta, which is
+       already this codebase's cost/danger idiom. */
+    .hud-top .stat-group { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .interest {
+      text-align: center;
+      padding: 0.1rem 0.4rem;
+      background: rgba(40, 28, 18, 0.6);
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md);
+      pointer-events: none;
+    }
+    .interest .i-label {
+      display: block;
+      font-size: 0.58rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.55);
+    }
+    .interest .i-value {
+      font-family: var(--font-display, 'Fraunces'), serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--aged-gold);
+      white-space: nowrap;
+    }
+    .interest.paying .i-value { animation: goldFlash 0.4s var(--ease-snap); }
+    body.reduced-motion .interest.paying .i-value { animation: none; }
+
+    /* The wave counter's denominator slot carries the thing an endless
+       player actually needs to know: distance to the next boss anchor. */
+    .hud-top .wave .anchor { color: rgba(240, 230, 211, 0.6); font-size: 0.86rem; }
+    .hud-top .wave .anchor.boss { color: var(--terracotta); }
+
+    /* :not([hidden]) is load-bearing — `[hidden] { display: none }` is only a
+       user-agent rule, so a bare author `display: flex` here would out-cascade
+       it and leave this button visible through every campaign run. The sibling
+       .early-call and .interest chips set no display at all, which is why
+       their `hidden` works. */
+    .ctrl-btn.buy-life:not([hidden]) {
+      display: flex; flex-direction: column; gap: 0.05rem;
+      align-items: center; justify-content: center;
+      padding: 0.3rem 0.5rem;
+    }
+    .ctrl-btn.buy-life { border-color: var(--terracotta); }
+    /* Unaffordable is styled, not `disabled`: a disabled button is not
+       focusable, so its reason never reaches a keyboard or screen-reader
+       user. Kept reachable, it routes through the same denial announcement
+       every other unaffordable action uses (ADR-034 T9). */
+    .ctrl-btn.buy-life[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .ctrl-btn.buy-life .bl-label {
+      font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.7);
+    }
+    .ctrl-btn.buy-life .bl-cost {
+      font-family: var(--font-display, 'Fraunces'), serif;
+      font-size: 0.86rem; font-weight: 600; color: var(--aged-gold);
+    }
+    .ctrl-btn.buy-life:disabled .bl-cost { color: var(--terracotta); }
+
+    /* Map-card endless entry — a quiet second row so the campaign
+       difficulty row stays the primary read. */
+    .endless-entry {
+      display: flex; align-items: center; gap: 0.4rem;
+      margin-top: 0.5rem; padding-top: 0.5rem;
+      border-top: 1px solid rgba(200, 148, 62, 0.2);
+    }
+    .endless-entry .ee-label {
+      font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.55);
+      margin-right: auto;
+    }
+    .endless-entry .btn { font-size: 0.72rem; padding: 0.3rem 0.6rem; }
+
+    .endless-result .waves-count {
+      font-family: var(--font-display, 'Fraunces'), serif;
+      font-size: 3.2rem; font-weight: 600; line-height: 1;
+      color: var(--aged-gold); margin: 0.6rem 0 0.1rem;
+    }
+    .endless-result .waves-label {
+      font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.55); margin-bottom: 0.9rem;
+    }
+    .endless-result .endless-best { font-size: 0.9rem; margin-bottom: 0.7rem; }
+    .endless-result .endless-lines { font-size: 0.84rem; opacity: 0.75; line-height: 1.7; }
+    .endless-result .endless-seed {
+      font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(240, 230, 211, 0.4); margin-top: 0.8rem;
+    }
     .sr-only {
       position: absolute; width: 1px; height: 1px;
       padding: 0; margin: -1px; overflow: hidden;
@@ -762,9 +855,19 @@
   <!-- ── Play HUD ─────────────────────────────────────────────────── -->
   <div class="screen play">
     <div class="hud-top">
-      <span class="stat" id="stat-gold">
-        <span style="font-size:0.78rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.55);">Gold</span>
-        <span class="v" data-bind="gold" aria-live="polite" aria-atomic="true">0</span>
+      <span class="stat-group">
+        <span class="stat" id="stat-gold">
+          <span style="font-size:0.78rem;letter-spacing:0.15em;text-transform:uppercase;color:rgba(240,230,211,0.55);">Gold</span>
+          <span class="v" data-bind="gold" aria-live="polite" aria-atomic="true">0</span>
+        </span>
+        <!-- Endless only. Sits beside gold because it is a property OF the
+             bank. The ticking readout is deliberately NOT aria-live (it
+             changes every second) — the award is announced once through the
+             interest-announce region below, mirroring the early-call chip. -->
+        <span class="interest" data-bind="interest" hidden>
+          <span class="i-label">Interest</span>
+          <span class="i-value" data-bind="interest-value">+0g · 15s</span>
+        </span>
       </span>
       <span class="wave" aria-live="polite" aria-atomic="true">
         Wave <span data-bind="waveNum">0</span> <span data-bind="waveOf">of 0</span>
@@ -782,6 +885,12 @@
           <span class="ec-label">Early call</span>
           <span class="ec-value" data-bind="early-call-value">+0g · 20s</span>
         </div>
+        <!-- Endless only. Terracotta, not gold: this is the HUD's spend
+             action, and gold fill is spent on .ctrl-btn.active already. -->
+        <button class="ctrl-btn buy-life" data-action="buy-life" data-bind="buy-life" hidden>
+          <span class="bl-label">+1 life</span>
+          <span class="bl-cost" data-bind="buy-life-cost">100g</span>
+        </button>
         <button class="ctrl-btn next-wave" data-action="send-next-wave" aria-label="Send next wave">▶ Send wave</button>
         <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward" aria-label="Toggle fast-forward">2×</button>
       </div>
@@ -793,6 +902,7 @@
        live region would never announce. -->
   <span class="sr-only" role="status" data-bind="early-call-announce"></span>
   <span class="sr-only" role="status" data-bind="denial-announce"></span>
+  <span class="sr-only" role="status" data-bind="interest-announce"></span>
 
   <!-- ── Action sheets (ADR-028 §12) ──────────────────────────────
        Sheets live OUTSIDE the .screen blocks so they remain visible
@@ -853,10 +963,25 @@
     <div style="text-align:center;background:rgba(40,28,18,0.95);border:1px solid var(--accent-ember);border-radius:var(--radius-lg);padding:2rem;max-width:380px;">
       <h2 data-bind="resultHeading" style="font-family: var(--font-display), serif; color: var(--warm-stone); margin-top:0;">—</h2>
       <div data-bind="mapDifficulty" style="font-size:0.84rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.7;margin-bottom:1rem;"></div>
-      <div data-bind="starsRow" style="font-size:1.6rem;margin:0.8rem 0;color:var(--aged-gold);"></div>
-      <div style="font-size:0.9rem;margin:0.4rem 0;">Lives: <span data-bind="livesRemaining">0</span></div>
-      <div style="font-size:0.9rem;margin:0.4rem 0;">Score: <span data-bind="score">0</span></div>
-      <div style="font-size:0.8rem;opacity:0.7;">Best: <span data-bind="bestScore">0</span></div>
+      <div data-bind="campaignResult">
+        <div data-bind="starsRow" style="font-size:1.6rem;margin:0.8rem 0;color:var(--aged-gold);"></div>
+        <div style="font-size:0.9rem;margin:0.4rem 0;">Lives: <span data-bind="livesRemaining">0</span></div>
+        <div style="font-size:0.9rem;margin:0.4rem 0;">Score: <span data-bind="score">0</span></div>
+        <div style="font-size:0.8rem;opacity:0.7;">Best: <span data-bind="bestScore">0</span></div>
+      </div>
+      <!-- Endless results. Stars deliberately do not apply (ADR-037 D5), so
+           waves survived takes the hero slot instead of the star row. -->
+      <div class="endless-result" data-bind="endlessResult" hidden>
+        <div class="waves-count" data-bind="endlessWaves">0</div>
+        <div class="waves-label">waves survived</div>
+        <div class="endless-best" data-bind="endlessBestLine">Your best on this watch: 0</div>
+        <div class="endless-lines">
+          <div>Gold earned: <span data-bind="endlessEarned">0</span></div>
+          <div>Of that, interest: <span data-bind="endlessInterest">0</span></div>
+          <div>Lives bought: <span data-bind="endlessLivesBought">0</span></div>
+        </div>
+        <div class="endless-seed">Seed <span data-bind="endlessSeed">0</span></div>
+      </div>
       <div style="margin-top:1.5rem;">
         <button class="btn primary" data-action="play-again">Play Again</button>
         <button class="btn" data-action="quit-to-map-select">Quit</button>
