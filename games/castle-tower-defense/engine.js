@@ -462,10 +462,11 @@
 
   function killEnemy(state, en) {
     const def = E().ENEMIES[en.type];
-    state.gold += def.bounty;
-    state.goldEarned += def.bounty;
+    const paid = E().bountyFor(def, state);
+    state.gold += paid;
+    state.goldEarned += paid;
     state.effects.push(E().makeEffect('goldPopup', en.x, en.z, {
-      text: '+' + def.bounty, ttlMs: GOLD_POPUP_MS, totalTtlMs: GOLD_POPUP_MS
+      text: '+' + paid, ttlMs: GOLD_POPUP_MS, totalTtlMs: GOLD_POPUP_MS
     }));
     state.events.push({ kind: 'kill', enemyType: en.type });
     state.enemies = state.enemies.filter(e => e.id !== en.id);

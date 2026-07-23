@@ -300,6 +300,26 @@ for (const type of Object.keys(E.ENEMIES)) {
   check('difficulty-enemy-hp', hs > hq, 'footman quiet ' + hq + ' vs spirited ' + hs);
   const o = E.mergedDifficulty('quiet', { quiet: { startGold: 999 } });
   check('difficulty-override-merge', o.startGold === 999 && o.hpMult === E.DIFFICULTY.quiet.hpMult);
+  // ADR-036 CH-2: harder pays more per kill (D3 coupling, lesson 2).
+  const bq = E.bountyFor(E.ENEMIES.footman, q);
+  const bs = E.bountyFor(E.ENEMIES.footman, s);
+  check('bounty-coupling-per-kill', bs > bq, 'footman quiet ' + bq + 'g vs spirited ' + bs + 'g');
+}
+
+// 4b. Tier efficiency (ADR-036 D3a): DPS-per-cumulative-gold rises with tier,
+// T3 in ~1.1–1.3x T1, for every projectile tower.
+for (const [type, def] of Object.entries(E.TOWERS)) {
+  if (def.behavior !== 'projectile') continue;
+  const eff = [];
+  let cum = 0;
+  def.tiers.forEach(t => {
+    cum += t.cost;
+    eff.push((t.damage * t.fireRate * (t.volley || 1)) / cum);
+  });
+  const monotone = eff.every((v, i) => i === 0 || v >= eff[i - 1] - 0.001);
+  const ratio = eff[eff.length - 1] / eff[0];
+  check('tier-efficiency:' + type, monotone && ratio >= 1.1 && ratio <= 1.3,
+    eff.map(v => v.toFixed(3)).join('→') + ' T3/T1=' + ratio.toFixed(2));
 }
 
 // 5. Scripted runs: every map x difficulty x policy; completability per difficulty.
@@ -328,6 +348,20 @@ for (const map of maps) {
     check('completable:' + map.id + ':' + difficulty, wonBy.length > 0,
       wonBy.length ? 'won by ' + wonBy.join(',') : 'no scripted build wins');
   }
+}
+
+// 5b. ADR-036 CH-2 coupling, run-level: spirited total gold earned >= quiet
+// (same map, same scripted build) — bountyMult must outweigh nothing, since
+// enemy counts and wave rewards are identical across difficulties.
+for (const map of maps) {
+  const q = results[map.id + '/quiet/ranger-heavy'];
+  const s = results[map.id + '/spirited/ranger-heavy'];
+  // Strict > when both runs won: a full spirited clear at bountyMult 1.25
+  // must out-earn quiet, so equality would mean the multiplier never
+  // reached killEnemy (the exact integration a >= would let slip).
+  const ok = (q.won && s.won) ? s.goldEarned > q.goldEarned : s.goldEarned >= q.goldEarned;
+  check('bounty-coupling-total:' + map.id, ok,
+    'earned quiet ' + q.goldEarned + 'g vs spirited ' + s.goldEarned + 'g');
 }
 
 // 6. Curve CSVs + attrition monotonicity (ADR-036 D2: no mid-run decline w2→w7).

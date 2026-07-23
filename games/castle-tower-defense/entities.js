@@ -16,10 +16,13 @@
       behavior: 'projectile',
       damageType: 'physical',
       targets: 'all',
+      // Tier damage/cost shaped per ADR-036 D3(a): DPS-per-cumulative-gold
+      // rises modestly with tier (T3 ~1.2x T1) instead of the launch-era
+      // dip-then-spike that made Ranger T3 strictly dominant.
       tiers: [
         { cost: 50,  damage: 8,  range: 7.5, fireRate: 1.4, projSpeed: 24, projKind: 'arrow',     volley: 1 },
-        { cost: 60,  damage: 12, range: 9.0, fireRate: 1.6, projSpeed: 26, projKind: 'arrow',     volley: 1 },
-        { cost: 90,  damage: 16, range: 10,  fireRate: 1.8, projSpeed: 28, projKind: 'arrow',     volley: 2 }
+        { cost: 60,  damage: 16, range: 9.0, fireRate: 1.6, projSpeed: 26, projKind: 'arrow',     volley: 1 },
+        { cost: 105, damage: 16, range: 10,  fireRate: 1.8, projSpeed: 28, projKind: 'arrow',     volley: 2 }
       ]
     },
     catapult: {
@@ -29,8 +32,8 @@
       targets: 'ground',
       tiers: [
         { cost: 120, damage: 28, range: 7.0, fireRate: 0.55, projSpeed: 16, projKind: 'cannonball', splashRadius: 2.0 },
-        { cost: 120, damage: 38, range: 8.0, fireRate: 0.60, projSpeed: 17, projKind: 'cannonball', splashRadius: 2.8 },
-        { cost: 180, damage: 50, range: 9.0, fireRate: 0.65, projSpeed: 18, projKind: 'cannonball', splashRadius: 3.5 }
+        { cost: 110, damage: 52, range: 8.0, fireRate: 0.60, projSpeed: 17, projKind: 'cannonball', splashRadius: 2.8 },
+        { cost: 150, damage: 90, range: 9.0, fireRate: 0.65, projSpeed: 18, projKind: 'cannonball', splashRadius: 3.5 }
       ]
     },
     mage: {
@@ -40,8 +43,8 @@
       targets: 'all',
       tiers: [
         { cost: 200, damage: 22, range: 8.0, fireRate: 1.1, projSpeed: 30, projKind: 'magebolt', chains: 0 },
-        { cost: 180, damage: 28, range: 9.0, fireRate: 1.2, projSpeed: 32, projKind: 'magebolt', chains: 1 },
-        { cost: 250, damage: 36, range: 10,  fireRate: 1.3, projSpeed: 34, projKind: 'magebolt', chains: 2 }
+        { cost: 160, damage: 39, range: 9.0, fireRate: 1.2, projSpeed: 32, projKind: 'magebolt', chains: 1 },
+        { cost: 210, damage: 65, range: 10,  fireRate: 1.3, projSpeed: 34, projKind: 'magebolt', chains: 2 }
       ]
     },
     warden: {
@@ -85,16 +88,19 @@
   };
 
   // ─── DIFFICULTY (ADR-028 §3: 2 tiers, not 3) ─────────────────
+  // bountyMult couples reward to risk (ADR-036 D3/lesson 2, ETD-style):
+  // spirited's +35% HP and lean start are offset by paying more per kill,
+  // instead of compounding punishment on both axes.
   const DIFFICULTY = {
-    quiet:    { hpMult: 0.85, startGold: 220, startLives: 18 },
-    spirited: { hpMult: 1.15, startGold: 180, startLives: 12 }
+    quiet:    { hpMult: 0.85, startGold: 220, startLives: 18, bountyMult: 1.0 },
+    spirited: { hpMult: 1.15, startGold: 180, startLives: 12, bountyMult: 1.25 }
   };
 
   // Per-map difficulty overrides (Phase 3 of editor-promotion plan).
   // Canonical merge helper consumed by BOTH engine.createState and the
   // editor's live preview pane — no inlined overlay logic anywhere else.
-  // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?},
-  //                       spirited?: {hpMult?, startGold?, startLives?} }
+  // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?, bountyMult?},
+  //                       spirited?: {hpMult?, startGold?, startLives?, bountyMult?} }
   // Blank fields inherit canonical DIFFICULTY[difficulty] values.
   function mergedDifficulty(difficulty, overrides) {
     const base = DIFFICULTY[difficulty] || DIFFICULTY.quiet;
@@ -102,8 +108,19 @@
     return {
       hpMult:     (o.hpMult     != null) ? o.hpMult     : base.hpMult,
       startGold:  (o.startGold  != null) ? o.startGold  : base.startGold,
-      startLives: (o.startLives != null) ? o.startLives : base.startLives
+      startLives: (o.startLives != null) ? o.startLives : base.startLives,
+      bountyMult: (o.bountyMult != null) ? o.bountyMult : base.bountyMult
     };
+  }
+
+  // Single payout site (ADR-036 lesson 7): every bounty the engine pays
+  // flows through here so difficulty coupling — and any future bounty
+  // curve — applies in exactly one place. Pre-run states (no difficultyMult)
+  // fall back to the raw table value.
+  function bountyFor(enemyDef, state) {
+    const mult = (state && state.difficultyMult && state.difficultyMult.bountyMult != null)
+      ? state.difficultyMult.bountyMult : 1;
+    return Math.max(1, Math.round(enemyDef.bounty * mult));
   }
 
   // ─── HELPERS ─────────────────────────────────────────────────
@@ -239,7 +256,7 @@
 
   window.CTD3Entities = {
     TOWERS, ENEMIES, DIFFICULTY, TOWER_FIRE_SFX,
-    mergedDifficulty,
+    mergedDifficulty, bountyFor,
     towerInvested, towerSellValue, canTarget, applyDamage,
     refreshTowerSnapshot,
     makeTower, makeEnemy, makeProjectile, makeEffect
