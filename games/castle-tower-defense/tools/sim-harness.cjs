@@ -66,20 +66,27 @@ function warn(msg) { console.log('WARN  ' + msg); }
 // ─── Static curve computation (ADR-036 §2.2) ─────────────────
 // Split children (Slime → 2 Mini Slimes) count toward both wave HP and
 // income: they are real HP the towers must clear and real bounty paid.
+// The split chain is walked recursively so a future chain-split type
+// (child that itself splits) is counted, not silently dropped; a cycle
+// in ENEMIES splitsInto throws rather than hanging or undercounting.
 function waveStats(wave, hpMult) {
   let hp = 0, bounty = 0, count = 0;
   for (const gDef of wave.enemies) {
-    const def = E.ENEMIES[gDef.type];
+    let def = E.ENEMIES[gDef.type];
     if (!def) continue;
-    hp += gDef.count * Math.round(def.hp * hpMult);
-    bounty += gDef.count * def.bounty;
-    count += gDef.count;
-    if (def.splitsInto && E.ENEMIES[def.splitsInto]) {
-      const child = E.ENEMIES[def.splitsInto];
-      const n = gDef.count * (def.splitCount || 2);
-      hp += n * Math.round(child.hp * hpMult);
-      bounty += n * child.bounty;
+    let n = gDef.count;
+    const seen = new Set();
+    while (def) {
+      if (seen.has(def)) {
+        throw new Error('ENEMIES splitsInto cycle reached from "' + gDef.type + '" — fix entities.js');
+      }
+      seen.add(def);
+      hp += n * Math.round(def.hp * hpMult);
+      bounty += n * def.bounty;
       count += n;
+      const child = def.splitsInto && E.ENEMIES[def.splitsInto];
+      n = child ? n * (def.splitCount || 2) : 0;
+      def = child || null;
     }
   }
   return { hp, bounty, count, income: bounty + (wave.reward || 0) };
@@ -249,13 +256,17 @@ for (const map of maps) {
 }
 
 // 2. Every ENEMIES entry reachable from some official wave (directly or via split).
+//    Split reachability is transitive (chain-splits included).
 {
   const reachable = new Set();
-  for (const map of maps) map.waves.forEach(w => w.enemies.forEach(gDef => reachable.add(gDef.type)));
-  for (const t of [...reachable]) {
-    const def = E.ENEMIES[t];
-    if (def && def.splitsInto) reachable.add(def.splitsInto);
-  }
+  for (const map of maps) map.waves.forEach(w => w.enemies.forEach(gDef => {
+    let t = gDef.type;
+    while (t && !reachable.has(t)) {
+      reachable.add(t);
+      const def = E.ENEMIES[t];
+      t = def && def.splitsInto;
+    }
+  }));
   for (const type of Object.keys(E.ENEMIES)) {
     check('content-reachable:' + type, reachable.has(type));
   }
