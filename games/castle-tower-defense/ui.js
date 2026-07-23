@@ -86,7 +86,22 @@
   }
 
   // ─── Action sheets (ADR-028 §12) ─────────────────────────────
+  // Focus management for the sheets' role="dialog" (ADR-034 T14
+  // follow-through): capture the invoking element on first open, move
+  // focus into the sheet, restore on close. Captured only when no sheet
+  // was open, so slot→tower sheet swaps keep the ORIGINAL invoker.
+  let sheetReturnFocus = null;
+  function focusIntoSheet(sheetEl) {
+    if (!sheetEl) return;
+    // Skip disabled buttons (focus() on them is a no-op — an unaffordable
+    // Upgrade/pick would leave focus stranded on body); the close-x is
+    // never disabled, so the chain always finds a target.
+    const target = sheetEl.querySelector('button:not(.close-x):not(:disabled)')
+      || sheetEl.querySelector('button:not(:disabled)');
+    if (target) target.focus();
+  }
   function openSlotSheet(slotId, gold) {
+    if (!activeSheet) sheetReturnFocus = document.activeElement;
     activeSheet = 'slot';
     sheetTargetSlotId = slotId;
     if (sheetSlotIdLabel) sheetSlotIdLabel.textContent = 'Slot ' + slotId;
@@ -94,22 +109,35 @@
     closeOtherSheets('slot');
     if (sheetSlot) sheetSlot.classList.add('open');
     setPlayInert(true);
+    focusIntoSheet(sheetSlot);
   }
   function openTowerSheet(tower, gold) {
+    if (!activeSheet) sheetReturnFocus = document.activeElement;
     activeSheet = 'tower';
     sheetTargetTowerId = tower.id;
     paintTowerSheet(tower, gold);
     closeOtherSheets('tower');
     if (sheetTower) sheetTower.classList.add('open');
     setPlayInert(true);
+    focusIntoSheet(sheetTower);
   }
   function closeSheets() {
+    const wasOpen = activeSheet !== null;
     activeSheet = null;
     sheetTargetSlotId = null;
     sheetTargetTowerId = null;
     if (sheetSlot)  sheetSlot.classList.remove('open');
     if (sheetTower) sheetTower.classList.remove('open');
     setPlayInert(false);
+    // Restore focus AFTER inert is lifted (focus into an inert subtree
+    // silently fails). Guarded on wasOpen so the defensive teardown
+    // calls (startMap, restart) never steal focus.
+    if (wasOpen && sheetReturnFocus) {
+      if (sheetReturnFocus.isConnected && typeof sheetReturnFocus.focus === 'function') {
+        sheetReturnFocus.focus();
+      }
+      sheetReturnFocus = null;
+    }
   }
 
   // ADR-034 T14 — while an action sheet (modal) is open, the play HUD

@@ -467,6 +467,9 @@ const actions = {
   pause() {
     if (!state) return;
     if (state.fsm === 'wonRun' || state.fsm === 'lostRun') return;
+    // Esc→pause with a sheet open left the sheet interactive above the
+    // pause screen (T14 residual) — the modal must not outlive its screen.
+    window.CTD3Ui.closeSheets();
     window.CTD3Ui.setScreen('pause');
   },
   resume() {
