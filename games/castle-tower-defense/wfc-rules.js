@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
    Castle Tower Defense 3D — wfc-rules.js
    Tile palette + adjacency rules for the WFC procedural-fill pass.
-   Two themes: standard ('plains'/'forest'/'tidewater'/'riverbend') and
-   snow ('snowfall_pass'). Standard maps share one rule set; snow maps
-   use a parallel set of snow_tile_* variants. Mountain uses the
-   standard set tinted by lighting — no separate mountain variants
-   are needed (the kit doesn't ship them).
+   Selection is id-keyed for snow ('snowfall_pass' → snow_tile_* set),
+   then theme-keyed by map.theme: plains (standard mix), forest
+   (tree-dense), mountain (rocky/hilly). All non-snow themes share the
+   same kit tiles — only the weights differ (the kit ships no mountain
+   variants; lighting does the rest). ADR-034 Group 7b / T24.
 
    Pure data + a small selector. Loaded via classic <script> before
    wfc.js. Exposes window.CTD3WFCRules.
@@ -39,6 +39,33 @@
     { id: 'tile_tree_quad',    weight:  2 },
     { id: 'tile_crystal',      weight:  1 }
   ];
+
+  // ── Theme-keyed palettes (ADR-034 Group 7b / T24) ───────────
+  // Same kit tiles, different weights: forest reads tree-dense,
+  // mountain reads rocky/hilly with sparse trees. snowfall_pass stays
+  // id-keyed (separate snow tile set); plains is the standard mix.
+  const FOREST_PALETTE = [
+    { id: 'tile_ground',       weight: 52 },
+    { id: 'tile_hill',         weight:  5 },
+    { id: 'tile_rock',         weight:  6 },
+    { id: 'tile_tree',         weight: 18 },
+    { id: 'tile_tree_double',  weight: 10 },
+    { id: 'tile_tree_quad',    weight:  6 },
+    { id: 'tile_crystal',      weight:  3 }
+  ];
+  const MOUNTAIN_PALETTE = [
+    { id: 'tile_ground',       weight: 56 },
+    { id: 'tile_hill',         weight: 16 },
+    { id: 'tile_rock',         weight: 20 },
+    { id: 'tile_tree',         weight:  4 },
+    { id: 'tile_tree_double',  weight:  2 },
+    { id: 'tile_crystal',      weight:  2 }
+  ];
+  const THEME_PALETTES = {
+    plains:   STANDARD_PALETTE,
+    forest:   FOREST_PALETTE,
+    mountain: MOUNTAIN_PALETTE
+  };
 
   // ── Snow theme palette + weights ────────────────────────────
   // snow_tile_bump excluded for the same reason as standard tile_bump
@@ -123,9 +150,14 @@
   }
 
   // ── Theme selector (called from scene.paintTerrain) ─────────
+  // id-keyed snow first (separate tile set), then theme-keyed weights.
   function paletteForMap(map) {
     if (map && map.id === 'snowfall_pass') return SNOW_PALETTE.slice();
-    return STANDARD_PALETTE.slice();
+    // hasOwnProperty guard: imported maps can carry arbitrary theme strings,
+    // which must fall back to STANDARD rather than hit the prototype chain.
+    const themed = map && Object.prototype.hasOwnProperty.call(THEME_PALETTES, map.theme)
+      ? THEME_PALETTES[map.theme] : null;
+    return (themed || STANDARD_PALETTE).slice();
   }
 
   function rulesForMap(map) {
@@ -135,7 +167,7 @@
   }
 
   window.CTD3WFCRules = {
-    STANDARD_PALETTE, SNOW_PALETTE,
+    STANDARD_PALETTE, SNOW_PALETTE, FOREST_PALETTE, MOUNTAIN_PALETTE,
     paletteForMap, rulesForMap,
     PATH_IDS
   };

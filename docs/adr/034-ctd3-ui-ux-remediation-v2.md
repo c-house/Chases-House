@@ -1,7 +1,7 @@
 # ADR-034: CTD3 UI/UX Remediation v2 — Design-System Alignment
 
 **Date:** 2026-05-31
-**Status:** Accepted — Groups 1–6 SHIPPED (Group 6 closed out 2026-07-23 via ADR-036 CH-5: T14 sheet-modal inert, T9 "Not enough gold" SR announcement, T15 quiet/spirited distinction verified — ember + ★ prefix, not color-alone; Group 5 Warden comment verified at scene.js `WARDEN_AURA_COLOR`). Group 7 (Cartographer editor) remaining — tracked as ADR-036 CH-6/CH-7.
+**Status:** Accepted — **SHIPPED, all 7 groups** (Group 6 closed out 2026-07-23 via ADR-036 CH-5: T14 sheet-modal inert, T9 "Not enough gold" SR announcement, T15 quiet/spirited distinction verified — ember + ★ prefix, not color-alone; Group 5 Warden comment verified at scene.js `WARDEN_AURA_COLOR`. Group 7 closed 2026-07-23: 7a status/validation-voice/JSON/shortcuts via ADR-036 CH-6 `4e880b6`; 7b responsive shell `1008d8b` + theme wiring — `rulesForMap({id, theme})` palettes and cabin-tone preview backgrounds — via ADR-036 Sprint 2 W-1/W-2).
 **Supersedes scope of:** ADR-028 §UI (visual polish only — gameplay/architecture decisions stand)
 **Note on number:** Synthesis dispatched against a local clone that pre-dated `033-crawler-control-and-robots.md` landing on the remote, so the workflow drafted this as 033. On reconciliation the collision was real (crawler-control 033 has 5 commits already), so this ADR is filed as 034 and all in-content references updated. The commit subject of `378f9ab` still refers to "ADR-033" — that was the original push; the rename + reference updates land in a follow-up commit.
 

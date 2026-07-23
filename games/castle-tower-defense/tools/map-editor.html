@@ -2363,10 +2363,12 @@
 (function () {
   'use strict';
 
+  // Cabin tones (ADR-034 Group 7b): pine / moss / sage-stone. Snow stays
+  // its own id-keyed pale tone.
   const THEME_BG = {
-    plains:        0x6a8447,
-    forest:        0x5a6a3a,
-    mountain:      0x6a7a4a,
+    plains:        0x152821,
+    forest:        0x1f3329,
+    mountain:      0x2a4234,
     snowfall_pass: 0xb8c8d8
   };
 
@@ -2425,7 +2427,7 @@
     renderer.setClearColor(0x0a0a0b, 1);
 
     scene = new three.Scene();
-    scene.background = new three.Color(0x6a8447);
+    scene.background = new three.Color(THEME_BG.plains);
 
     // Orthographic ¾ top-down (same vibe as the runtime camera).
     const viewSize = 16;
@@ -2519,7 +2521,10 @@
     const wfcMode = (state.meta && state.meta.wfcMode) || 'augment';
     let groundCellMap = null;  // key → tileId
     if (wfcMode !== 'off' && window.CTD3WFC && window.CTD3WFCRules) {
-      const rules = window.CTD3WFCRules.rulesForMap({ id: state.meta && state.meta.id });
+      const rules = window.CTD3WFCRules.rulesForMap({
+        id: state.meta && state.meta.id,
+        theme: state.meta && state.meta.theme
+      });
       const preSeed = new Map();
       if (tg.ok) {
         for (const cell of tg.cells) {
