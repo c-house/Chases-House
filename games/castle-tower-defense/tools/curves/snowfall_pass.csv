@@ -1,0 +1,9 @@
+map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
+snowfall_pass,1,false,280,240,82,220,1.091
+snowfall_pass,2,false,364,312,134,302,1.033
+snowfall_pass,3,false,350,296,156,436,0.679
+snowfall_pass,4,false,592,504,170,592,0.851
+snowfall_pass,5,false,652,556,212,762,0.730
+snowfall_pass,6,false,834,714,260,974,0.733
+snowfall_pass,7,false,700,592,304,1234,0.480
+snowfall_pass,8,false,1590,1354,546,1538,0.880

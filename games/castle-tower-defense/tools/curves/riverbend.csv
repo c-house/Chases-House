@@ -1,0 +1,9 @@
+map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
+riverbend,1,false,224,192,68,220,0.873
+riverbend,2,false,364,312,132,288,1.083
+riverbend,3,false,400,340,188,420,0.810
+riverbend,4,false,660,564,226,608,0.928
+riverbend,5,false,524,444,212,834,0.532
+riverbend,6,false,740,632,310,1046,0.604
+riverbend,7,false,900,768,298,1356,0.566
+riverbend,8,false,1626,1386,598,1654,0.838

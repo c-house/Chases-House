@@ -1,0 +1,4 @@
+map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
+tidewater,1,false,168,144,54,220,0.655
+tidewater,2,false,266,228,94,274,0.832
+tidewater,3,false,498,426,112,368,1.158
