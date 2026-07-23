@@ -61,7 +61,12 @@
       if (k === 's') { ev.preventDefault(); actions.sell();    return; }
       if (k === 'n') { ev.preventDefault(); actions.sendNextWave(); return; }
       if (k === 'f') { ev.preventDefault(); actions.toggleFastForward(); return; }
-      if (k === ' ') { ev.preventDefault(); actions.pause(); return; }
+      if (k === ' ') {
+        // A tower/slot sheet is a modal (role="dialog"): Space must activate
+        // the focused sheet button natively, not pause the game behind it.
+        if (document.querySelector('.sheet.open')) return;
+        ev.preventDefault(); actions.pause(); return;
+      }
     } else if (screen === 'pause') {
       if (k === ' ') { ev.preventDefault(); actions.resume(); return; }
     }

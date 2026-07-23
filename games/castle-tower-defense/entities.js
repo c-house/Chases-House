@@ -102,8 +102,8 @@
   // Per-map difficulty overrides (Phase 3 of editor-promotion plan).
   // Canonical merge helper consumed by BOTH engine.createState and the
   // editor's live preview pane — no inlined overlay logic anywhere else.
-  // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?, bountyMult?},
-  //                       spirited?: {hpMult?, startGold?, startLives?, bountyMult?} }
+  // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?, bountyMult?, earlyCallRate?},
+  //                       spirited?: {hpMult?, startGold?, startLives?, bountyMult?, earlyCallRate?} }
   // Blank fields inherit canonical DIFFICULTY[difficulty] values.
   function mergedDifficulty(difficulty, overrides) {
     const base = DIFFICULTY[difficulty] || DIFFICULTY.quiet;

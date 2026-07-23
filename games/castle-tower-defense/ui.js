@@ -182,6 +182,10 @@
   }
 
   function paintTowerSheet(tower, gold) {
+    // If focus is on a control this repaint may disable (Upgrade → Maxed /
+    // unaffordable), remember so we can re-land focus inside the dialog rather
+    // than let the browser drop it to <body> when the button goes disabled.
+    const hadFocus = sheetTower && sheetTower.contains(document.activeElement);
     const def = window.CTD3Entities.TOWERS[tower.type];
     const tier = def.tiers[tower.tier];
     const nextTier = def.tiers[tower.tier + 1];
@@ -225,6 +229,12 @@
       }
     }
     if (sheetSellBtn) sheetSellBtn.textContent = 'Sell · +' + sellValue + 'g';
+    // Disabling the focused control blurs it to <body>; move focus to the
+    // nearest enabled control (Sell, else close-×) so the dialog keeps it.
+    if (hadFocus && (!sheetTower.contains(document.activeElement) ||
+        (document.activeElement && document.activeElement.disabled))) {
+      focusIntoSheet(sheetTower);
+    }
   }
 
   function setScreen(name) {
