@@ -46,22 +46,9 @@ const MAX_SIM_MS = 60 * 60 * 1000; // hard cap per run; sim is deterministic and
 // ─── KNOWN-FAIL registry (findings, not assertion weakening) ──
 // id → reason. Reviewed each sprint; clearing entries is part of the
 // owning chunk's acceptance (ADR-036 CH-3 for all of the below).
-const KNOWN_FAILS = {
-  // ADR-036 §3 dead-content finding: 4 Phase-5 enemy types are fully
-  // assetized but wired into zero official waves. CH-3 wires them.
-  'content-reachable:juggernaut': 'Phase-5 type in no official wave — ADR-036 CH-3 wires it',
-  'content-reachable:slime': 'Phase-5 type in no official wave — ADR-036 CH-3 wires it',
-  'content-reachable:mini_slime': 'reachable only via slime split — ADR-036 CH-3 wires slime',
-  'content-reachable:ghost': 'Phase-5 type in no official wave — ADR-036 CH-3 wires it',
-  // ADR-036 §2.2 finding: attrition ratio declines mid-run on every map
-  // (undecided by anyone, emergent from authored rewards). CH-3 retunes to D2.
-  'attrition-monotone:plains': 'pre-existing mid-run decline — ADR-036 CH-3 retunes to D2',
-  'attrition-monotone:forest': 'pre-existing mid-run decline — ADR-036 CH-3 retunes to D2',
-  'attrition-monotone:mountain': 'pre-existing mid-run decline — ADR-036 CH-3 retunes to D2',
-  'attrition-monotone:snowfall_pass': 'pre-existing mid-run decline — ADR-036 CH-3 retunes to D2',
-  'attrition-monotone:riverbend': 'pre-existing mid-run decline — ADR-036 CH-3 retunes to D2',
-  'attrition-monotone:tidewater': '3-wave content stub — ADR-036 CH-3 extends to 8 waves'
-};
+const KNOWN_FAILS = {};
+// (CH-1 registered 10 entries here — 4 dead Phase-5 enemy types, 6 attrition
+// findings. All cleared by CH-3's content wiring + D2 retune, 2026-07-23.)
 
 const checks = [];
 const staleKnown = [];

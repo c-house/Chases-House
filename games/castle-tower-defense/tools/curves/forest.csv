@@ -1,9 +1,9 @@
 map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
-forest,1,false,224,192,66,220,0.873
-forest,2,false,322,276,116,286,0.965
-forest,3,false,320,272,134,402,0.677
-forest,4,false,540,462,148,536,0.862
-forest,5,false,434,368,158,684,0.538
-forest,6,false,640,548,208,842,0.651
-forest,7,false,544,460,242,1050,0.438
-forest,8,false,968,824,362,1292,0.638
+forest,1,false,224,192,62,220,0.873
+forest,2,false,210,180,76,282,0.638
+forest,3,false,320,274,74,358,0.765
+forest,4,false,390,334,104,432,0.773
+forest,5,false,536,457,136,536,0.853
+forest,6,false,686,586,202,672,0.872
+forest,7,false,1098,934,364,874,1.069
+forest,8,false,1984,1692,554,1238,1.367

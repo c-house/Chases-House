@@ -1,9 +1,9 @@
 map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
 plains,1,false,28,24,21,220,0.109
 plains,2,false,168,144,54,241,0.598
-plains,3,false,188,160,82,295,0.542
-plains,4,false,470,402,103,377,1.066
-plains,5,false,336,288,120,480,0.600
-plains,6,false,352,300,108,600,0.500
-plains,7,false,410,348,154,708,0.492
-plains,8,false,848,724,234,862,0.840
+plains,3,false,226,192,100,295,0.651
+plains,4,false,388,332,93,395,0.841
+plains,5,false,500,428,132,488,0.877
+plains,6,false,680,580,154,620,0.935
+plains,7,false,988,840,259,774,1.085
+plains,8,false,1536,1310,400,1033,1.268

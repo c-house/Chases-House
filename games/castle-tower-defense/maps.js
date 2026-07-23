@@ -150,15 +150,18 @@
         { id: 's5', x: 8, z: 1 },
         { id: 's6', x: 9, z: -4 }
       ],
+      // Waves retuned 2026-07-23 to ADR-036 D2: attrition ratio (quiet wave
+      // HP ÷ cumulative quiet gold) rises monotonically w2→w7 — no mid-run
+      // decline. Verified by tools/sim-harness.cjs (attrition-monotone check).
       waves: [
         wave([ g('footman', 1, 0, 0) ], 15),
         wave([ g('footman', 6, 700, 0) ], 18),
-        wave([ g('footman', 4, 600, 0), g('skirmisher', 2, 1100, 4500) ], 22),
-        wave([ g('heavy', 3, 1400, 0), g('footman', 5, 500, 5000) ], 25),
-        wave([ g('runner', 4, 700, 0), g('footman', 6, 500, 4000) ], 28),
-        wave([ g('shielded', 3, 1300, 0), g('footman', 4, 500, 5000) ], 30),
-        wave([ g('skirmisher', 5, 800, 0), g('heavy', 2, 1800, 5500) ], 32),
-        wave([ g('heavy', 4, 1100, 0), g('shielded', 3, 1200, 6000), g('runner', 4, 600, 12000) ], 60)
+        wave([ g('footman', 4, 600, 0), g('skirmisher', 3, 1000, 4500) ], 22),
+        wave([ g('heavy', 2, 1500, 0), g('footman', 6, 500, 4000) ], 25),
+        wave([ g('runner', 4, 700, 0), g('footman', 4, 500, 3500), g('heavy', 2, 1600, 6000) ], 20),
+        wave([ g('shielded', 4, 1200, 0), g('heavy', 2, 1700, 5000), g('footman', 5, 500, 8000) ], 20),
+        wave([ g('skirmisher', 6, 800, 0), g('heavy', 4, 1400, 5000), g('shielded', 4, 1100, 10000) ], 15),
+        wave([ g('heavy', 7, 1100, 0), g('shielded', 5, 1200, 6000), g('runner', 6, 550, 12000), g('skirmisher', 3, 900, 16000) ], 60)
       ]
     },
     decorations: [
@@ -208,15 +211,18 @@
         { id: 's5', x: -3, z: 5 },
         { id: 's6', x: -6, z: 6 }
       ],
+      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Slime swarms are
+      // this map's mid-wave texture and Ghost its late anti-turtle check
+      // (CH-3 content wiring — Phase-5 types into official waves).
       waves: [
-        wave([ g('footman', 8, 600, 0) ], 18),
-        wave([ g('runner', 5, 700, 0), g('footman', 4, 500, 4500) ], 22),
-        wave([ g('skirmisher', 4, 900, 0), g('footman', 6, 500, 5000) ], 26),
-        wave([ g('heavy', 3, 1300, 0), g('runner', 5, 600, 5500) ], 30),
-        wave([ g('shielded', 4, 1100, 0), g('skirmisher', 3, 1000, 6000) ], 32),
-        wave([ g('runner', 10, 450, 0), g('heavy', 2, 1800, 6000) ], 36),
-        wave([ g('skirmisher', 8, 700, 0), g('shielded', 3, 1200, 7000) ], 44),
-        wave([ g('shielded', 6, 950, 0), g('runner', 8, 450, 7000), g('skirmisher', 4, 900, 11000) ], 70)
+        wave([ g('footman', 8, 600, 0) ], 14),
+        wave([ g('runner', 3, 700, 0), g('footman', 3, 500, 3500) ], 16),
+        wave([ g('slime', 2, 1200, 0), g('footman', 4, 500, 4000) ], 18),
+        wave([ g('slime', 2, 1200, 0), g('runner', 3, 650, 4500), g('footman', 2, 500, 7000) ], 18),
+        wave([ g('slime', 3, 1000, 0), g('skirmisher', 3, 900, 5000), g('heavy', 1, 0, 7500) ], 18),
+        wave([ g('runner', 8, 500, 0), g('shielded', 3, 1200, 5000), g('heavy', 1, 0, 8000) ], 20),
+        wave([ g('ghost', 6, 800, 0), g('skirmisher', 6, 700, 5000), g('shielded', 4, 1100, 9000), g('heavy', 2, 1700, 12000) ], 20),
+        wave([ g('shielded', 6, 950, 0), g('runner', 10, 450, 6000), g('skirmisher', 6, 700, 11000), g('heavy', 4, 1400, 15000), g('slime', 4, 1000, 18000) ], 70)
       ]
     },
     decorations: [
@@ -268,16 +274,18 @@
         { id: 's6', x: 5,  z: 0 },
         { id: 's7', x: 9,  z: 1 }
       ],
+      // Retuned to ADR-036 D2 (monotone attrition w2→w7, boss spike ~1.6
+      // preserved); Juggernaut is the mid-late mini-boss beat (CH-3).
       waves: [
         wave([ g('footman', 10, 550, 0) ], 22),
-        wave([ g('heavy', 3, 1300, 0), g('runner', 4, 700, 4500) ], 26),
-        wave([ g('skirmisher', 5, 850, 0), g('shielded', 2, 1500, 5000) ], 30),
-        wave([ g('shielded', 5, 1000, 0), g('heavy', 2, 1700, 6000) ], 34),
-        wave([ g('runner', 10, 450, 0), g('skirmisher', 4, 900, 6000) ], 38),
-        wave([ g('heavy', 6, 1000, 0), g('shielded', 4, 1100, 6500) ], 42),
-        wave([ g('skirmisher', 10, 600, 0), g('shielded', 4, 1100, 7000) ], 50),
-        wave([ g('heavy', 4, 1400, 0), g('shielded', 4, 1300, 6000),
-               g('captain', 1, 0, 14000), g('runner', 6, 600, 18000) ], 250, { isBoss: true })
+        wave([ g('heavy', 1, 0, 0), g('footman', 3, 550, 1500), g('runner', 1, 0, 4000) ], 20),
+        wave([ g('skirmisher', 3, 900, 0), g('shielded', 2, 1400, 4000), g('footman', 1, 0, 7000) ], 20),
+        wave([ g('shielded', 4, 1100, 0), g('heavy', 1, 0, 5500) ], 22),
+        wave([ g('runner', 8, 500, 0), g('skirmisher', 4, 900, 4500), g('heavy', 1, 0, 8000) ], 22),
+        wave([ g('juggernaut', 1, 0, 0), g('heavy', 2, 1700, 3000), g('footman', 2, 500, 6000) ], 25),
+        wave([ g('juggernaut', 1, 0, 0), g('skirmisher', 8, 700, 3000), g('shielded', 4, 1100, 8000), g('heavy', 1, 0, 12000) ], 25),
+        wave([ g('heavy', 3, 1500, 0), g('shielded', 3, 1300, 5000),
+               g('captain', 1, 0, 12000), g('runner', 2, 600, 16000) ], 250, { isBoss: true })
       ]
     },
     decorations: [
@@ -328,10 +336,18 @@
         { id: 's6', x: -7,  z: 0 },
         { id: 's7', x: 1,   z: 0 }
       ],
+      // Extended 2026-07-23 from the launch-era 3-wave stub to a full 8-wave
+      // list (ADR-036 CH-3) and tuned to the D2 attrition band; Slime swarms
+      // are the map's signature mid-wave texture.
       waves: [
-        wave([ g('footman', 6, 700, 0) ], 18),
-        wave([ g('footman', 5, 500, 0), g('runner', 3, 800, 4000) ], 22),
-        wave([ g('heavy', 3, 1300, 0), g('footman', 6, 500, 5000) ], 28)
+        wave([ g('footman', 6, 700, 0) ], 15),
+        wave([ g('footman', 4, 550, 0), g('runner', 2, 700, 3500) ], 16),
+        wave([ g('slime', 2, 1200, 0), g('footman', 3, 500, 4000) ], 18),
+        wave([ g('heavy', 3, 1400, 0), g('footman', 2, 500, 5000) ], 18),
+        wave([ g('slime', 3, 1000, 0), g('runner', 2, 650, 4500), g('heavy', 1, 0, 7000) ], 18),
+        wave([ g('skirmisher', 4, 850, 0), g('shielded', 4, 1100, 4500), g('heavy', 2, 1700, 9000) ], 20),
+        wave([ g('slime', 4, 1000, 0), g('skirmisher', 4, 800, 5000), g('shielded', 3, 1200, 9000), g('heavy', 2, 1700, 13000) ], 20),
+        wave([ g('slime', 5, 950, 0), g('runner', 6, 550, 6000), g('shielded', 4, 1150, 10000), g('heavy', 4, 1400, 14000) ], 60)
       ]
     },
     decorations: [
@@ -378,16 +394,18 @@
         { id: 's5', x: 5,   z: -1 },
         { id: 's6', x: 10,  z: 3 }
       ],
+      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Juggernaut
+      // mini-boss beats at w6/w8, Ghost anti-turtle check at w7 (CH-3).
       waves: [
-        wave([ g('footman', 10, 550, 0) ], 22),
-        wave([ g('runner', 6, 600, 0), g('footman', 4, 500, 4000) ], 26),
-        wave([ g('skirmisher', 5, 850, 0), g('shielded', 2, 1500, 5000) ], 30),
-        wave([ g('heavy', 4, 1200, 0), g('skirmisher', 4, 850, 5500) ], 34),
-        wave([ g('shielded', 5, 1000, 0), g('runner', 6, 600, 6000) ], 38),
-        wave([ g('runner', 12, 400, 0), g('heavy', 3, 1700, 7000) ], 44),
-        wave([ g('skirmisher', 10, 600, 0), g('shielded', 4, 1100, 7000) ], 52),
-        wave([ g('heavy', 5, 1300, 0), g('shielded', 5, 1100, 6000),
-               g('skirmisher', 8, 700, 14000), g('runner', 8, 500, 18000) ], 120)
+        wave([ g('footman', 10, 550, 0) ], 20),
+        wave([ g('runner', 3, 650, 0), g('footman', 3, 500, 3500) ], 18),
+        wave([ g('skirmisher', 3, 900, 0), g('shielded', 2, 1400, 4500), g('footman', 1, 0, 7500) ], 20),
+        wave([ g('heavy', 3, 1400, 0), g('skirmisher', 3, 900, 5000) ], 20),
+        wave([ g('shielded', 4, 1100, 0), g('runner', 5, 550, 5000), g('heavy', 1, 0, 8500) ], 22),
+        wave([ g('juggernaut', 1, 0, 0), g('runner', 6, 550, 3500) ], 22),
+        wave([ g('ghost', 8, 750, 0), g('skirmisher', 6, 750, 6000), g('shielded', 5, 1000, 10000), g('heavy', 2, 1700, 14000) ], 22),
+        wave([ g('juggernaut', 1, 0, 0), g('heavy', 6, 1200, 3000), g('shielded', 6, 1000, 8000),
+               g('runner', 8, 500, 13000), g('skirmisher', 4, 800, 17000) ], 120)
       ]
     },
     decorations: [
@@ -434,16 +452,18 @@
         { id: 's5', x: 10, z: 1 },
         { id: 's6', x: -4, z: 5 }
       ],
+      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Juggernaut anchors
+      // the late mobility waves — the mini-boss the runners screen for (CH-3).
       waves: [
-        wave([ g('footman', 8, 550, 0) ], 20),
-        wave([ g('runner', 6, 550, 0), g('footman', 4, 500, 4500) ], 24),
-        wave([ g('skirmisher', 5, 750, 0), g('runner', 5, 600, 5000) ], 28),
-        wave([ g('runner', 10, 450, 0), g('shielded', 3, 1300, 5500) ], 32),
-        wave([ g('skirmisher', 8, 650, 0), g('heavy', 2, 1700, 6500) ], 36),
-        wave([ g('runner', 14, 380, 0), g('skirmisher', 4, 750, 7500) ], 42),
-        wave([ g('shielded', 6, 950, 0), g('runner', 10, 450, 7000) ], 50),
-        wave([ g('runner', 16, 400, 0), g('skirmisher', 8, 600, 8000),
-               g('shielded', 4, 1200, 14000), g('heavy', 3, 1500, 18000) ], 110)
+        wave([ g('footman', 8, 550, 0) ], 16),
+        wave([ g('runner', 4, 600, 0), g('footman', 2, 500, 3500) ], 16),
+        wave([ g('skirmisher', 4, 800, 0), g('runner', 4, 600, 4000) ], 18),
+        wave([ g('runner', 6, 500, 0), g('shielded', 3, 1300, 4500) ], 18),
+        wave([ g('skirmisher', 6, 700, 0), g('heavy', 2, 1700, 5000), g('shielded', 3, 1200, 8000) ], 20),
+        wave([ g('juggernaut', 1, 0, 0), g('runner', 8, 500, 3500) ], 20),
+        wave([ g('juggernaut', 1, 0, 0), g('runner', 10, 480, 3000), g('shielded', 4, 1100, 8000), g('skirmisher', 3, 800, 12000) ], 20),
+        wave([ g('juggernaut', 1, 0, 0), g('runner', 16, 420, 3000), g('skirmisher', 6, 650, 10000),
+               g('shielded', 5, 1100, 14000), g('heavy', 3, 1500, 18000) ], 110)
       ]
     },
     decorations: [

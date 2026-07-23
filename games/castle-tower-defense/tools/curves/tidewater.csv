@@ -1,4 +1,9 @@
 map,wave,isBoss,baseHp,quietHp,income,cumGoldBeforeQuiet,attritionQuiet
-tidewater,1,false,168,144,54,220,0.655
-tidewater,2,false,266,228,94,274,0.832
-tidewater,3,false,498,426,112,368,1.158
+tidewater,1,false,168,144,51,220,0.655
+tidewater,2,false,196,168,68,271,0.620
+tidewater,3,false,292,250,68,339,0.737
+tidewater,4,false,386,330,78,407,0.811
+tidewater,5,false,506,433,110,485,0.893
+tidewater,6,false,692,588,196,595,0.988
+tidewater,7,false,1028,876,242,791,1.107
+tidewater,8,false,1532,1309,360,1033,1.267
