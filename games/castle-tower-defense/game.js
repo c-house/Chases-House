@@ -215,6 +215,8 @@ function startMap(mapId, difficulty) {
   if (!isMapUnlocked(mapId)) return;
   const useTutorial = !tutorialSeen() && mapId === 'plains';
   state = window.CTD3Engine.createState(mapId, difficulty, { tutorial: useTutorial });
+  // A sheet left open by the previous run would keep the fresh HUD inert (T14).
+  window.CTD3Ui.closeSheets();
   window.CTD3Scene.clearPlayfield();
   if (window.CTD3Renderer && typeof window.CTD3Renderer.resetPan === 'function') {
     window.CTD3Renderer.resetPan();
@@ -227,6 +229,7 @@ function startMap(mapId, difficulty) {
 
 function backToMapSelect() {
   state = null;
+  window.CTD3Ui.closeSheets();
   window.CTD3Scene.clearPlayfield();
   go('map-select');
 }
@@ -381,6 +384,7 @@ const actions = {
       // Engine return enum caller contract (ADR-028 §8)
       if (result === 'unaffordable') {
         window.CTD3Ui.setGoldFlash(true);
+        window.CTD3Ui.announceDenial('Not enough gold');
         window.CTD3Audio.uiSfx('error');
       }
       // 'invalid' and 'occupied' are silent
@@ -411,6 +415,7 @@ const actions = {
     const result = window.CTD3Engine.place(state, slotId, towerType);
     if (result === 'unaffordable') {
       window.CTD3Ui.setGoldFlash(true);
+      window.CTD3Ui.announceDenial('Not enough gold');
       window.CTD3Audio.uiSfx('error');
     }
     if (result === 'ok') {
@@ -430,6 +435,7 @@ const actions = {
     const result = window.CTD3Engine.upgrade(state, state.selectedTowerId);
     if (result === 'unaffordable') {
       window.CTD3Ui.setGoldFlash(true);
+      window.CTD3Ui.announceDenial('Not enough gold');
       window.CTD3Audio.uiSfx('error');
     }
     if (result === 'ok') {
@@ -569,6 +575,7 @@ function consumeEngineEvents(state) {
 function showGameOver(state) {
   if (state._goSettled) return;
   state._goSettled = true;
+  window.CTD3Ui.closeSheets();
   const won = state.fsm === 'wonRun';
   const stars = window.CTD3Engine.computeStars(state);
   const score = window.CTD3Engine.computeScore(state);

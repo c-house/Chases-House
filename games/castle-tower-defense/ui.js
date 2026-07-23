@@ -93,6 +93,7 @@
     paintSlotPicks(gold);
     closeOtherSheets('slot');
     if (sheetSlot) sheetSlot.classList.add('open');
+    setPlayInert(true);
   }
   function openTowerSheet(tower, gold) {
     activeSheet = 'tower';
@@ -100,6 +101,7 @@
     paintTowerSheet(tower, gold);
     closeOtherSheets('tower');
     if (sheetTower) sheetTower.classList.add('open');
+    setPlayInert(true);
   }
   function closeSheets() {
     activeSheet = null;
@@ -107,6 +109,18 @@
     sheetTargetTowerId = null;
     if (sheetSlot)  sheetSlot.classList.remove('open');
     if (sheetTower) sheetTower.classList.remove('open');
+    setPlayInert(false);
+  }
+
+  // ADR-034 T14 — while an action sheet (modal) is open, the play HUD
+  // behind it goes inert so Tab cannot reach the cog/palette through the
+  // sheet. The sheets live outside .screen blocks, so setScreen's own
+  // inert sweep never covers this case.
+  function setPlayInert(on) {
+    const play = document.querySelector('.screen.play');
+    if (!play) return;
+    if (on) play.setAttribute('inert', '');
+    else if (getScreen() === 'play') play.removeAttribute('inert');
   }
   function closeOtherSheets(keep) {
     if (keep !== 'slot' && sheetSlot)  sheetSlot.classList.remove('open');
@@ -191,6 +205,8 @@
       if (scr.classList.contains(name)) scr.removeAttribute('inert');
       else scr.setAttribute('inert', '');
     });
+    // Returning to play with a sheet still open keeps the HUD inert (T14).
+    if (name === 'play' && activeSheet) setPlayInert(true);
   }
   function getScreen() { return body.getAttribute('data-screen'); }
 
@@ -290,6 +306,19 @@
     const bonus = window.CTD3Entities.earlyCallBonus(state.prepCountdownMs / 1000, state);
     earlyCallValue.textContent = '+' + bonus + 'g · ' + secs + 's';
   }
+  // ADR-034 T9 — screen-reader denial announcement. The gold counter's own
+  // aria-live only reports the number changing; a denied action changes
+  // nothing, so it needs an explicit atomic announcement. Clear-then-set on
+  // the next frame so back-to-back identical denials re-announce.
+  function announceDenial(text) {
+    const region = $('[data-bind="denial-announce"]');
+    if (!region) return;
+    region.textContent = '';
+    // ~50ms gap, not rAF: both mutations inside one a11y-tree update cycle
+    // get coalesced and identical repeated denials would go unannounced.
+    setTimeout(() => { region.textContent = text; }, 50);
+  }
+
   function announceEarlyCallBonus(amount) {
     if (earlyCallAnnounce) earlyCallAnnounce.textContent = 'Early call bonus +' + amount + ' gold';
     const goldStat = document.getElementById('stat-gold');
@@ -547,7 +576,7 @@
     hydrateMapSelect, fillGameOver,
     setMapTab, getActiveMapTab,
     flashWaveClear,
-    setGoldFlash, announceEarlyCallBonus,
+    setGoldFlash, announceEarlyCallBonus, announceDenial,
     showFirstLoadNoticeIfNeeded, dismissFirstLoadNotice,
     setLoadingProgress,
     fillHelpScreen,

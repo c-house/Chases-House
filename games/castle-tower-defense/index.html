@@ -784,10 +784,15 @@
         </div>
         <button class="ctrl-btn next-wave" data-action="send-next-wave" aria-label="Send next wave">▶ Send wave</button>
         <button class="ctrl-btn fast-fwd" data-action="toggle-fast-forward" aria-label="Toggle fast-forward">2×</button>
-        <span class="sr-only" role="status" data-bind="early-call-announce"></span>
       </div>
     </div>
   </div>
+
+  <!-- Live announcement regions sit OUTSIDE the .screen blocks: the play
+       screen goes inert while a sheet is open (ADR-034 T14), and an inert
+       live region would never announce. -->
+  <span class="sr-only" role="status" data-bind="early-call-announce"></span>
+  <span class="sr-only" role="status" data-bind="denial-announce"></span>
 
   <!-- ── Action sheets (ADR-028 §12) ──────────────────────────────
        Sheets live OUTSIDE the .screen blocks so they remain visible
