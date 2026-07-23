@@ -762,13 +762,17 @@
     </div>
     <hr>
     <h2>Difficulty overrides</h2>
-    <p class="help">Per-map fine-tuning. Blank fields inherit the canonical Quiet / Spirited values (hpMult 0.85/1.15, gold 220/180, lives 18/12).</p>
+    <p class="help">Per-map fine-tuning. Blank fields inherit the canonical Quiet / Spirited values (hpMult 0.85/1.15, gold 220/180, lives 18/12, bounty ×1.0/×1.25, early-call 1.5/2.5 g/s).</p>
     <details>
       <summary style="cursor:pointer;color:var(--aged-gold);font-size:0.85rem;">Quiet override</summary>
       <div class="row" style="margin-top:0.4rem;">
         <div style="flex:1;"><label>hpMult</label><input data-bind="diffQuietHpMult" type="number" step="0.01" placeholder="0.85"></div>
         <div style="flex:1;"><label>Gold</label><input data-bind="diffQuietGold" type="number" placeholder="220"></div>
         <div style="flex:1;"><label>Lives</label><input data-bind="diffQuietLives" type="number" placeholder="18"></div>
+      </div>
+      <div class="row" style="margin-top:0.4rem;">
+        <div style="flex:1;"><label>Bounty ×</label><input data-bind="diffQuietBountyMult" type="number" step="0.05" placeholder="1.0"></div>
+        <div style="flex:1;"><label>Early call <span class="hint">(g/s)</span></label><input data-bind="diffQuietEarlyCallRate" type="number" step="0.1" placeholder="1.5"></div>
       </div>
     </details>
     <details>
@@ -777,6 +781,10 @@
         <div style="flex:1;"><label>hpMult</label><input data-bind="diffSpiritedHpMult" type="number" step="0.01" placeholder="1.15"></div>
         <div style="flex:1;"><label>Gold</label><input data-bind="diffSpiritedGold" type="number" placeholder="180"></div>
         <div style="flex:1;"><label>Lives</label><input data-bind="diffSpiritedLives" type="number" placeholder="12"></div>
+      </div>
+      <div class="row" style="margin-top:0.4rem;">
+        <div style="flex:1;"><label>Bounty ×</label><input data-bind="diffSpiritedBountyMult" type="number" step="0.05" placeholder="1.25"></div>
+        <div style="flex:1;"><label>Early call <span class="hint">(g/s)</span></label><input data-bind="diffSpiritedEarlyCallRate" type="number" step="0.1" placeholder="2.5"></div>
       </div>
     </details>
     <hr>
@@ -933,7 +941,9 @@
       // Per-map difficulty overrides (Phase 3 of editor-promotion plan).
       // Strings while editing (blank = inherit); coerced to numbers in export.
       diffQuietHpMult: '', diffQuietGold: '', diffQuietLives: '',
-      diffSpiritedHpMult: '', diffSpiritedGold: '', diffSpiritedLives: ''
+      diffQuietBountyMult: '', diffQuietEarlyCallRate: '',
+      diffSpiritedHpMult: '', diffSpiritedGold: '', diffSpiritedLives: '',
+      diffSpiritedBountyMult: '', diffSpiritedEarlyCallRate: ''
     },
     wavesJson: '',
     drag: null,
@@ -1674,10 +1684,14 @@
     const qh = numOrNull(m.diffQuietHpMult); if (qh != null) quietO.hpMult = qh;
     const qg = numOrNull(m.diffQuietGold);   if (qg != null) quietO.startGold = qg | 0;
     const ql = numOrNull(m.diffQuietLives);  if (ql != null) quietO.startLives = ql | 0;
+    const qb = numOrNull(m.diffQuietBountyMult);    if (qb != null) quietO.bountyMult = qb;
+    const qe = numOrNull(m.diffQuietEarlyCallRate); if (qe != null) quietO.earlyCallRate = qe;
     const spiritedO = {};
     const sh = numOrNull(m.diffSpiritedHpMult); if (sh != null) spiritedO.hpMult = sh;
     const sg = numOrNull(m.diffSpiritedGold);   if (sg != null) spiritedO.startGold = sg | 0;
     const sl = numOrNull(m.diffSpiritedLives);  if (sl != null) spiritedO.startLives = sl | 0;
+    const sb = numOrNull(m.diffSpiritedBountyMult);    if (sb != null) spiritedO.bountyMult = sb;
+    const se = numOrNull(m.diffSpiritedEarlyCallRate); if (se != null) spiritedO.earlyCallRate = se;
     const dOverrides = {};
     if (Object.keys(quietO).length)    dOverrides.quiet    = quietO;
     if (Object.keys(spiritedO).length) dOverrides.spirited = spiritedO;
@@ -2062,9 +2076,13 @@
       const qh = numOrNull(m.diffQuietHpMult); if (qh != null) q.hpMult = qh;
       const qg = numOrNull(m.diffQuietGold);   if (qg != null) q.startGold = qg;
       const ql = numOrNull(m.diffQuietLives);  if (ql != null) q.startLives = ql;
+      const qb = numOrNull(m.diffQuietBountyMult);    if (qb != null) q.bountyMult = qb;
+      const qe = numOrNull(m.diffQuietEarlyCallRate); if (qe != null) q.earlyCallRate = qe;
       const sh = numOrNull(m.diffSpiritedHpMult); if (sh != null) s.hpMult = sh;
       const sg = numOrNull(m.diffSpiritedGold);   if (sg != null) s.startGold = sg;
       const sl = numOrNull(m.diffSpiritedLives);  if (sl != null) s.startLives = sl;
+      const sb = numOrNull(m.diffSpiritedBountyMult);    if (sb != null) s.bountyMult = sb;
+      const se = numOrNull(m.diffSpiritedEarlyCallRate); if (se != null) s.earlyCallRate = se;
       return o;
     })();
     const dQ = ENT.mergedDifficulty('quiet',    overrides);
@@ -2293,9 +2311,13 @@
       diffQuietHpMult:      _diffField(mapShape, 'quiet',    'hpMult'),
       diffQuietGold:        _diffField(mapShape, 'quiet',    'startGold'),
       diffQuietLives:       _diffField(mapShape, 'quiet',    'startLives'),
+      diffQuietBountyMult:    _diffField(mapShape, 'quiet',  'bountyMult'),
+      diffQuietEarlyCallRate: _diffField(mapShape, 'quiet',  'earlyCallRate'),
       diffSpiritedHpMult:   _diffField(mapShape, 'spirited', 'hpMult'),
       diffSpiritedGold:     _diffField(mapShape, 'spirited', 'startGold'),
-      diffSpiritedLives:    _diffField(mapShape, 'spirited', 'startLives')
+      diffSpiritedLives:    _diffField(mapShape, 'spirited', 'startLives'),
+      diffSpiritedBountyMult:    _diffField(mapShape, 'spirited', 'bountyMult'),
+      diffSpiritedEarlyCallRate: _diffField(mapShape, 'spirited', 'earlyCallRate')
     };
     if (typeof mapShape.wavesJson === 'string') {
       state.wavesJson = mapShape.wavesJson;
