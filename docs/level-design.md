@@ -88,7 +88,7 @@ Rule: waves at `waveIndex >= 5` should include at least 2 distinct enemy types. 
 Severity: **warn (Auto)**.
 
 ### W7 — Reward economy (manual)
-Rule: a wave's `reward` should cover 50–90% of the cheapest next-tier upgrade cost (Ranger T1→T2 = 60g, etc.). Too low and the player can't keep up; too high and the gold floor trivializes the build choice. Gold-curve simulation is non-trivial across difficulty + per-map overrides; manual.
+Rule: a wave's `reward` should cover 50–90% of the cheapest next-tier upgrade cost (Ranger T1→T2 = 60g, etc.). Too low and the player can't keep up; too high and the gold floor trivializes the build choice. Gold-curve simulation is non-trivial across difficulty + per-map overrides; manual. Note: ADR-036 D2 (bounty-coupled economy) deliberately supersedes this rule for late waves — trimmed late-wave rewards are the sanctioned D2 lever, not a violation.
 
 ### W8 — Concurrent on-screen ceiling
 Rule: the max concurrent enemies on-screen at any wave step (computed by walking each group's spawn schedule against expected kill-time at the canonical T1 Ranger DPS) should not exceed 35. Approximate guard against the engine's ~30–40 entity comfort zone.
