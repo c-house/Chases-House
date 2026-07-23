@@ -105,26 +105,58 @@
   // `overrides` shape: { quiet?: {hpMult?, startGold?, startLives?, bountyMult?, earlyCallRate?},
   //                       spirited?: {hpMult?, startGold?, startLives?, bountyMult?, earlyCallRate?} }
   // Blank fields inherit canonical DIFFICULTY[difficulty] values.
-  function mergedDifficulty(difficulty, overrides) {
+  //
+  // ADR-037 D8.3 — endless layers HERE rather than in a parallel scalar
+  // table: `endlessScalars` (from the endless constants module, passed in by
+  // engine.createState so this file stays free of endless knowledge) applies
+  // multiplicatively AFTER the override merge, so per-map difficultyOverrides
+  // keep working in endless exactly as they do in the campaign.
+  function mergedDifficulty(difficulty, overrides, endlessScalars) {
     const base = DIFFICULTY[difficulty] || DIFFICULTY.quiet;
     const o = (overrides && overrides[difficulty]) || {};
-    return {
+    const merged = {
       hpMult:     (o.hpMult     != null) ? o.hpMult     : base.hpMult,
       startGold:  (o.startGold  != null) ? o.startGold  : base.startGold,
       startLives: (o.startLives != null) ? o.startLives : base.startLives,
       bountyMult: (o.bountyMult != null) ? o.bountyMult : base.bountyMult,
       earlyCallRate: (o.earlyCallRate != null) ? o.earlyCallRate : base.earlyCallRate
     };
+    if (endlessScalars) {
+      if (endlessScalars.startGoldMult != null) {
+        merged.startGold = Math.round(merged.startGold * endlessScalars.startGoldMult);
+      }
+      if (endlessScalars.startLivesMult != null) {
+        merged.startLives = Math.max(1, Math.round(merged.startLives * endlessScalars.startLivesMult));
+      }
+    }
+    return merged;
   }
 
   // Single payout site (ADR-036 lesson 7): every bounty the engine pays
   // flows through here so difficulty coupling — and any future bounty
   // curve — applies in exactly one place. Pre-run states (no difficultyMult)
   // fall back to the raw table value.
+  // ADR-037 D9 — endless bounty growth rides the same single site: the engine
+  // stamps state.endlessScale.bounty at each wave advance (1 in the campaign,
+  // where state.endlessScale is null), so per-wave reward growth needs no
+  // second payout path and campaign arithmetic is bit-for-bit unchanged.
   function bountyFor(enemyDef, state) {
     const mult = (state && state.difficultyMult && state.difficultyMult.bountyMult != null)
       ? state.difficultyMult.bountyMult : 1;
-    return Math.max(1, Math.round(enemyDef.bounty * mult));
+    const scale = (state && state.endlessScale && state.endlessScale.bounty != null)
+      ? state.endlessScale.bounty : 1;
+    return Math.max(1, Math.round(enemyDef.bounty * mult * scale));
+  }
+
+  // ADR-037 D9 — interest on banked gold, the third member of the payout
+  // family (bountyFor / earlyCallBonus / interestPayout). Rate and cap are
+  // passed in from the endless constants module so calibration stays in one
+  // file; this function owns the rounding and the cap so the HUD's preview
+  // and the engine's payment can never disagree (the same reason
+  // earlyCallBonus is shared rather than duplicated).
+  function interestPayout(gold, rate, cap) {
+    const raw = Math.max(0, Math.floor(Math.max(0, gold || 0) * (rate || 0)));
+    return (cap != null) ? Math.min(cap, raw) : raw;
   }
 
   // ADR-036 D4 — the gold paid for calling the next wave with
@@ -270,7 +302,7 @@
 
   window.CTD3Entities = {
     TOWERS, ENEMIES, DIFFICULTY, TOWER_FIRE_SFX,
-    mergedDifficulty, bountyFor, earlyCallBonus,
+    mergedDifficulty, bountyFor, earlyCallBonus, interestPayout,
     towerInvested, towerSellValue, canTarget, applyDamage,
     refreshTowerSnapshot,
     makeTower, makeEnemy, makeProjectile, makeEffect

@@ -34,6 +34,7 @@ const path = require('path');
 global.window = { location: { search: '' } };
 require('../entities.js');
 require('../maps.js');
+require('../endless.js'); // endless constants + wave generator (ADR-037 D8/D9)
 require('../engine.js');
 require('./sim-core.js'); // shared scripted-build runner + curves (ADR-036 X-1)
 
@@ -41,6 +42,7 @@ const E = global.window.CTD3Entities;
 const Maps = global.window.CTD3Maps;
 const Eng = global.window.CTD3Engine;
 const SimCore = global.window.CTD3SimCore;
+const Endless = global.window.CTD3Endless;
 // The scripted-build runner, build list, and static curve computation live in
 // sim-core.js so the editor's "Simulate this map" panel shares one implementation.
 // runScripted takes the map OBJECT (it installs a single-map CTD3Maps facade).
@@ -266,6 +268,218 @@ for (const map of maps) {
   }
 }
 console.log('\ncurve CSVs written to ' + path.relative(process.cwd(), curvesDir));
+
+// ─── 7. Endless mode (ADR-037 C-1) ───────────────────────────
+// D6 makes harness coverage mandatory for any new selectable mode, so every
+// property that must hold regardless of how the campaign *feels* is asserted
+// here: determinism, unboundedness, termination, build separation,
+// selection→effect and the interest bound. The numbers these checks defend
+// are starting values (ADR-037 §7 note) — a later calibration chunk may move
+// them, but never in the commit that first fails one.
+console.log('');
+{
+  const SEED = 7;
+  const WAVE_CAP = 60;            // sim guard: a build that never dies is a defect
+  const INTEREST_MAX_SHARE = 0.35; // cumulative interest ÷ cumulative income
+  const endlessMap = Maps.byId('plains');
+
+  // 7a. Determinism — the generator is pure over (waveIndex, seed).
+  {
+    const seqA = [], seqB = [];
+    for (let i = 0; i < 40; i++) {
+      seqA.push(JSON.stringify(Endless.waveFor(i, SEED)));
+      seqB.push(JSON.stringify(Endless.waveFor(i, SEED)));
+    }
+    const other = [];
+    for (let i = 0; i < 40; i++) other.push(JSON.stringify(Endless.waveFor(i, SEED + 1)));
+    const same = seqA.every((s, i) => s === seqB[i]);
+    // A seed that changes nothing would make "deterministic" vacuous.
+    const differs = other.some((s, i) => s !== seqA[i]);
+    check('endless-determinism', same && differs,
+      same ? (differs ? '40 waves identical for seed ' + SEED + ', seed ' + (SEED + 1) + ' differs'
+                      : 'seed has NO effect on the sequence') : 'same seed produced different waves');
+  }
+
+  // 7a2. Run-level determinism — two capped runs from one seed agree exactly.
+  {
+    const o = { endless: true, seed: SEED, maxWaves: 12 };
+    const r1 = runScripted(endlessMap, 'quiet', 'balanced', o);
+    const r2 = runScripted(endlessMap, 'quiet', 'balanced', o);
+    check('endless-run-determinism',
+      r1.wavesCleared === r2.wavesCleared && r1.gold === r2.gold &&
+      r1.goldEarned === r2.goldEarned && r1.interestEarned === r2.interestEarned,
+      'w' + r1.wavesCleared + '/' + r1.gold + 'g vs w' + r2.wavesCleared + '/' + r2.gold + 'g');
+  }
+
+  // 7b. Spawn ceiling — all growth goes into HP, never entity count (D9).
+  // Level-design rule W8's ceiling, split children included. The 35 is
+  // hard-coded HERE, not read from endless.js: a threshold imported from the
+  // module under test can be raised by the same edit that breaks it.
+  {
+    const W8_CEILING = 35;
+    let peak = 0, peakWave = 0;
+    for (let i = 0; i < WAVE_CAP; i++) {
+      const n = Endless.effectiveSpawnCount(Endless.waveFor(i, SEED), E.ENEMIES);
+      if (n > peak) { peak = n; peakWave = i + 1; }
+    }
+    check('endless-spawn-bound', peak <= W8_CEILING && Endless.SPAWN_CEILING <= W8_CEILING,
+      'peak ' + peak + ' spawns (wave ' + peakWave + ') vs W8 ceiling ' + W8_CEILING +
+      '; module SPAWN_CEILING=' + Endless.SPAWN_CEILING);
+  }
+
+  // 7b2. Endless scalars layer through mergedDifficulty WITHOUT displacing
+  // per-map difficultyOverrides (brief item 7). The pre-existing override
+  // check runs the 2-arg campaign path and never touches this one.
+  {
+    const o = E.mergedDifficulty('quiet', { quiet: { startGold: 999 } }, Endless.SCALARS);
+    const plain = E.mergedDifficulty('quiet', { quiet: { startGold: 999 } });
+    const expected = Math.round(999 * Endless.SCALARS.startGoldMult);
+    check('endless-difficulty-override-merge',
+      o.startGold === expected && plain.startGold === 999 && o.hpMult === E.DIFFICULTY.quiet.hpMult,
+      'override 999g → endless ' + o.startGold + 'g (expected ' + expected + '), campaign still ' + plain.startGold + 'g');
+  }
+
+  // 7b3. Buy-a-life (brief item 6): escalating cost curve + the place/upgrade/
+  // sell enum contract, including that it is inert outside endless.
+  {
+    const costs = [0, 1, 2, 3].map(n => Endless.buyLifeCost(n));
+    const escalating = costs.every((c, i) => i === 0 || c > costs[i - 1]);
+    const s = Eng.createState('plains', 'quiet', { endless: true, seed: SEED });
+    const livesBefore = s.lives;
+    s.gold = 0;
+    const poor = Eng.buyLife(s);
+    s.gold = 10000;
+    const rich = Eng.buyLife(s);
+    const secondCost = Eng.buyLifeCost(s);
+    const campaign = Eng.buyLife(Eng.createState('plains', 'quiet'));
+    check('endless-buy-a-life',
+      escalating && costs[0] === 100 && poor === 'unaffordable' && rich === 'ok' &&
+      s.lives === livesBefore + 1 && s.gold === 10000 - costs[0] &&
+      secondCost === costs[1] && campaign === 'invalid',
+      'costs ' + costs.join('→') + '; poor=' + poor + ' rich=' + rich +
+      ' lives ' + livesBefore + '→' + s.lives + '; campaign=' + campaign);
+  }
+
+  // 7b4. Endless scoring (brief item 8): waves survived primary, gold then
+  // lives as tiebreak — the ordering the results screen ranks by.
+  {
+    const mk = (waves, gold, lives) => ({ waves, gold, lives });
+    const ok =
+      Eng.endlessBetter(mk(12, 0, 0), mk(11, 9999, 99)) > 0 &&   // waves outrank everything
+      Eng.endlessBetter(mk(12, 500, 0), mk(12, 400, 99)) > 0 &&  // then gold
+      Eng.endlessBetter(mk(12, 500, 5), mk(12, 500, 4)) > 0 &&   // then lives
+      Eng.endlessBetter(mk(12, 500, 5), mk(12, 500, 5)) === 0 && // exact tie
+      Eng.endlessBetter(mk(1, 0, 0), null) > 0;                  // first run beats no record
+    check('endless-score-ordering', ok, 'waves > gold > lives, ties equal, null-safe');
+  }
+
+  // 7c. The runs the remaining checks read.
+  const endlessRuns = {};
+  for (const build of SimCore.BUILDS) {
+    endlessRuns[build] = runScripted(endlessMap, 'quiet', build,
+      { endless: true, seed: SEED, maxWaves: WAVE_CAP });
+    const r = endlessRuns[build];
+    console.log('run   endless       quiet    ' + build.padEnd(16) +
+      (r.lost ? 'LOST' : (r.timedOut ? 'TIMEOUT ' : 'CAPPED')) +
+      '  waves ' + r.wavesCleared + '  gold ' + r.gold +
+      '  interest ' + r.interestEarned + '/' + r.goldEarned + '  (' + r.simSec + 's sim)');
+  }
+  const depths = SimCore.BUILDS.map(b => endlessRuns[b].wavesCleared);
+  const best = Math.max.apply(null, depths), worst = Math.min.apply(null, depths);
+
+  // 7d. Unboundedness — endless blows past the campaign's 8-wave ceiling and
+  // never reaches 'wonRun' for a competent build.
+  {
+    const champion = SimCore.BUILDS.reduce((a, b) =>
+      endlessRuns[b].wavesCleared > endlessRuns[a].wavesCleared ? b : a);
+    const r = endlessRuns[champion];
+    check('endless-unbounded', r.wavesCleared >= 20 && !r.won,
+      champion + ' cleared ' + r.wavesCleared + ' waves (>=20 required, campaign ceiling is 8)' +
+      (r.won ? ' — but reached wonRun, which endless must never do' : ''));
+  }
+
+  // 7e. Termination — a naive build must eventually LOSE. An endless mode a
+  // dumb build survives forever in is broken, so neither the sim-time budget
+  // nor the wave cap may be what stops these runs.
+  {
+    const survivors = SimCore.BUILDS.filter(b =>
+      !endlessRuns[b].lost || endlessRuns[b].timedOut || endlessRuns[b].hitWaveCap);
+    check('endless-terminates', survivors.length === 0,
+      survivors.length ? survivors.join(',') + ' never died below the wave cap ' + WAVE_CAP
+                       : 'all ' + SimCore.BUILDS.length + ' builds died by wave ' + best);
+  }
+
+  // 7f. Build separation — build choice must move survival depth, or the
+  // mode is a slot machine.
+  check('endless-build-separation', best - worst >= 3,
+    'depths ' + depths.join('/') + ' — spread ' + (best - worst) + ' waves (>=3 required)');
+
+  // 7g. Selection→effect (ADR-036 D6, mandatory for a new selectable mode).
+  // Directional, like every sibling difficulty check in this file: "merely
+  // different" would pass an inverted scalar that made spirited the easy one.
+  {
+    const q = endlessRuns.balanced;
+    const s = runScripted(endlessMap, 'spirited', 'balanced',
+      { endless: true, seed: SEED, maxWaves: WAVE_CAP });
+    check('endless-selection-effect', s.wavesCleared < q.wavesCleared,
+      'quiet w' + q.wavesCleared + '/' + q.goldEarned + 'g vs spirited w' +
+      s.wavesCleared + '/' + s.goldEarned + 'g (spirited must run shallower)');
+  }
+
+  // 7g2. The early-call bonus is KEPT in endless and deliberately opposes
+  // interest (D9). Exercises the callEarly arm: calling every wave the moment
+  // it can be called must pay bonuses the auto-send arm never sees, and must
+  // trade away interest accrual to do it. C-3 measures whether either pole
+  // dominates; this only proves the tension is wired and live.
+  {
+    const early = runScripted(endlessMap, 'quiet', 'balanced',
+      { endless: true, seed: SEED, maxWaves: 15, callEarly: true });
+    const waited = runScripted(endlessMap, 'quiet', 'balanced',
+      { endless: true, seed: SEED, maxWaves: 15 });
+    check('endless-early-call-tension',
+      early.interestEarned < waited.interestEarned && early.simSec < waited.simSec,
+      'call-early ' + early.interestEarned + 'g interest in ' + early.simSec + 's vs ' +
+      'wait-out ' + waited.interestEarned + 'g in ' + waited.simSec + 's (same 15 waves)');
+  }
+
+  // 7h. Interest non-degeneracy — measured on the WAITING arm (endless prep
+  // auto-sends, so the default scripted run forfeits every early-call bonus
+  // and accrues the maximum interest available; that is the worst case the
+  // bound has to hold against).
+  {
+    let worstShare = 0, worstBuild = '', worstEarned = 0;
+    for (const build of SimCore.BUILDS) {
+      const r = endlessRuns[build];
+      // goldEarned is cumulative TOTAL income, interest included — the
+      // brief's denominator. The share of non-interest income is reported
+      // alongside so the stricter reading is visible without being asserted.
+      const share = r.interestEarned / Math.max(1, r.goldEarned);
+      if (share > worstShare) { worstShare = share; worstBuild = build; worstEarned = r.interestEarned; }
+    }
+    const worstRun = endlessRuns[worstBuild];
+    const exInterest = worstEarned / Math.max(1, worstRun.goldEarned - worstEarned);
+    check('endless-interest-bound', worstShare < INTEREST_MAX_SHARE,
+      'worst ' + worstBuild + ' ' + (worstShare * 100).toFixed(1) + '% of total income (<' +
+      (INTEREST_MAX_SHARE * 100) + '% required); ' + (exInterest * 100).toFixed(1) + '% of earned-other');
+  }
+
+  // 7i. Endless curve CSV — the artifact the next tuning pass starts from,
+  // written alongside (never over) the six campaign curves.
+  {
+    const rows = ['wave,isBoss,spawnCount,hpScale,bountyScale,waveHpQuiet,reward'];
+    const quiet = E.mergedDifficulty('quiet', endlessMap.difficultyOverrides, Endless.SCALARS);
+    for (let i = 0; i < WAVE_CAP; i++) {
+      const w = Endless.waveFor(i, SEED);
+      const stats = SimCore.waveStats(w, quiet.hpMult * Endless.hpScale(i));
+      rows.push([i + 1, w.isBoss, Endless.effectiveSpawnCount(w, E.ENEMIES),
+        Endless.hpScale(i).toFixed(3), Endless.bountyScale(i).toFixed(3),
+        stats.hp, w.reward].join(','));
+    }
+    fs.writeFileSync(path.join(curvesDir, 'endless-plains-quiet.csv'), rows.join('\n') + '\n');
+    console.log('endless curve CSV written to ' +
+      path.relative(process.cwd(), path.join(curvesDir, 'endless-plains-quiet.csv')));
+  }
+}
 
 // ─── Summary ─────────────────────────────────────────────────
 const failed = checks.filter(c => c.status === 'FAIL');

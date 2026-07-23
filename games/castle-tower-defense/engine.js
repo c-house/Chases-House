@@ -9,6 +9,10 @@
 
   const E = () => window.CTD3Entities;
   const M = () => window.CTD3Maps;
+  // ADR-037 D8 — endless constants + wave generator. Read lazily and only
+  // on the endless path: this is the single bridge to that module, so
+  // entities.js and the campaign path stay free of endless knowledge.
+  const X = () => window.CTD3Endless;
 
   // Constants (Appendix A)
   const HIT_FLASH_MS         = 80;
@@ -58,7 +62,13 @@
   // ─── State factory ───────────────────────────────────────────
   function createState(mapId, difficulty, opts) {
     const map = bakeMap(M().byId(mapId));
-    const diff = E().mergedDifficulty(difficulty, map.difficultyOverrides);
+    // ADR-037 D8 — endless is a parallel mode on this engine, not a fork:
+    // one flag through the existing options object, endless scalars layered
+    // at the one existing merge point, and every campaign field below
+    // untouched when it is off.
+    const endless = !!(opts && opts.endless);
+    const diff = E().mergedDifficulty(difficulty, map.difficultyOverrides,
+      endless ? X().SCALARS : null);
     return {
       fsm: 'prepWave',
       paused: false,
@@ -75,11 +85,24 @@
       goldSpent: 0,
 
       waveIndex: 0,
-      waveTotal: map.waves.length,
+      // Endless has no wave ceiling — Infinity keeps `waveIndex + 1 / total`
+      // arithmetic honest rather than pretending to a finite denominator.
+      waveTotal: endless ? Infinity : map.waves.length,
       waveProgress: null,
       // Early-call countdown (ADR-036 D4). 0 = no bonus window; wave 1's
       // prep (and the tutorial) never starts one — it arms on wave clear.
-      prepCountdownMs: 0,
+      //
+      // prepArmed means "a countdown was armed for THIS prep phase", set when
+      // one is armed and cleared only when the wave is sent (ADR-037 D8.2) —
+      // it deliberately stays true after the countdown expires, which is what
+      // makes `armed && expired` a usable auto-send predicate. It is NOT
+      // "the early-call window is still open"; read prepCountdownMs > 0 for
+      // that. It exists because 0 is overloaded: it is BOTH "countdown
+      // expired" and "no countdown was ever armed", so a naive zero-crossing
+      // test would send endless wave 1 instantly and hand the player zero
+      // build time. Endless therefore arms wave 1 explicitly, right here.
+      prepCountdownMs: endless ? PREP_COUNTDOWN_MS : 0,
+      prepArmed: endless,
       fastForward: false,
       gameOverDelayMs: 0,
       gameOverTriggered: false,
@@ -97,6 +120,20 @@
 
       tutorialActive: !!(opts && opts.tutorial),
       tutorialStep: opts && opts.tutorial ? 'showPrompt' : 'done',
+
+      // ─── Endless (ADR-037 D8/D9). All null/0/false in the campaign. ───
+      endless,
+      // Default seed is a constant, not a random draw: an unseeded endless
+      // state must still be reproducible (the harness depends on it). The
+      // caller supplies a per-run seed.
+      endlessSeed: endless ? ((opts && opts.seed != null ? opts.seed : 1) >>> 0) : 0,
+      // Per-wave growth stamped at each advance; read by stepWave (HP) and
+      // by entities.bountyFor (bounty). Null in the campaign, which is what
+      // makes both of those sites no-ops there.
+      endlessScale: endless ? X().scaleFor(0) : null,
+      livesBought: 0,
+      interestAccrualMs: 0,
+      interestEarned: 0,
 
       events: []
     };
@@ -164,8 +201,79 @@
       }
       state.prepCountdownMs = 0;
     }
+    state.prepArmed = false;
     startCurrentWave(state);
     return 'ok';
+  }
+
+  // ─── Endless economy actions (ADR-037 D9) ───────────────────
+  // Interest pays through entities.interestPayout — the payout family's third
+  // member — rather than adding a fifth ad-hoc `state.gold +=` site.
+  function stepInterest(state, dtMs) {
+    const period = X().INTEREST_PERIOD_MS;
+    state.interestAccrualMs += dtMs;
+    while (state.interestAccrualMs >= period) {
+      state.interestAccrualMs -= period;
+      const amount = E().interestPayout(state.gold, X().INTEREST_RATE, X().INTEREST_CAP);
+      if (amount > 0) {
+        state.gold += amount;
+        state.goldEarned += amount;
+        state.interestEarned += amount;
+        state.events.push({ kind: 'interest', amount, gold: state.gold });
+      }
+    }
+  }
+
+  // Ms until the next interest payment — HUD countdown, computed from the
+  // same accrual the payment uses so display and payout cannot drift.
+  function interestNextMs(state) {
+    if (!state.endless) return 0;
+    return Math.max(0, X().INTEREST_PERIOD_MS - state.interestAccrualMs);
+  }
+  function interestPreview(state) {
+    if (!state.endless) return 0;
+    return E().interestPayout(state.gold, X().INTEREST_RATE, X().INTEREST_CAP);
+  }
+
+  // Cube-style leak forgiveness (D9 — loop-back was the rejected alternative).
+  // Returns the place/upgrade/sell enum style: 'ok' | 'unaffordable' | 'invalid'.
+  function buyLifeCost(state) {
+    return state.endless ? X().buyLifeCost(state.livesBought) : 0;
+  }
+  function buyLife(state) {
+    if (!state.endless) return 'invalid';
+    if (state.fsm !== 'prepWave' && state.fsm !== 'inWave') return 'invalid';
+    const cost = buyLifeCost(state);
+    if (state.gold < cost) return 'unaffordable';
+    state.gold -= cost;
+    state.goldSpent += cost;
+    state.lives += 1;
+    state.livesBought += 1;
+    // Bought back from the brink: cancel the pending defeat countdown so the
+    // purchase actually rescues the run rather than paying for nothing.
+    if (state.lives > 0 && !state.gameOverTriggered) state.gameOverDelayMs = 0;
+    state.events.push({ kind: 'buyLife', cost, lives: state.lives });
+    return 'ok';
+  }
+
+  // ADR-037 D9 — endless scoring: waves survived is the metric, gold and
+  // lives break ties. Stars deliberately do not apply (D5).
+  function endlessScore(state) {
+    return {
+      waves: state.waveIndex,
+      gold: Math.max(0, state.gold),
+      lives: Math.max(0, state.lives),
+      goldEarned: state.goldEarned,
+      interestEarned: state.interestEarned,
+      livesBought: state.livesBought
+    };
+  }
+  // >0 when a is the better run. Same ordering the results screen ranks by.
+  function endlessBetter(a, b) {
+    if (!b) return 1;
+    if (a.waves !== b.waves) return a.waves - b.waves;
+    if (a.gold !== b.gold) return a.gold - b.gold;
+    return a.lives - b.lives;
   }
 
   function canSendNextWave(state) {
@@ -192,9 +300,24 @@
   }
 
   // ─── Wave management ────────────────────────────────────────
+  // The single wave-source. Campaign reads the authored array; endless reads
+  // the generator, which is pure over (waveIndex, seed) — so the two calls
+  // per wave (start + clear-reward) always agree.
+  function waveAt(state, index) {
+    if (state.endless) return X().waveFor(index, state.endlessSeed);
+    return state.mapDef.waves[index];
+  }
+
+  // Enemy HP multiplier in force right now: difficulty alone in the campaign,
+  // difficulty × the endless growth curve in endless (ADR-037 D8.1 — formula
+  // HP as one extra factor, not a second HP system).
+  function effectiveHpMult(state) {
+    const base = state.difficultyMult ? state.difficultyMult.hpMult : 1;
+    return state.endlessScale ? base * state.endlessScale.hp : base;
+  }
+
   function startCurrentWave(state) {
-    const map = state.mapDef;
-    const wave = map.waves[state.waveIndex];
+    const wave = waveAt(state, state.waveIndex);
     if (!wave) return;
     const queue = [];
     wave.enemies.forEach(group => {
@@ -212,21 +335,24 @@
   function checkWaveClear(state) {
     if (state.fsm !== 'inWave') return;
     if (state.waveProgress && state.waveProgress.spawnQueue.length === 0 && state.enemies.length === 0) {
-      const map = state.mapDef;
-      const wave = map.waves[state.waveIndex];
+      const wave = waveAt(state, state.waveIndex);
       const reward = wave.reward || 0;
       state.gold += reward;
       state.goldEarned += reward;
       state.events.push({ kind: 'waveClear', waveIndex: state.waveIndex });
       state.events.push({ kind: 'phaseTransition', from: 'inWave', to: 'prepWave' });
       state.waveProgress = null;
-      if (state.waveIndex >= state.waveTotal - 1) {
+      // ADR-037 D8.1 — in endless the wave index increments without a ceiling,
+      // so 'wonRun' is unreachable and only 'lostRun' ends a run.
+      if (!state.endless && state.waveIndex >= state.waveTotal - 1) {
         state.fsm = 'wonRun';
         state.events.push({ kind: 'victory' });
       } else {
         state.waveIndex += 1;
         state.fsm = 'prepWave';
         state.prepCountdownMs = PREP_COUNTDOWN_MS;
+        state.prepArmed = true;
+        if (state.endless) state.endlessScale = X().scaleFor(state.waveIndex);
       }
     }
   }
@@ -237,6 +363,15 @@
     if (state.fsm === 'wonRun' || state.fsm === 'lostRun') return;
     if (state.fsm === 'prepWave' && state.prepCountdownMs > 0) {
       state.prepCountdownMs = Math.max(0, state.prepCountdownMs - dtMs);
+    }
+    // ADR-037 D9 — pure interest on banked gold, 2%/15s of unpaused sim time
+    // (both phases; the loop pays every whole period a long tick spans).
+    if (state.endless) stepInterest(state, dtMs);
+    // ADR-037 D8.2 — auto-send: endless prep sends itself when its armed
+    // countdown expires. Gated on prepArmed, never on `<= 0` alone, because
+    // 0 also means "no countdown armed" (see createState).
+    if (state.endless && state.fsm === 'prepWave' && state.prepArmed && state.prepCountdownMs <= 0) {
+      sendNextWave(state);
     }
     const dtSec = dtMs / 1000;
 
@@ -257,7 +392,7 @@
     const queue = state.waveProgress.spawnQueue;
     while (queue.length && queue[0].spawnAtMs <= state.waveProgress.elapsedMs) {
       const entry = queue.shift();
-      const en = E().makeEnemy(entry.type, state.difficultyMult.hpMult);
+      const en = E().makeEnemy(entry.type, effectiveHpMult(state));
       const p0 = sampleOnPath(state.mapDef, 0);
       en.x = p0.x; en.z = p0.z;
       state.enemies.push(en);
@@ -495,7 +630,10 @@
       const splitDef = E().ENEMIES[def.splitsInto];
       if (splitDef) {
         const count = def.splitCount || 2;
-        const hpMult = state.difficultyMult ? state.difficultyMult.hpMult : 1;
+        // Split children ride the same effective multiplier as their parent —
+        // in endless that includes the wave's growth factor, so a wave-30
+        // Slime doesn't drop wave-1 Mini Slimes.
+        const hpMult = effectiveHpMult(state);
         for (let i = 0; i < count; i++) {
           const child = E().makeEnemy(def.splitsInto, hpMult);
           child.pathT = en.pathT;
@@ -543,6 +681,9 @@
     selectTower, selectSlot, setPaletteSelection,
     canSendNextWave,
     step, computeScore, computeStars,
+    // Endless (ADR-037): actions + read-only helpers for the HUD/results.
+    buyLife, buyLifeCost, interestNextMs, interestPreview,
+    endlessScore, endlessBetter, waveAt, effectiveHpMult,
     BEHAVIOR_HANDLERS,
     AURA_SLOW_FLOOR_MS, FIXED_STEP_MS, DEFEAT_FRAMES_DELAY, PREP_COUNTDOWN_MS
   };

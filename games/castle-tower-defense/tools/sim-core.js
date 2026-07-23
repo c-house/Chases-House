@@ -155,33 +155,51 @@
   // opts.slowCall: wait out the ADR-036 D4 early-call countdown before
   // each send (forfeits every bonus) — the control arm for the
   // early-call check.
+  // opts.endless / opts.seed / opts.maxWaves / opts.callEarly (ADR-037 C-1):
+  // run the map in endless mode from a fixed seed. Endless prep AUTO-sends,
+  // so the default arm never calls sendNextWave itself — it waits out every
+  // countdown (no early-call bonus, maximum interest accrual). callEarly is
+  // the opposite pole. maxWaves is a run cap so a build that refuses to die
+  // is reported as capped rather than silently eating the whole sim budget.
   function runScripted(map, difficulty, build, opts) {
     const engine = Eng();
     const policy = POLICIES[build];
     if (!policy) throw new Error('unknown scripted build "' + build + '"');
-    const slowCall = !!(opts && opts.slowCall);
+    const o = opts || {};
+    const slowCall = !!o.slowCall;
+    const endless = !!o.endless;
+    const maxWaves = o.maxWaves || 0;
     const savedMaps = window.CTD3Maps;
     window.CTD3Maps = { byId: (id) => (id === map.id ? map : null) };
     try {
-      const state = engine.createState(map.id, difficulty);
+      const state = engine.createState(map.id, difficulty,
+        endless ? { endless: true, seed: o.seed != null ? o.seed : 1 } : undefined);
       const kills = {};
-      let elapsed = 0;
+      let elapsed = 0, hitWaveCap = false;
       while (state.fsm !== 'wonRun' && state.fsm !== 'lostRun' && elapsed < MAX_SIM_MS) {
         policy(state);
-        if (engine.canSendNextWave(state) && (!slowCall || state.prepCountdownMs <= 0)) {
+        if (endless) {
+          if (o.callEarly && engine.canSendNextWave(state)) engine.sendNextWave(state);
+        } else if (engine.canSendNextWave(state) && (!slowCall || state.prepCountdownMs <= 0)) {
           engine.sendNextWave(state);
         }
         engine.step(state, TICK_MS);
         for (const ev of state.events) if (ev.kind === 'kill') kills[ev.enemyType] = (kills[ev.enemyType] || 0) + 1;
         state.events.length = 0;
         elapsed += TICK_MS;
+        if (maxWaves && state.waveIndex >= maxWaves) { hitWaveCap = true; break; }
       }
       return {
         won: state.fsm === 'wonRun',
+        lost: state.fsm === 'lostRun',
         timedOut: elapsed >= MAX_SIM_MS,
+        hitWaveCap,
         lives: state.lives,
         gold: state.gold,
         goldEarned: state.goldEarned,
+        goldSpent: state.goldSpent,
+        interestEarned: state.interestEarned,
+        livesBought: state.livesBought,
         wavesCleared: state.fsm === 'wonRun' ? state.waveTotal : state.waveIndex,
         simSec: Math.round(elapsed / 1000),
         kills
