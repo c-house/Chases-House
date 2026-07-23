@@ -276,7 +276,7 @@
       overflow-y: auto;
     }
     .side details.rail .preview { max-height: 40vh; overflow: auto; padding: 0.5rem 0 0.8rem; }
-    .side > [data-bind="wave-shape"] { margin: 0 1rem 0.6rem; }
+    .side [data-bind="wave-shape"] { margin: 0 1rem 0.6rem; }
     .side h2 {
       font-family: var(--font-display);
       font-size: 1rem;
@@ -720,7 +720,7 @@
 
   <div class="onboard-pill" id="onboard-pill" hidden>Tip: Ctrl+Z undoes · 1–5 swap tools · Esc deselects · ? lists shortcuts</div>
 
-  <aside class="meta" id="panel-meta" aria-label="Map metadata">
+  <aside class="meta" id="panel-meta" role="tabpanel" aria-labelledby="tab-header" aria-label="Map metadata">
     <h2>Map Header</h2>
     <label>Id <span class="hint">(unique slug)</span></label>
     <input data-bind="id" value="new_map">
@@ -808,12 +808,13 @@
   </main>
 
   <nav class="sheet-tabs" role="tablist" aria-label="Editor panels">
-    <button class="sheet-tab" role="tab" data-sheet-tab="header" aria-selected="true" aria-controls="panel-meta">Header</button>
-    <button class="sheet-tab" role="tab" data-sheet-tab="status" aria-selected="false" aria-controls="panel-side">Status</button>
-    <button class="sheet-tab" role="tab" data-sheet-tab="export" aria-selected="false" aria-controls="panel-side">Export</button>
+    <button class="sheet-tab" role="tab" id="tab-header" data-sheet-tab="header" aria-selected="true" aria-controls="panel-meta" tabindex="0">Header</button>
+    <button class="sheet-tab" role="tab" id="tab-status" data-sheet-tab="status" aria-selected="false" aria-controls="panel-status" tabindex="-1">Status</button>
+    <button class="sheet-tab" role="tab" id="tab-export" data-sheet-tab="export" aria-selected="false" aria-controls="panel-export" tabindex="-1">Export</button>
   </nav>
 
   <aside class="side" id="panel-side" aria-label="Validation and export">
+    <div id="panel-status" role="tabpanel" aria-labelledby="tab-status">
     <h2 class="sg-status">Status</h2>
     <div class="status sg-status" data-bind="status">—</div>
 
@@ -833,7 +834,9 @@
       <button class="tool ember" data-action="simulate" data-bind="simulate-button" title="Run scripted builds against this map">Simulate</button>
     </div>
     <div class="sg-status" data-bind="sim-results" hidden style="font-size:0.8rem;color:var(--warm-stone);background:rgba(40,28,18,0.5);border:1px solid rgba(200,148,62,0.3);border-radius:4px;padding:0.5rem;margin-top:0.3rem;font-family:ui-monospace,monospace;line-height:1.5;white-space:pre;overflow-x:auto;"></div>
+    </div><!-- /panel-status -->
 
+    <div id="panel-export" role="tabpanel" aria-labelledby="tab-export">
     <h2 class="sg-export">Export</h2>
     <div class="actions sg-export">
       <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
@@ -861,6 +864,7 @@
         <pre data-bind="preview">(map preview)</pre>
       </div>
     </details>
+    </div><!-- /panel-export -->
   </aside>
 
 </div>
@@ -1286,17 +1290,64 @@
       return;
     }
     const st = ev.target.closest('[data-sheet-tab]');
-    if (st) {
-      // Bottom-sheet tab bar (<900px shell); .app[data-sheet] drives the CSS.
-      document.querySelector('.app').dataset.sheet = st.dataset.sheetTab;
-      $$('.sheet-tab').forEach(b => b.setAttribute('aria-selected', String(b === st)));
-      // Status and Export share #panel-side's scroll box — start each tab at top.
-      $$('.meta, .side').forEach(p => { p.scrollTop = 0; });
-      return;
-    }
+    if (st) { selectSheetTab(st); return; }
     const a = ev.target.closest('[data-action]');
     if (a) handleAction(a.dataset.action);
   });
+
+  // Bottom-sheet tab bar (<900px shell); .app[data-sheet] drives the CSS.
+  // Full WAI-ARIA tabs pattern: roving tabindex, aria-selected, and each tab
+  // owns a distinct role="tabpanel" (Header→#panel-meta, Status→#panel-status,
+  // Export→#panel-export).
+  function selectSheetTab(tabEl, moveFocus) {
+    if (!tabEl) return;
+    document.querySelector('.app').dataset.sheet = tabEl.dataset.sheetTab;
+    $$('.sheet-tab').forEach(b => {
+      const sel = b === tabEl;
+      b.setAttribute('aria-selected', String(sel));
+      b.tabIndex = sel ? 0 : -1;
+    });
+    if (moveFocus) tabEl.focus();
+    // Status and Export share #panel-side's scroll box — start each tab at top.
+    $$('.meta, .side').forEach(p => { p.scrollTop = 0; });
+    // The 3D preview lives in the Status tab; rendered while hidden it keeps a
+    // stale canvas size, so kick a resize once this tab's layout settles.
+    if (tabEl.dataset.sheetTab === 'status' && typeof window.__cartographerPreviewResize === 'function') {
+      requestAnimationFrame(() => window.__cartographerPreviewResize());
+    }
+  }
+  const _sheetTablist = document.querySelector('.sheet-tabs');
+  if (_sheetTablist) {
+    _sheetTablist.addEventListener('keydown', (ev) => {
+      const tabs = $$('.sheet-tab');
+      const i = tabs.indexOf(document.activeElement);
+      if (i === -1) return;
+      let n = null;
+      if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') n = (i + 1) % tabs.length;
+      else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') n = (i - 1 + tabs.length) % tabs.length;
+      else if (ev.key === 'Home') n = 0;
+      else if (ev.key === 'End') n = tabs.length - 1;
+      if (n === null) return;
+      ev.preventDefault();
+      selectSheetTab(tabs[n], true); // focus follows selection (automatic activation)
+    });
+  }
+  // Auto-switch to the Export tab when import/save feedback lands there while
+  // the bottom-sheet shell is showing another tab (<900px) — a share-link
+  // import or a save otherwise reports into a hidden panel. Desktop shows both
+  // panels side by side, so the tab bar is hidden and this no-ops.
+  (function watchExportFeedback() {
+    const targets = ['[data-bind="import-status"]', '[data-bind="save-user-status"]']
+      .map(s => document.querySelector(s)).filter(Boolean);
+    if (!targets.length || !_sheetTablist) return;
+    const obs = new MutationObserver(() => {
+      if (getComputedStyle(_sheetTablist).display === 'none') return; // desktop
+      if (document.querySelector('.app').dataset.sheet === 'export') return;
+      if (!targets.some(t => t.textContent.trim())) return; // only on real feedback
+      selectSheetTab(document.querySelector('[data-sheet-tab="export"]'));
+    });
+    targets.forEach(t => obs.observe(t, { childList: true, characterData: true, subtree: true }));
+  })();
 
   function _shortcutSheetSetOpen(open) {
     const sheet = document.getElementById('shortcut-sheet');
@@ -2745,10 +2796,31 @@
     refresh(state).catch(e => console.error('[preview] refresh failed:', e));
   };
 
+  // Re-fit the renderer + orthographic frustum to the canvas's current size.
+  // The main IIFE calls this when the Status sheet-tab becomes visible: a
+  // preview rendered while its tab was hidden keeps a stale (often 0×0 or
+  // pre-layout) canvas size until something re-reads clientWidth/Height.
+  window.__cartographerPreviewResize = function () {
+    if (!initialized || !renderer || !camera) return;
+    const canvas = document.getElementById('preview-canvas');
+    if (!canvas) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return; // still hidden / zero-sized — nothing to fit to yet
+    renderer.setSize(w, h, false);
+    const viewSize = 16, aspect = w / h;
+    camera.left = -viewSize * aspect;
+    camera.right = viewSize * aspect;
+    camera.top = viewSize;
+    camera.bottom = -viewSize;
+    camera.updateProjectionMatrix();
+    if (scene) renderer.render(scene, camera);
+  };
+
   window.__cartographerPreviewExpand = async function () {
     try {
       await ensureThree();
       ensureScene();
+      window.__cartographerPreviewResize(); // pane may have been resized while collapsed
       if (pendingRefreshState) {
         refresh(pendingRefreshState);
       }
