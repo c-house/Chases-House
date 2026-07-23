@@ -212,6 +212,14 @@
         rows.push(['Aura',  String(tower.auraRadius)]);
         rows.push(['Slow',  Math.round((1 - tower.auraSlowMult) * 100) + '%']);
       }
+      // Total-invested context (ADR-036 X-6): the tier ladder charges less to
+      // upgrade than to place (catapult 120→110, mage 200→160), which reads as
+      // a pricing bug in isolation. Showing cumulative gold-in-tower — and, when
+      // an upgrade is available, where it lands the total (120g → 230g) — reframes
+      // the next-tier price as growing investment rather than a sub-placement
+      // bargain, and makes the Sell refund below legible as 75% of what's in.
+      const invested = window.CTD3Entities.towerInvested(tower.type, tower.tier);
+      rows.push(['Invested', nextTier ? invested + 'g → ' + (invested + nextTier.cost) + 'g' : invested + 'g']);
       rows.push(['Sell',   '+' + sellValue + 'g']);
       rows.forEach(([k, v]) => {
         sheetStats.appendChild(el('span', null, [k]));
