@@ -476,6 +476,13 @@
     }
     #stat-gold.bonus-pulse .v { animation: goldFlash 0.4s var(--ease-snap); }
 
+    /* Settings rows (ADR-037 C-5). `display` lives HERE, not in an inline
+       style, because `[hidden] { display: none }` is only a user-agent rule:
+       any author display — inline most of all — out-cascades it and a hidden
+       row would stay on screen. All three rows share this so a future gate on
+       any of them works without rediscovering the trap. */
+    .set-row:not([hidden]) { display: flex; }
+
     /* ── Endless mode (ADR-037 C-2) ──────────────────────────────
        Every element here reuses an idiom already on the page: the
        ember-outlined chip with a SMALLCAPS label and a Fraunces value.
@@ -937,17 +944,26 @@
       <a class="btn" href="tools/map-editor.html" target="_blank" rel="noopener" style="display:block;text-decoration:none;margin-top:0.6rem;">Map Editor</a>
       <hr style="border-color:rgba(232,213,168,0.2);margin:1.2rem 0;">
       <div style="text-align:left;font-size:0.84rem;color:rgba(240,230,211,0.78);">
-        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+        <!-- Music and Ambient are hidden unless their buffer actually loaded
+             (ADR-037 C-5). Both beds are absent from assets/audio/, so both
+             rows ship hidden — a slider wired to a gain node fed by nothing
+             is a control with no path to effect. The GATE is automatic; the
+             preload is not: re-enabling a row means dropping the .ogg in AND
+             moving its line from ABSENT_LOOPS to SAMPLES in audio.js, which
+             is spelled out there. Everything after that is automatic.
+             None of these rows may carry an inline `display` — see the
+             .set-row rule in the stylesheet for why. -->
+        <div class="set-row" data-bind="row-music" hidden style="align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">Music</span>
           <input type="range" min="0" max="100" step="1" data-bind="slider-music" aria-label="Music volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-music" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">40%</span>
         </div>
-        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+        <div class="set-row" style="align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">SFX</span>
           <input type="range" min="0" max="100" step="1" data-bind="slider-sfx" aria-label="SFX volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-sfx" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">80%</span>
         </div>
-        <div class="set-row" style="display:flex;align-items:center;gap:0.5rem;margin:0.5rem 0;">
+        <div class="set-row" data-bind="row-ambient" hidden style="align-items:center;gap:0.5rem;margin:0.5rem 0;">
           <span style="flex:0 0 5.5rem;">Ambient</span>
           <input type="range" min="0" max="100" step="1" data-bind="slider-ambient" aria-label="Ambient volume" style="flex:1;accent-color:var(--aged-gold);">
           <span data-bind="value-ambient" style="flex:0 0 2.6rem;text-align:right;color:var(--aged-gold);font-variant-numeric:tabular-nums;">25%</span>

@@ -264,6 +264,17 @@ function wireDocument() {
   wireSettings();
 }
 
+// Show each gated audio row iff its buffer decoded. Cheap and idempotent.
+function syncAudioRows() {
+  const rows = [
+    { row: document.querySelector('[data-bind="row-music"]'),   sample: 'bgm_loop' },
+    { row: document.querySelector('[data-bind="row-ambient"]'), sample: 'ambient_loop' }
+  ];
+  rows.forEach(({ row, sample }) => {
+    if (row) row.hidden = !window.CTD3Audio.hasBuffer(sample);
+  });
+}
+
 function wireSettings() {
   const settings = loadSettings();
   const bind = (key) => document.querySelector(`[data-bind="${key}"]`);
@@ -286,6 +297,16 @@ function wireSettings() {
       apply(v / 100);
     });
   });
+
+  // ADR-037 C-5 — a volume control is shown only when the audio it governs
+  // can actually play. Music is fed by bgm_loop, Ambient by ambient_loop;
+  // neither file exists, so both rows stay hidden and neither ships as a
+  // control wired to nothing. The bindings above still run regardless, so the
+  // stored musicVolume/ambientVolume survive untouched and reapply if a bed is
+  // ever added to audio.js's SAMPLES. This call runs before any buffer has
+  // decoded, so it can only ever re-hide; the gate actually opens on the pause
+  // screen, which re-checks.
+  syncAudioRows();
 
   const rm = document.querySelector('[data-bind="reduced-motion-toggle"]');
   if (rm) {
@@ -325,7 +346,7 @@ function handleAction(name, el) {
     case 'play-again':             actions.restart(); window.CTD3Audio.uiSfx('click'); break;
     case 'show-restart-confirm':   window.CTD3Ui.setScreen('restart-confirm'); window.CTD3Audio.uiSfx('click'); break;
     case 'confirm-restart':        actions.restart(); window.CTD3Audio.uiSfx('click'); break;
-    case 'cancel-restart':         window.CTD3Ui.setScreen('pause'); window.CTD3Audio.uiSfx('click'); break;
+    case 'cancel-restart':         syncAudioRows(); window.CTD3Ui.setScreen('pause'); window.CTD3Audio.uiSfx('click'); break;
     case 'quit-to-map-select':     backToMapSelect(); window.CTD3Audio.uiSfx('click'); break;
     case 'dismiss-tutorial':       actions.dismissTutorial(); window.CTD3Audio.uiSfx('click'); break;
     case 'start-map':              startMap(el.dataset.mapId, el.dataset.difficulty || 'quiet'); window.CTD3Audio.uiSfx('click'); break;
@@ -535,6 +556,9 @@ const actions = {
     // Esc→pause with a sheet open left the sheet interactive above the
     // pause screen (T14 residual) — the modal must not outlive its screen.
     window.CTD3Ui.closeSheets();
+    // Buffers decode asynchronously, so re-evaluate the audio-row gate each
+    // time Settings is shown rather than only at boot.
+    syncAudioRows();
     window.CTD3Ui.setScreen('pause');
   },
   resume() {

@@ -8,7 +8,7 @@
   'use strict';
 
   // Kenney audio packs ship .ogg — see assets/LICENSE.txt for per-file mapping.
-  // BGM + ambient deferred to a follow-up: graceful no-op when missing.
+  // Everything in SAMPLES is present in assets/audio/ and is preloaded.
   const SAMPLES = {
     ui_click:        'assets/audio/ui_click.ogg',
     ui_back:         'assets/audio/ui_back.ogg',
@@ -22,9 +22,26 @@
     enemy_death:     'assets/audio/enemy_death.ogg',
     castle_hit:      'assets/audio/castle_hit.ogg',
     wave_start_horn: 'assets/audio/wave_start_horn.ogg',
-    wave_clear:      'assets/audio/wave_clear.ogg',
-    bgm_loop:        'assets/audio/bgm_loop.ogg',
-    ambient_loop:    'assets/audio/ambient_loop.ogg'
+    wave_clear:      'assets/audio/wave_clear.ogg'
+  };
+
+  // ─── Looping beds (ADR-037 C-5) ──────────────────────────────
+  // bgm_loop.ogg and ambient_loop.ogg do not exist in assets/audio/ and never
+  // have. They used to sit in SAMPLES and be preloaded, which cost every page
+  // load two failed fetches and two console warnings — noise that three
+  // sprints of QA notes had to explicitly excuse, which is exactly how a real
+  // error gets missed. They are declared here rather than deleted so the music
+  // bus stays documented and wired: the gain graph, startBGM/startAmbient and
+  // the persisted volume settings are all intact and no-op safe.
+  //
+  // To enable one once the file is sourced: drop the .ogg into assets/audio/
+  // and move its line up into SAMPLES. The Settings row for it then returns on
+  // its own — every control below is gated on hasBuffer(), not on a hard-coded
+  // list. Requesting them speculatively is deliberately NOT the design: that is
+  // the 404-per-load this chunk exists to remove.
+  const ABSENT_LOOPS = {
+    bgm_loop:     'assets/audio/bgm_loop.ogg',
+    ambient_loop: 'assets/audio/ambient_loop.ogg'
   };
 
   let ctx = null;
@@ -70,6 +87,12 @@
         });
     });
   }
+
+  // Is a decoded buffer actually available? The Settings panel gates each
+  // audio control on this rather than on a hard-coded list, so a control can
+  // never again ship wired to nothing (ADR-037 C-5 / ADR-036 lesson 8 —
+  // selection must produce effect).
+  function hasBuffer(name) { return !!buffers[name]; }
 
   function resume() {
     if (!ctx) ensure();
@@ -182,6 +205,10 @@
     startBGM, stopBGM, startAmbient, stopAmbient,
     setMusicVolume, setSfxVolume, setAmbientVolume,
     setMusicMuted, setSfxMuted,
-    flushEvents, getState, uiSfx
+    flushEvents, getState, uiSfx, hasBuffer
   };
+  // ABSENT_LOOPS is deliberately NOT exported. It documents the two beds and
+  // is the line to cut from when one is sourced; nothing reads it at runtime,
+  // and exporting a symbol wired to nothing is the exact defect this chunk
+  // exists to remove.
 })();
