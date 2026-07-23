@@ -2402,9 +2402,24 @@
   }
 
   // ── Import JSON (T19) ───────────────────────────────────────
+  // The editor's own Copy JSON / raw-JSON preview emit a
+  // `registerMap({ map: ..., decorations: ... });` statement — a JS call whose
+  // two wrapper keys are unquoted, so a bare JSON.parse rejected the editor's
+  // own output even though the import placeholder invites exactly that paste.
+  // Strip the call wrapper and quote only those two keys. buildJsonString
+  // pretty-prints, so each wrapper key sits right after a real newline, and JSON
+  // strings can't contain a raw newline — the newline-anchored quoting therefore
+  // can't touch a string value that happens to read "..., map: ...". Anything
+  // that isn't a registerMap(...) statement passes through unchanged, so plain
+  // {map,decorations} / bare-map JSON still parses exactly as before.
+  function _coerceImportText(text) {
+    const m = String(text).trim().match(/^registerMap\s*\(([\s\S]*)\)\s*;?\s*$/);
+    if (!m) return text;
+    return m[1].replace(/(\n\s*)(map|decorations)(\s*:)/g, '$1"$2"$3');
+  }
   function importJson(text) {
     let payload;
-    try { payload = JSON.parse(text); }
+    try { payload = JSON.parse(_coerceImportText(text)); }
     catch (e) { return { ok: false, error: 'invalid JSON: ' + (e && e.message) }; }
     let mapShape, decorations;
     if (payload && payload.type === 'registerMap' && payload.map) {
