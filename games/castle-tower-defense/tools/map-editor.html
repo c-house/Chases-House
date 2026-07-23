@@ -79,16 +79,8 @@
         "meta    canvas   side";
       height: 100vh;
     }
-    @media (max-width: 1100px) {
-      .app {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto 1fr auto;
-        grid-template-areas: "topbar" "meta" "canvas" "side";
-        height: auto;
-        min-height: 100vh;
-      }
-      .canvas-wrap { min-height: 60vh; }
-    }
+    .sheet-tabs { display: none; }
+    .desktop-banner { display: none; }
 
     /* ── Top bar ─────────────────────────────────────────────── */
     .topbar {
@@ -583,11 +575,101 @@
     }
     .preview-pill.visible { display: block; }
     .preview-pane .body { position: relative; }
+
+    /* ── Responsive shell (ADR-034 Group 7b) ─────────────────── */
+    /* Last in the sheet so these overrides win the source-order cascade. */
+    /* 900–1100px: same 3-col frame, narrower rails. */
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 220px 1fr 280px;
+        grid-template-rows: auto 1fr;
+      }
+      .topbar { flex-wrap: wrap; row-gap: 0.2rem; padding: 0.5rem 1rem; }
+      .side .actions { flex-wrap: wrap; }
+    }
+
+    /* <900px: bottom-sheet shell — topbar / full-bleed canvas / tab bar /
+       sheet. .meta and .side share the sheet cell; the tab bar picks which
+       panel (and which .side segment) is visible via .app[data-sheet]. */
+    @media (max-width: 900px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto 1fr auto auto;
+        grid-template-areas: "topbar" "banner" "decor" "canvas" "tabs" "sheet";
+        height: 100vh;
+        height: 100dvh;
+      }
+      .topbar .sub { display: none; }
+      .topbar .tools { flex-wrap: wrap; row-gap: 0.3rem; }
+      .decor-palette { grid-area: decor; }
+      .sheet-tabs {
+        grid-area: tabs;
+        display: flex;
+        background: #15110d;
+        position: relative;
+      }
+      /* Ember hairline mirroring the topbar's signature underline. */
+      .sheet-tabs::before {
+        content: '';
+        position: absolute; left: 0; right: 0; top: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent-ember), transparent);
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      .sheet-tab {
+        flex: 1;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-muted);
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.6rem 0 0.5rem;
+        cursor: pointer;
+      }
+      .sheet-tab[aria-selected="true"] {
+        color: var(--accent-gold);
+        border-bottom-color: var(--accent-gold);
+      }
+      .meta, .side {
+        grid-area: sheet;
+        display: none;
+        height: 38vh;
+        overflow-y: auto;
+        border-left: none;
+        border-right: none;
+      }
+      .app[data-sheet="header"] .meta { display: block; }
+      .app[data-sheet="status"] .side,
+      .app[data-sheet="export"] .side { display: block; }
+      .app[data-sheet="status"] .side .sg-export { display: none; }
+      .app[data-sheet="export"] .side .sg-status { display: none; }
+    }
+
+    /* <700px: the canvas tools genuinely don't fit — say so. */
+    @media (max-width: 700px) {
+      .desktop-banner {
+        display: block;
+        grid-area: banner;
+        margin: 0.6rem 1rem 0;
+        padding: 0.5rem 0.8rem;
+        border: 1px solid var(--terracotta);
+        border-radius: var(--radius-md, 6px);
+        background: rgba(176,90,58,0.08);
+        color: var(--terracotta);
+        font-size: 0.78rem;
+        line-height: 1.4;
+      }
+    }
   </style>
 </head>
 <body>
 
-<div class="app">
+<div class="app" data-sheet="header">
 
   <header class="topbar">
     <h1>The Cartographer</h1>
@@ -603,6 +685,8 @@
       <button class="tool" data-action="toggle-shortcuts" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" aria-expanded="false">?</button>
     </div>
   </header>
+
+  <div class="desktop-banner" role="status">The Cartographer needs a wider bench — open it on a desktop to lay paths comfortably. Your work autosaves either way.</div>
 
   <div class="decor-palette" id="decor-palette" role="toolbar" aria-label="Decoration type">
     <button class="tool active" data-decor="tree"    title="Tree (small or large)"><span class="swatch"></span>Tree</button>
@@ -630,7 +714,7 @@
 
   <div class="onboard-pill" id="onboard-pill" hidden>Tip: Ctrl+Z undoes · 1–5 swap tools · Esc deselects · ? lists shortcuts</div>
 
-  <aside class="meta" aria-label="Map metadata">
+  <aside class="meta" id="panel-meta" aria-label="Map metadata">
     <h2>Map Header</h2>
     <label>Id <span class="hint">(unique slug)</span></label>
     <input data-bind="id" value="new_map">
@@ -709,11 +793,17 @@
     <div class="canvas-hud">world <span class="v" data-bind="cursorX">0.0</span>,<span class="v" data-bind="cursorZ">0.0</span></div>
   </main>
 
-  <aside class="side" aria-label="Validation and export">
-    <h2>Status</h2>
-    <div class="status" data-bind="status">—</div>
+  <nav class="sheet-tabs" role="tablist" aria-label="Editor panels">
+    <button class="sheet-tab" role="tab" data-sheet-tab="header" aria-selected="true" aria-controls="panel-meta">Header</button>
+    <button class="sheet-tab" role="tab" data-sheet-tab="status" aria-selected="false" aria-controls="panel-side">Status</button>
+    <button class="sheet-tab" role="tab" data-sheet-tab="export" aria-selected="false" aria-controls="panel-side">Export</button>
+  </nav>
 
-    <div class="preview-pane" id="preview-pane">
+  <aside class="side" id="panel-side" aria-label="Validation and export">
+    <h2 class="sg-status">Status</h2>
+    <div class="status sg-status" data-bind="status">—</div>
+
+    <div class="preview-pane sg-status" id="preview-pane">
       <div class="header" data-action="toggle-preview"><span class="chev"></span>3D Preview</div>
       <div class="body">
         <canvas id="preview-canvas"></canvas>
@@ -722,22 +812,22 @@
       </div>
     </div>
 
-    <h2>Wave shape</h2>
-    <div data-bind="wave-shape" style="font-size:0.8rem;color:var(--warm-stone);background:rgba(40,28,18,0.5);border:1px solid rgba(200,148,62,0.3);border-radius:4px;padding:0.5rem;font-family:ui-monospace,monospace;line-height:1.5;min-height:1.4em;">(no waves)</div>
+    <h2 class="sg-status">Wave shape</h2>
+    <div class="sg-status" data-bind="wave-shape" style="font-size:0.8rem;color:var(--warm-stone);background:rgba(40,28,18,0.5);border:1px solid rgba(200,148,62,0.3);border-radius:4px;padding:0.5rem;font-family:ui-monospace,monospace;line-height:1.5;min-height:1.4em;">(no waves)</div>
 
-    <h2>Export</h2>
-    <div class="actions">
+    <h2 class="sg-export">Export</h2>
+    <div class="actions sg-export">
       <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
       <button class="tool ember" data-action="share-link" data-bind="share-link-button">Share link</button>
       <button class="tool ember" data-action="publish-community" data-bind="publish-community-button">Publish</button>
     </div>
-    <div class="actions" style="margin-top:0.3rem;">
+    <div class="actions sg-export" style="margin-top:0.3rem;">
       <button class="tool" data-action="validate">Re-validate</button>
       <button class="tool" data-action="copy" data-bind="copy-button">Copy JSON</button>
     </div>
-    <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;padding:0 1rem;"></div>
+    <div class="sg-export" data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;padding:0 1rem;"></div>
 
-    <details class="rail">
+    <details class="rail sg-export">
       <summary>Import JSON ▸</summary>
       <div class="actions" style="border-bottom:none;padding-left:0;padding-right:0;">
         <button class="tool" data-action="import" data-bind="import-button">Import JSON</button>
@@ -746,7 +836,7 @@
       <div data-bind="import-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
     </details>
 
-    <details class="rail">
+    <details class="rail sg-export">
       <summary>View raw JSON ▸</summary>
       <div class="preview">
         <pre data-bind="preview">(map preview)</pre>
@@ -1172,6 +1262,15 @@
     const t = ev.target.closest('[data-tool]');
     if (t) {
       setTool(t.dataset.tool);
+      return;
+    }
+    const st = ev.target.closest('[data-sheet-tab]');
+    if (st) {
+      // Bottom-sheet tab bar (<900px shell); .app[data-sheet] drives the CSS.
+      document.querySelector('.app').dataset.sheet = st.dataset.sheetTab;
+      $$('.sheet-tab').forEach(b => b.setAttribute('aria-selected', String(b === st)));
+      // Status and Export share #panel-side's scroll box — start each tab at top.
+      $$('.meta, .side').forEach(p => { p.scrollTop = 0; });
       return;
     }
     const a = ev.target.closest('[data-action]');
@@ -1808,7 +1907,9 @@
   function setStatus(v) {
     const el = $('[data-bind="status"]');
     el.replaceChildren();
-    el.className = 'status ' + (v.ok ? 'ok' : 'bad');
+    // classList (not className=) so the shell's sg-status tag survives.
+    el.classList.toggle('ok', v.ok);
+    el.classList.toggle('bad', !v.ok);
     const blocks = (v.issues || []).filter(i => i.severity === 'block');
     const warns  = (v.issues || []).filter(i => i.severity === 'warn');
     const doneState = {
