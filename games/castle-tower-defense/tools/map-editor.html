@@ -96,8 +96,18 @@
       display: flex; align-items: center;
       padding: 0 1rem;
       background: linear-gradient(to bottom, var(--bg-main), var(--bg-deep));
-      border-bottom: 1px solid var(--ink-faint);
+      border-bottom: none;
+      position: relative;
       gap: 1rem;
+    }
+    /* ADR-034 Group 7 — signature ember gradient underline. */
+    .topbar::after {
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-ember), transparent);
+      opacity: 0.6;
+      pointer-events: none;
     }
     .topbar h1 {
       font-family: var(--font-display);
@@ -107,14 +117,27 @@
       margin: 0;
     }
     .topbar .sub {
-      font-size: 0.78rem;
-      letter-spacing: 0.16em;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      font-weight: 600;
       text-transform: uppercase;
-      color: rgba(232,213,168,0.55);
+      color: var(--text-muted, rgba(232,213,168,0.55));
+    }
+    .topbar .phase-tag {
+      font-size: 0.66rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border: 1px solid var(--accent-ember);
+      border-radius: 999px;
+      color: var(--accent-ember);
     }
     .topbar .tools { display: flex; gap: 0.4rem; margin-left: auto; }
 
     .tool {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
       background: rgba(40,28,18,0.6);
       border: 1px solid rgba(200,148,62,0.4);
       color: var(--warm-stone);
@@ -133,6 +156,16 @@
     .tool[aria-pressed="true"] { background: rgba(200,148,62,0.25); }
     .tool.warn { border-color: var(--terracotta); color: var(--terracotta); }
     .tool.warn:hover { background: rgba(176,90,58,0.15); }
+    .tool.ember { border-color: var(--accent-ember); color: var(--warm-stone); }
+    /* ADR-034 Group 7 — badges read as shortcuts, not counts: KEY-prefixed,
+       right-aligned, faded. */
+    .tool .kbd {
+      margin-left: auto;
+      opacity: 0.55;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-size: 0.64rem;
+    }
 
     /* ── Meta panel (left) ───────────────────────────────────── */
     .meta {
@@ -207,15 +240,18 @@
       background: var(--ink);
       overflow: hidden;
     }
+    /* ADR-034 Group 7 — canvas re-grounded to the cabin surround: bg-main
+       plus faint gold/sage radials. Theme-keyed 2D palette is the Group 7b
+       follow-up; until then the author canvas is uniform across themes. */
     canvas#field {
       display: block;
       width: 100%; height: 100%;
       cursor: crosshair;
-      background: var(--canvas-plains);
-      transition: background 400ms ease;
+      background:
+        radial-gradient(circle at 18% 15%, rgba(232,183,90,0.035), transparent 55%),
+        radial-gradient(circle at 85% 88%, rgba(122,148,96,0.025), transparent 55%),
+        var(--bg-main);
     }
-    .canvas-wrap[data-theme="forest"]   #field { background: var(--canvas-forest); }
-    .canvas-wrap[data-theme="mountain"] #field { background: var(--canvas-mountain); }
 
     .canvas-hud {
       position: absolute;
@@ -231,13 +267,18 @@
     .canvas-hud .v { color: var(--aged-gold); }
 
     /* ── Side panel (right) ──────────────────────────────────── */
+    /* Block flow + own scrollbar: the rail's JSON pre now lives inside a
+       closed <details>, so nothing needs flex growth — and flex-shrink was
+       compressing the wave-shape box under its neighbors. */
     .side {
       grid-area: side;
-      display: flex; flex-direction: column;
+      display: block;
       background: #15110d;
       border-left: 1px solid var(--ink-faint);
-      overflow: hidden;
+      overflow-y: auto;
     }
+    .side details.rail .preview { max-height: 40vh; overflow: auto; padding: 0.5rem 0 0.8rem; }
+    .side > [data-bind="wave-shape"] { margin: 0 1rem 0.6rem; }
     .side h2 {
       font-family: var(--font-display);
       font-size: 1rem;
@@ -331,24 +372,150 @@
     .decor-palette .tool[data-decor="rocks"]   .swatch { background: var(--decor-rocks); }
     .decor-palette .tool[data-decor="crystal"] .swatch { background: var(--decor-crystal); }
 
-    /* Yellow error pill over canvas (path-invalid feedback — ADR-030 §13) */
+    /* Single-issue pill over canvas (ADR-034 Group 7 — one line, terracotta,
+       auto-fades; the full issue list lives in the right-rail checklist). */
     .canvas-pill {
       position: absolute;
       top: 0.5rem; left: 50%;
       transform: translateX(-50%);
       padding: 0.4rem 0.8rem;
       background: rgba(40,28,18,0.92);
-      border: 1px solid var(--aged-gold);
+      border: 1px solid var(--terracotta);
       border-radius: 4px;
-      color: var(--aged-gold);
+      color: var(--terracotta);
       font-size: 0.78rem;
       letter-spacing: 0.04em;
       pointer-events: none;
       max-width: 80%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       text-align: center;
       display: none;
+      opacity: 1;
+      transition: opacity 600ms ease;
     }
     .canvas-pill.visible { display: block; }
+    .canvas-pill.fading { opacity: 0; }
+    .canvas-pill .hint-code { margin-left: 0.5em; }
+    @media (prefers-reduced-motion: reduce) {
+      .canvas-pill { transition: none; }
+    }
+
+    /* Faint rule-code chip after author-voice validator messages. */
+    .hint-code {
+      font-family: ui-monospace, monospace;
+      font-size: 0.68rem;
+      color: var(--text-faint, rgba(232,213,168,0.35));
+      background: none;
+      border: none;
+    }
+
+    /* Right-rail progress checklist (ADR-034 Group 7 — replaces the
+       "NOT READY" banner; terracotta reserved for live rule violations). */
+    .checklist { list-style: none; margin: 0.2rem 0 0; padding: 0; }
+    .checklist li {
+      display: flex; align-items: baseline; gap: 0.45rem;
+      margin: 0.22rem 0;
+      font-size: 0.8rem;
+    }
+    .checklist li .mark { flex: 0 0 auto; width: 1em; text-align: center; }
+    .checklist li.done  { color: var(--sage, #7a9460); }
+    .checklist li.todo  { color: var(--accent-ember); opacity: 0.85; }
+    .checklist li.violation { color: var(--terracotta); }
+    .checklist li .msg { flex: 1; }
+    .status .ready-line {
+      font-weight: 600;
+      color: var(--sage, #7a9460);
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+    .status .warn-list { list-style: none; margin: 0.35rem 0 0; padding: 0; }
+    .status .warn-list li { color: var(--aged-gold); font-size: 0.74rem; margin: 0.15rem 0; }
+
+    /* Decor Size two-segment pill — the editor's sole gold-filled active
+       state (ADR-034 Group 7 gold budget). */
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--accent-ember);
+      border-radius: 999px;
+      overflow: hidden;
+      flex: 0 0 auto;
+    }
+    .seg .seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--warm-stone);
+      font: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.7rem;
+      cursor: pointer;
+    }
+    .seg .seg-btn.active { background: var(--accent-gold); color: var(--ink); }
+
+    /* Keyboard-shortcut sheet (ADR-034 Group 7 T20 discoverability). */
+    .shortcut-sheet {
+      position: fixed;
+      top: 64px; right: 1rem;
+      z-index: 50;
+      width: 280px;
+      background: rgba(21, 17, 13, 0.97);
+      border: 1px solid var(--accent-ember);
+      border-radius: var(--radius-md, 6px);
+      padding: 0.9rem 1rem;
+      display: none;
+    }
+    .shortcut-sheet.visible { display: block; }
+    .shortcut-sheet h3 {
+      font-family: var(--font-display);
+      color: var(--aged-gold);
+      font-size: 0.95rem;
+      margin: 0 0 0.5rem;
+    }
+    .shortcut-sheet dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.25rem 0.7rem;
+      margin: 0 0 0.7rem;
+      font-size: 0.78rem;
+    }
+    .shortcut-sheet dt { color: var(--aged-gold); font-family: ui-monospace, monospace; }
+    .shortcut-sheet dd { margin: 0; color: var(--warm-stone); }
+
+    /* Onboarding tip pill — ember, bottom-right, fades after 4s. */
+    .onboard-pill {
+      position: fixed;
+      bottom: 1rem; right: 1rem;
+      z-index: 40;
+      padding: 0.45rem 0.8rem;
+      background: rgba(40,28,18,0.94);
+      border: 1px solid var(--accent-ember);
+      border-radius: 4px;
+      color: var(--warm-stone);
+      font-size: 0.76rem;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 800ms ease;
+    }
+    .onboard-pill.fading { opacity: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .onboard-pill { transition: none; }
+    }
+
+    /* Collapsed-by-default disclosure blocks in the right rail. */
+    .side details.rail { padding: 0.5rem 1rem; border-bottom: 1px solid var(--ink-faint); }
+    .side details.rail summary {
+      cursor: pointer;
+      color: var(--accent-ember);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      user-select: none;
+    }
+    .side details.rail summary:hover { color: var(--aged-gold); }
 
     /* Status bar: red error variant (export validator — ADR-030 §13). */
     .side .actions .tool.disabled {
@@ -424,14 +591,16 @@
 
   <header class="topbar">
     <h1>The Cartographer</h1>
-    <span class="sub">CTD3 map editor · Phase A1</span>
+    <span class="sub">CTD3 map editor</span>
+    <span class="phase-tag">Phase A2</span>
     <div class="tools" role="toolbar" aria-label="Active tool">
-      <button class="tool active" data-tool="path"   title="Path: click to add a waypoint, drag a waypoint to move, right-click on a waypoint to remove. Snaps to integer coords.">Path <span class="kbd">1</span></button>
-      <button class="tool"        data-tool="castle" title="Castle: place the gate at the end of the path. Snaps to integer coords.">Castle <span class="kbd">2</span></button>
-      <button class="tool"        data-tool="slot"   title="Slot+: place a build slot; right-click on a slot to remove. Snaps to integer coords.">Slot <span class="kbd">3</span></button>
-      <button class="tool"        data-tool="move"   title="Move: drag any element to reposition. Path/Slot/Castle drags snap to integers; decorations stay free-form.">Move <span class="kbd">4</span></button>
-      <button class="tool"        data-tool="decor"  title="Decor: click to place a decoration; right-click on a decoration to remove. Free-form coords (no grid snap).">Decor <span class="kbd">5</span></button>
+      <button class="tool active" data-tool="path"   title="Path: click to add a waypoint, drag a waypoint to move, right-click on a waypoint to remove. Snaps to integer coords.">Path <span class="kbd">Key 1</span></button>
+      <button class="tool"        data-tool="castle" title="Castle: place the gate at the end of the path. Snaps to integer coords.">Castle <span class="kbd">Key 2</span></button>
+      <button class="tool"        data-tool="slot"   title="Slot+: place a build slot; right-click on a slot to remove. Snaps to integer coords.">Slot <span class="kbd">Key 3</span></button>
+      <button class="tool"        data-tool="move"   title="Move: drag any element to reposition. Path/Slot/Castle drags snap to integers; decorations stay free-form.">Move <span class="kbd">Key 4</span></button>
+      <button class="tool"        data-tool="decor"  title="Decor: click to place a decoration; right-click on a decoration to remove. Free-form coords (no grid snap).">Decor <span class="kbd">Key 5</span></button>
       <button class="tool warn"   data-action="clear" title="Clear the whole map">Clear</button>
+      <button class="tool" data-action="toggle-shortcuts" title="Keyboard shortcuts" aria-label="Keyboard shortcuts" aria-expanded="false">?</button>
     </div>
   </header>
 
@@ -439,8 +608,27 @@
     <button class="tool active" data-decor="tree"    title="Tree (small or large)"><span class="swatch"></span>Tree</button>
     <button class="tool"        data-decor="rocks"   title="Rocks (small or large)"><span class="swatch"></span>Rocks</button>
     <button class="tool"        data-decor="crystal" title="Crystal (small or large)"><span class="swatch"></span>Crystal</button>
-    <button class="tool" data-decor-size="normal" aria-pressed="false" style="flex:0 0 auto;">Size: <span data-bind="decorSize">normal</span></button>
+    <div class="seg" role="group" aria-label="Decoration size">
+      <button class="seg-btn active" data-decor-size="normal" aria-pressed="true">Normal</button>
+      <button class="seg-btn"        data-decor-size="large"  aria-pressed="false">Large</button>
+    </div>
   </div>
+
+  <div class="shortcut-sheet" id="shortcut-sheet" role="dialog" aria-label="Keyboard shortcuts">
+    <h3>Keyboard shortcuts</h3>
+    <dl>
+      <dt>1–5</dt><dd>Path · Castle · Slot · Move · Decor</dd>
+      <dt>Ctrl+Z</dt><dd>Undo</dd>
+      <dt>Ctrl+Shift+Z</dt><dd>Redo</dd>
+      <dt>Ctrl+S</dt><dd>Copy export JSON</dd>
+      <dt>Delete</dt><dd>Remove selected element</dd>
+      <dt>Esc</dt><dd>Deselect / close this sheet</dd>
+      <dt>Right-click</dt><dd>Remove element under cursor</dd>
+    </dl>
+    <button class="tool" data-action="toggle-shortcuts">Close</button>
+  </div>
+
+  <div class="onboard-pill" id="onboard-pill" hidden>Tip: Ctrl+Z undoes · 1–5 swap tools · Esc deselects · ? lists shortcuts</div>
 
   <aside class="meta" aria-label="Map metadata">
     <h2>Map Header</h2>
@@ -508,8 +696,8 @@
       </div>
     </details>
     <hr>
-    <h2>Waves <span class="tag">passthrough</span></h2>
-    <p class="help">Wave editing is JSON-only for now (the visual editor is a follow-up). Paste a <code>waves</code> JSON array below or leave the default. The export will use this array verbatim. Live shape estimate appears in the right sidebar.</p>
+    <h2 style="font-size:0.82rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent-ember);border-bottom:1px solid var(--accent-ember);padding-bottom:0.25rem;">Waves — raw JSON <span class="hint">(visual editor coming)</span></h2>
+    <p class="help">Paste a <code>waves</code> JSON array below or leave the default. The export uses this array verbatim. Live shape estimate appears in the right sidebar.</p>
     <textarea data-bind="wavesJson" style="min-height:140px;">[
   { "enemies": [{ "type": "footman", "count": 6, "spacing": 700, "delay": 0 }], "reward": 18, "isBoss": false }
 ]</textarea>
@@ -539,25 +727,31 @@
 
     <h2>Export</h2>
     <div class="actions">
-      <button class="tool" data-action="validate">Re-validate</button>
-      <button class="tool active" data-action="copy" data-bind="copy-button">Copy JSON</button>
+      <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
+      <button class="tool ember" data-action="share-link" data-bind="share-link-button">Share link</button>
+      <button class="tool ember" data-action="publish-community" data-bind="publish-community-button">Publish</button>
     </div>
     <div class="actions" style="margin-top:0.3rem;">
-      <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
-      <button class="tool" data-action="share-link" data-bind="share-link-button">Share link</button>
-      <button class="tool" data-action="publish-community" data-bind="publish-community-button">Publish to Community</button>
+      <button class="tool" data-action="validate">Re-validate</button>
+      <button class="tool" data-action="copy" data-bind="copy-button">Copy JSON</button>
     </div>
-    <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
-    <div class="preview">
-      <pre data-bind="preview">(map preview)</pre>
-    </div>
+    <div data-bind="save-user-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;padding:0 1rem;"></div>
 
-    <h2>Import</h2>
-    <div class="actions">
-      <button class="tool" data-action="import" data-bind="import-button">Import JSON</button>
-    </div>
-    <textarea id="import-textarea" rows="4" placeholder="Paste registerMap({...}) payload here" style="width:100%;background:#1a1410;color:var(--warm-stone);border:1px solid rgba(200,148,62,0.4);border-radius:4px;padding:0.4rem;font-family:ui-monospace,monospace;font-size:0.75rem;"></textarea>
-    <div data-bind="import-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
+    <details class="rail">
+      <summary>Import JSON ▸</summary>
+      <div class="actions" style="border-bottom:none;padding-left:0;padding-right:0;">
+        <button class="tool" data-action="import" data-bind="import-button">Import JSON</button>
+      </div>
+      <textarea id="import-textarea" rows="4" placeholder="Paste registerMap({...}) payload here" style="width:100%;background:#1a1410;color:var(--warm-stone);border:1px solid rgba(200,148,62,0.4);border-radius:4px;padding:0.4rem;font-family:ui-monospace,monospace;font-size:0.75rem;"></textarea>
+      <div data-bind="import-status" style="font-size:0.78rem;margin-top:0.3rem;min-height:1.1em;"></div>
+    </details>
+
+    <details class="rail">
+      <summary>View raw JSON ▸</summary>
+      <div class="preview">
+        <pre data-bind="preview">(map preview)</pre>
+      </div>
+    </details>
   </aside>
 
 </div>
@@ -706,11 +900,22 @@
     return { x: (sx - vp.cx) / vp.scale, z: (sy - vp.cy) / vp.scale };
   }
 
+  // Canvas paint colors (ADR-034 Group 7 re-ground). 2D context can't read
+  // CSS vars directly, so cabin tokens are resolved once with canonical
+  // fallbacks (--accent-ember / --bark per .design-system/colors_and_type.css).
+  const _cssTok = (name, fallback) => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  };
+  const PATH_STROKE = _cssTok('--accent-ember', '#a06828');
+  const PATH_DASH   = _cssTok('--bark', '#3a2a1c');
+
   function render() {
     const vp = viewport();
     ctx.clearRect(0, 0, vp.w, vp.h);
 
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    // Light grid on the dark bg-main ground (black grid lines vanish here).
+    ctx.strokeStyle = 'rgba(240,230,211,0.06)';
     ctx.lineWidth = 1;
     for (let xi = -WORLD_HALF_X; xi <= WORLD_HALF_X; xi += 2) {
       const sx = vp.cx + xi * vp.scale;
@@ -720,12 +925,12 @@
       const sy = vp.cy + zi * vp.scale;
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.strokeStyle = 'rgba(240,230,211,0.13)';
     ctx.beginPath(); ctx.moveTo(vp.cx, 0); ctx.lineTo(vp.cx, vp.h); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, vp.cy); ctx.lineTo(vp.w, vp.cy); ctx.stroke();
 
     if (state.path.length >= 2) {
-      ctx.strokeStyle = '#7a5a30';
+      ctx.strokeStyle = PATH_STROKE;
       ctx.lineWidth = Math.max(6, vp.scale * 1.4);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -737,7 +942,7 @@
         ctx.lineTo(p.x, p.y);
       }
       ctx.stroke();
-      ctx.strokeStyle = '#5d3a1a';
+      ctx.strokeStyle = PATH_DASH;
       ctx.setLineDash([6, 8]);
       ctx.globalAlpha = 0.4;
       ctx.stroke();
@@ -969,10 +1174,35 @@
     if (a) handleAction(a.dataset.action);
   });
 
+  function _shortcutSheetSetOpen(open) {
+    const sheet = document.getElementById('shortcut-sheet');
+    if (!sheet) return false;
+    sheet.classList.toggle('visible', open);
+    const btn = document.querySelector('.topbar [data-action="toggle-shortcuts"]');
+    if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    return true;
+  }
+  function _shortcutSheetOpen() {
+    const sheet = document.getElementById('shortcut-sheet');
+    return !!(sheet && sheet.classList.contains('visible'));
+  }
+
   document.addEventListener('keydown', (ev) => {
+    // Esc closes the shortcut sheet even from inside a form field —
+    // the sheet promises it, and nothing below needs Esc from a field.
+    if (ev.key === 'Escape' && _shortcutSheetOpen()) {
+      ev.preventDefault();
+      _shortcutSheetSetOpen(false);
+      return;
+    }
     if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA' || ev.target.tagName === 'SELECT')) return;
     const key = ev.key;
     const mod = ev.ctrlKey || ev.metaKey;
+    if (key === '?') {
+      ev.preventDefault();
+      _shortcutSheetSetOpen(!_shortcutSheetOpen());
+      return;
+    }
     if (mod && (key === 's' || key === 'S')) {
       ev.preventDefault();
       const btn = document.querySelector('[data-action="copy"]');
@@ -1050,13 +1280,22 @@
     }
     const sz = ev.target.closest('[data-decor-size]');
     if (sz) {
-      state.decorBrushSize = state.decorBrushSize === 'normal' ? 'large' : 'normal';
-      const span = sz.querySelector('[data-bind="decorSize"]');
-      if (span) span.textContent = state.decorBrushSize;
-      sz.setAttribute('aria-pressed', state.decorBrushSize === 'large' ? 'true' : 'false');
-      historyPush();
+      const size = sz.dataset.decorSize;
+      if (state.decorBrushSize !== size) {
+        state.decorBrushSize = size;
+        _syncDecorSizePill();
+        historyPush();
+      }
     }
   });
+
+  function _syncDecorSizePill() {
+    $$('[data-decor-size]').forEach(btn => {
+      const active = btn.dataset.decorSize === state.decorBrushSize;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
 
   function handleAction(name) {
     if (name === 'clear') {
@@ -1089,6 +1328,8 @@
       }).catch(err => {
         alert('Clipboard copy failed: ' + (err && err.message));
       });
+    } else if (name === 'toggle-shortcuts') {
+      _shortcutSheetSetOpen(!_shortcutSheetOpen());
     } else if (name === 'toggle-preview') {
       const pane = document.getElementById('preview-pane');
       if (!pane) return;
@@ -1369,71 +1610,75 @@
     const block = (code, message) => issues.push({ severity: 'block', code, message });
     const warn  = (code, message) => issues.push({ severity: 'warn',  code, message });
 
-    // ── Blocker checks (existing) ─────────────────────────────
+    // ── Blocker checks (author-voice messages per ADR-034 Group 7; the
+    //    rule code rides along separately for the faint chip). Collected,
+    //    not early-returned, so the checklist can show every live
+    //    violation at once — each check guards its own prerequisites.
+    let tg = null, probe = null;
     if (!m.path || m.path.length < 2) {
-      block('PATH_MIN', 'path needs at least 2 waypoints');
-      return { ok: false, issues, reason: issues[0].message };
-    }
-    const tg = window.CTD3TileGrid.classifyPathCells(m.path);
-    if (!tg.ok) {
-      const message = tg.error + (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : '');
-      block('AXIS', message);
-      return { ok: false, issues, reason: message, badSegment: tg.badSegment || null };
-    }
-    const probe = { ...m, path: m.path.map(p => ({ ...p })) };
-    bakeMap(probe);
-    if (probe.totalLength <= 0) {
-      block('ZERO_LEN', 'zero-length path');
-      return { ok: false, issues, reason: issues[0].message };
-    }
-    const last = m.path[m.path.length - 1];
-    const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
-    if (dCastle > 1.5) {
-      const message = 'castle is far from path end (' + dCastle.toFixed(1) + 'u)';
-      block('H9_CASTLE_END', message);
-      return { ok: false, issues, reason: message };
-    }
-    // H6: no slot on path cell.
-    const pathCells = new Set();
-    for (let i = 0; i < m.path.length - 1; i++) {
-      const a = m.path[i], b = m.path[i + 1];
-      const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
-      let x = a.x, z = a.z;
-      while (x !== b.x || z !== b.z) { pathCells.add(x + ',' + z); x += dx; z += dz; }
-      pathCells.add(b.x + ',' + b.z);
-    }
-    for (const s of m.buildSlots) {
-      if (pathCells.has(s.x + ',' + s.z)) {
-        const message = 'slot ' + s.id + ' at (' + s.x + ',' + s.z + ') sits on path';
-        block('H6', message);
-        return { ok: false, issues, reason: message };
+      block('PATH_MIN', 'Lay down a path first — click the canvas to add waypoints.');
+    } else {
+      tg = window.CTD3TileGrid.classifyPathCells(m.path);
+      if (!tg.ok) {
+        block('AXIS', 'The road must run straight along the grid — no diagonals.' +
+          (tg.badSegment ? ' (segment ' + tg.badSegment.i + ')' : ''));
+      }
+      probe = { ...m, path: m.path.map(p => ({ ...p })) };
+      bakeMap(probe);
+      if (probe.totalLength <= 0) {
+        block('ZERO_LEN', 'This path has no length yet — stretch it out.');
+      }
+      // H8a: every segment length ≥3u (promoted to block; one message covers
+      // the first offending segment).
+      for (let i = 0; i < m.path.length - 1; i++) {
+        const a = m.path[i], b = m.path[i + 1];
+        const segLen = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
+        if (segLen < 3) {
+          block('H8a', 'This stretch of path is too short — needs 3 tiles between bends.');
+          break;
+        }
+      }
+      const last = m.path[m.path.length - 1];
+      const dCastle = Math.hypot(last.x - m.castle.x, last.z - m.castle.z);
+      if (dCastle > 1.5) {
+        block('H9', "The castle should sit at the road's end — it is " + dCastle.toFixed(1) + ' tiles away.');
+      }
+      // H6: no slot on path cell. The cell walk assumes axis-aligned
+      // segments, so it only runs when AXIS passed.
+      if (tg.ok) {
+        const pathCells = new Set();
+        for (let i = 0; i < m.path.length - 1; i++) {
+          const a = m.path[i], b = m.path[i + 1];
+          const dx = Math.sign(b.x - a.x), dz = Math.sign(b.z - a.z);
+          let x = a.x, z = a.z;
+          while (x !== b.x || z !== b.z) { pathCells.add(x + ',' + z); x += dx; z += dz; }
+          pathCells.add(b.x + ',' + b.z);
+        }
+        for (const s of m.buildSlots) {
+          if (pathCells.has(s.x + ',' + s.z)) {
+            block('H6', 'Build slot ' + s.id + ' is sitting on the road — nudge it aside.');
+            break;
+          }
+        }
       }
     }
     if (!m.buildSlots.every(s => Number.isInteger(s.x) && Number.isInteger(s.z))) {
-      block('SLOT_INT', 'slot has non-integer coords');
-      return { ok: false, issues, reason: issues[0].message };
+      block('SLOT_INT', 'A build slot is off the grid — drag it to snap.');
+    }
+    if (m.buildSlots.length === 0) {
+      block('NO_SLOTS', 'Place at least one build slot.');
     }
     let waves = [];
     try { waves = JSON.parse(state.wavesJson || '[]'); if (!Array.isArray(waves)) waves = []; }
     catch (e) {
-      const message = 'waves JSON does not parse: ' + e.message;
-      block('WAVES_PARSE', message);
-      return { ok: false, issues, reason: message };
+      block('WAVES_PARSE', "The waves JSON doesn't parse — " + e.message);
     }
-    if (m.buildSlots.length === 0) {
-      block('NO_SLOTS', 'no build slots placed');
-      return { ok: false, issues, reason: issues[0].message };
-    }
-    // H8a: every segment length ≥3u. Now promoted to block — official maps
-    // all pass after Phase 0b's path re-authoring.
-    for (let i = 0; i < m.path.length - 1; i++) {
-      const a = m.path[i], b = m.path[i + 1];
-      const segLen = Math.abs(b.x - a.x) + Math.abs(b.z - a.z);
-      if (segLen < 3) {
-        const message = 'segment ' + i + ' (' + a.x + ',' + a.z + ')→(' + b.x + ',' + b.z + ') is ' + segLen + 'u, below H8a 3u floor';
-        block('H8a', message);
-        return { ok: false, issues, reason: message };
-      }
+    const firstBlock = issues.find(i => i.severity === 'block');
+    if (firstBlock) {
+      return {
+        ok: false, issues, reason: firstBlock.message,
+        badSegment: (tg && tg.badSegment) || null
+      };
     }
 
     // ── Warn checks (W1–W8 auto) ──────────────────────────────
@@ -1449,7 +1694,7 @@
         if (prev <= 0) continue;
         const ratio = waveHp[i] / prev;
         if (ratio < 1.10 || ratio > 1.40) {
-          warn('W1', 'wave ' + (i + 1) + ' HP ratio to wave ' + i + ' is ' + ratio.toFixed(2) + ' (target 1.10–1.40)');
+          warn('W1', 'Wave ' + (i + 1) + ' ramps oddly — ' + ratio.toFixed(2) + '× the HP of wave ' + i + ' (aim for 1.10–1.40×).');
         }
       }
       // W2 — at least one ≥3s gap within each wave's spawn schedule.
@@ -1468,7 +1713,7 @@
           if (gap > maxGap) maxGap = gap;
         }
         if (events.length >= 2 && maxGap < 3000) {
-          warn('W2', 'wave ' + (idx + 1) + ' max spawn gap is ' + (maxGap / 1000).toFixed(1) + 's (target ≥3s for rebuild room)');
+          warn('W2', 'Wave ' + (idx + 1) + ' never pauses — its longest spawn gap is ' + (maxGap / 1000).toFixed(1) + 's; leave ≥3s of rebuild room.');
         }
       });
       // W4 — flying enemies not before waveIndex 2 (third wave, 1-indexed).
@@ -1477,7 +1722,7 @@
         (w.enemies || []).forEach(g => {
           const def = ENT.ENEMIES[g.type];
           if (def && def.isFlying) {
-            warn('W4', 'wave ' + (idx + 1) + ' contains flying enemy "' + g.type + '" — players need 1–2 ground-only waves first');
+            warn('W4', 'Fliers arrive too soon — "' + g.type + '" in wave ' + (idx + 1) + '; give players 1–2 ground-only waves first.');
           }
         });
       });
@@ -1487,7 +1732,7 @@
       for (let i = 1; i < bossIdxs.length; i++) {
         const gap = bossIdxs[i] - bossIdxs[i - 1];
         if (gap < 6) {
-          warn('W5', 'boss waves at index ' + bossIdxs[i - 1] + ' and ' + bossIdxs[i] + ' are ' + gap + ' apart (target ≥6)');
+          warn('W5', 'Boss waves ' + (bossIdxs[i - 1] + 1) + ' and ' + (bossIdxs[i] + 1) + ' crowd each other — keep them ≥6 waves apart.');
         }
       }
       // W6 — late-game waves (idx ≥ 5) use ≥2 distinct enemy types.
@@ -1495,7 +1740,7 @@
         if (idx < 5) return;
         const types = new Set((w.enemies || []).map(g => g.type));
         if (types.size < 2) {
-          warn('W6', 'wave ' + (idx + 1) + ' uses only one enemy type — consider mixing for late-game variety');
+          warn('W6', 'Wave ' + (idx + 1) + ' is one-note — mix in a second enemy type for late-game variety.');
         }
       });
       // W8 — max concurrent enemies estimate ≤35. Walks the spawn schedule;
@@ -1521,7 +1766,7 @@
           if (alive > peak) peak = alive;
         }
         if (peak > 35) {
-          warn('W8', 'wave ' + (idx + 1) + ' peaks at ~' + peak + ' concurrent enemies (engine comfort zone is 30–40)');
+          warn('W8', 'Wave ' + (idx + 1) + ' may swarm — ~' + peak + ' enemies on screen at once; the engine is comfortable at 30–40.');
         }
       });
     }
@@ -1529,72 +1774,127 @@
     return { ok: true, issues, totalLength: probe.totalLength, cellCount: tg.cells.length };
   }
 
-  // Safe DOM construction for status updates (no innerHTML).
-  // Phase 6: renders v.issues as a list under the OK/NOT READY label so
-  // amber warnings are visible alongside the binary ok/bad cue.
+  // Right-rail progress checklist (ADR-034 Group 7 — replaces "NOT READY").
+  // Missing steps render as ember to-dos; terracotta is reserved for live
+  // rule violations of content that exists. Safe DOM only (no innerHTML).
+  const CHECK_ITEMS = [
+    { key: 'path',   done: 'Path laid',                  todo: 'Lay down a path',
+      codes: ['PATH_MIN', 'AXIS', 'ZERO_LEN', 'H8a'], todoCodes: ['PATH_MIN'] },
+    { key: 'castle', done: "Castle set at the road's end", todo: "Set the castle at the road's end",
+      codes: ['H9'], todoCodes: [] },
+    { key: 'slots',  done: 'Build slots placed',         todo: 'Place at least one build slot',
+      codes: ['H6', 'SLOT_INT', 'NO_SLOTS'], todoCodes: ['NO_SLOTS'] },
+    { key: 'waves',  done: 'Waves defined',              todo: 'Define the waves',
+      codes: ['WAVES_PARSE'], todoCodes: [] }
+  ];
+  function _wavesDefined() {
+    try { const w = JSON.parse(state.wavesJson || '[]'); return Array.isArray(w) && w.length > 0; }
+    catch (e) { return false; }
+  }
+  function _appendIssueText(li, iss) {
+    const msg = document.createElement('span');
+    msg.className = 'msg';
+    msg.textContent = iss.message + ' ';
+    const code = document.createElement('code');
+    code.className = 'hint-code';
+    code.textContent = iss.code;
+    msg.appendChild(code);
+    li.appendChild(msg);
+  }
   function setStatus(v) {
     const el = $('[data-bind="status"]');
     el.replaceChildren();
     el.className = 'status ' + (v.ok ? 'ok' : 'bad');
-    const labelEl = document.createElement('strong');
-    labelEl.className = 'label';
-    labelEl.textContent = v.ok ? 'OK' : 'NOT READY';
-    el.appendChild(labelEl);
-    if (v.ok) {
+    const blocks = (v.issues || []).filter(i => i.severity === 'block');
+    const warns  = (v.issues || []).filter(i => i.severity === 'warn');
+    const doneState = {
+      path:   state.path.length >= 2,
+      castle: state.path.length >= 2,
+      slots:  state.slots.length > 0,
+      waves:  _wavesDefined()
+    };
+    // The ready-line only appears when every step is genuinely done —
+    // v.ok alone still allows an empty waves array (a valid export, but
+    // showing "Ready" above an ember to-do would contradict the list).
+    if (v.ok && Object.values(doneState).every(Boolean)) {
+      const ready = document.createElement('strong');
+      ready.className = 'ready-line';
+      ready.textContent = '✓ Ready to export';
+      el.appendChild(ready);
       const detail = document.createElement('span');
       detail.className = 'detail';
-      detail.textContent = ' — ' + state.path.length + ' waypoints · ' + v.cellCount + ' tile cells · ' + state.slots.length + ' slots · ' + state.decorations.length + ' decorations';
+      detail.textContent = state.path.length + ' waypoints · ' + v.cellCount + ' tile cells · ' + state.slots.length + ' slots · ' + state.decorations.length + ' decorations';
       el.appendChild(detail);
     }
-    const warns = (v.issues || []).filter(i => i.severity === 'warn');
-    const blocks = (v.issues || []).filter(i => i.severity === 'block');
-    if (blocks.length || warns.length) {
-      const ul = document.createElement('ul');
-      ul.style.cssText = 'margin:0.3rem 0 0;padding-left:1.2rem;font-size:0.75rem;list-style:none;';
-      [...blocks, ...warns].forEach(iss => {
+    const ul = document.createElement('ul');
+    ul.className = 'checklist';
+    CHECK_ITEMS.forEach(item => {
+      const li = document.createElement('li');
+      const mark = document.createElement('span');
+      mark.className = 'mark';
+      const violation = blocks.find(b => item.codes.includes(b.code));
+      const isTodo = violation && item.todoCodes.includes(violation.code);
+      if (violation && !isTodo) {
+        li.className = 'violation';
+        mark.textContent = '✖';
+        li.appendChild(mark);
+        _appendIssueText(li, violation);
+      } else if (violation || !doneState[item.key]) {
+        li.className = 'todo';
+        mark.textContent = '○';
+        li.appendChild(mark);
+        const msg = document.createElement('span');
+        msg.className = 'msg';
+        msg.textContent = item.todo;
+        li.appendChild(msg);
+      } else {
+        li.className = 'done';
+        mark.textContent = '✓';
+        li.appendChild(mark);
+        const msg = document.createElement('span');
+        msg.className = 'msg';
+        msg.textContent = item.done;
+        li.appendChild(msg);
+      }
+      ul.appendChild(li);
+    });
+    el.appendChild(ul);
+    if (warns.length) {
+      const wl = document.createElement('ul');
+      wl.className = 'warn-list';
+      warns.forEach(iss => {
         const li = document.createElement('li');
-        const icon = iss.severity === 'block' ? '✖' : '⚠';
-        const color = iss.severity === 'block' ? 'var(--terracotta, #b05a3a)' : 'var(--aged-gold)';
-        li.style.cssText = 'color:' + color + ';margin:0.1rem 0;';
-        li.textContent = icon + ' ' + iss.code + ' — ' + iss.message;
-        ul.appendChild(li);
+        li.textContent = '⚠ ';
+        _appendIssueText(li, iss);
+        wl.appendChild(li);
       });
-      el.appendChild(ul);
+      el.appendChild(wl);
     }
   }
 
-  // Canvas pill — surfaces issues over the field. Blockers in red, warnings in amber.
+  // Canvas pill — single most-relevant issue, auto-fades after 2.5s
+  // (ADR-034 Group 7). The full list lives in the right-rail checklist.
+  let _pillFadeTimer = null;
   function setCanvasPill(v) {
     const pill = document.querySelector('[data-bind="canvas-pill"]');
     if (!pill) return;
     const issues = v.issues || [];
-    const blocks = issues.filter(i => i.severity === 'block');
-    const warns  = issues.filter(i => i.severity === 'warn');
-    if (blocks.length === 0 && warns.length === 0) {
-      pill.classList.remove('visible');
+    const top = issues.find(i => i.severity === 'block') || issues.find(i => i.severity === 'warn');
+    if (_pillFadeTimer) { clearTimeout(_pillFadeTimer); _pillFadeTimer = null; }
+    if (!top) {
+      pill.classList.remove('visible', 'fading');
       pill.replaceChildren();
       return;
     }
     pill.replaceChildren();
-    const ul = document.createElement('ul');
-    ul.style.cssText = 'margin:0;padding-left:1.1rem;list-style:none;';
-    [...blocks, ...warns].slice(0, 5).forEach(iss => {
-      const li = document.createElement('li');
-      const icon = iss.severity === 'block' ? '✖' : '⚠';
-      li.textContent = icon + ' ' + iss.code + ' — ' + iss.message;
-      li.style.cssText = (iss.severity === 'block')
-        ? 'color:#ffd4cb;'   // red-tinted for blockers against the pill's amber bg
-        : '';
-      ul.appendChild(li);
-    });
-    if (issues.length > 5) {
-      const li = document.createElement('li');
-      li.textContent = '… +' + (issues.length - 5) + ' more';
-      li.style.opacity = '0.7';
-      ul.appendChild(li);
-    }
-    pill.appendChild(ul);
+    pill.append((top.severity === 'block' ? '✖ ' : '⚠ ') + top.message);
+    const code = document.createElement('code');
+    code.className = 'hint-code';
+    code.textContent = top.code;
+    pill.appendChild(code);
     pill.classList.add('visible');
+    pill.classList.remove('fading');
+    _pillFadeTimer = setTimeout(() => { pill.classList.add('fading'); }, 2500);
   }
 
   // Copy button — disabled when validation fails (ADR-030 §13 M-5).
@@ -1625,6 +1925,12 @@
     setCopyButtonEnabled(v.ok);
     $('[data-bind="preview"]').textContent = buildJsonString();
     updateWaveShape();
+    // Inline parse-error highlight on the waves textarea (ADR-034 Group 7).
+    const wavesTa = document.querySelector('[data-bind="wavesJson"]');
+    if (wavesTa) {
+      const parseFail = (v.issues || []).some(i => i.code === 'WAVES_PARSE');
+      wavesTa.style.borderColor = parseFail ? 'var(--terracotta)' : '';
+    }
     schedulePreviewRefresh();
     scheduleAutosave();
   }
@@ -1760,10 +2066,12 @@
     };
   }
 
+  const HISTORY_CAP = 30; // ADR-034 Group 7 T20 — bound the undo ring
   function historyPush() {
     if (_restoring) return;
     if (_pointer < _stack.length - 1) _stack.length = _pointer + 1;
     _stack.push(structuredClone(snapshotState()));
+    if (_stack.length > HISTORY_CAP) _stack.shift();
     _pointer = _stack.length - 1;
   }
 
@@ -1785,11 +2093,7 @@
     const palette = document.getElementById('decor-palette');
     if (palette) palette.classList.toggle('visible', state.tool === 'decor');
     $$('[data-decor]').forEach(b => b.classList.toggle('active', b.dataset.decor === state.decorBrush));
-    $$('[data-decor-size]').forEach(btn => {
-      btn.setAttribute('aria-pressed', state.decorBrushSize === 'large' ? 'true' : 'false');
-      const span = btn.querySelector('[data-bind="decorSize"]');
-      if (span) span.textContent = state.decorBrushSize;
-    });
+    _syncDecorSizePill();
     $$('[data-bind]').forEach(el => {
       const key = el.dataset.bind;
       if (state.meta[key] !== undefined) el.value = state.meta[key];
@@ -1923,6 +2227,22 @@
   refresh();
   // Seed the history stack with the boot state.
   historySeedBoot();
+
+  // Onboarding tip pill (ADR-034 Group 7 T20) — first visit only, 4s then fade.
+  {
+    const TIP_KEY = 'ctd3:cartographer:tipSeen';
+    let seen = false;
+    try { seen = localStorage.getItem(TIP_KEY) === '1'; } catch (e) {}
+    const tip = document.getElementById('onboard-pill');
+    if (tip && !seen) {
+      tip.hidden = false;
+      try { localStorage.setItem(TIP_KEY, '1'); } catch (e) {}
+      setTimeout(() => {
+        tip.classList.add('fading');
+        setTimeout(() => { tip.hidden = true; }, 900);
+      }, 4000);
+    }
+  }
 })();
 </script>
 
