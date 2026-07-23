@@ -915,13 +915,17 @@
     ctx.clearRect(0, 0, vp.w, vp.h);
 
     // Light grid on the dark bg-main ground (black grid lines vanish here).
+    // Lines sit at half-integer coords — the true tile borders (tile-grid.js
+    // GRID_SIZE=1, tiles centered on integers) — so snapped objects render
+    // centered in a cell, never on a border line. (The brighter x=0/z=0 axis
+    // lines below pass through cell centers by design.)
     ctx.strokeStyle = 'rgba(240,230,211,0.06)';
     ctx.lineWidth = 1;
-    for (let xi = -WORLD_HALF_X; xi <= WORLD_HALF_X; xi += 2) {
+    for (let xi = -WORLD_HALF_X + 0.5; xi <= WORLD_HALF_X; xi += 1) {
       const sx = vp.cx + xi * vp.scale;
       ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, vp.h); ctx.stroke();
     }
-    for (let zi = -WORLD_HALF_Z; zi <= WORLD_HALF_Z; zi += 2) {
+    for (let zi = -WORLD_HALF_Z + 0.5; zi <= WORLD_HALF_Z; zi += 1) {
       const sy = vp.cy + zi * vp.scale;
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
     }
