@@ -35,13 +35,18 @@ global.window = { location: { search: '' } };
 require('../entities.js');
 require('../maps.js');
 require('../engine.js');
+require('./sim-core.js'); // shared scripted-build runner + curves (ADR-036 X-1)
 
 const E = global.window.CTD3Entities;
 const Maps = global.window.CTD3Maps;
 const Eng = global.window.CTD3Engine;
+const SimCore = global.window.CTD3SimCore;
+// The scripted-build runner, build list, and static curve computation live in
+// sim-core.js so the editor's "Simulate this map" panel shares one implementation.
+// runScripted takes the map OBJECT (it installs a single-map CTD3Maps facade).
+const { runScripted, computeCurves } = SimCore;
 
-const TICK_MS = 1000 / 60;
-const MAX_SIM_MS = 60 * 60 * 1000; // hard cap per run; sim is deterministic and self-terminating
+const TICK_MS = 1000 / 60; // killCheck's fixed tick (runScripted uses sim-core's own)
 
 // ─── KNOWN-FAIL registry (findings, not assertion weakening) ──
 // id → reason. Reviewed each sprint; clearing entries is part of the
@@ -63,157 +68,10 @@ function check(id, cond, detail) {
 }
 function warn(msg) { console.log('WARN  ' + msg); }
 
-// ─── Static curve computation (ADR-036 §2.2) ─────────────────
-// Split children (Slime → 2 Mini Slimes) count toward both wave HP and
-// income: they are real HP the towers must clear and real bounty paid.
-// The split chain is walked recursively so a future chain-split type
-// (child that itself splits) is counted, not silently dropped; a cycle
-// in ENEMIES splitsInto throws rather than hanging or undercounting.
-function waveStats(wave, hpMult) {
-  let hp = 0, bounty = 0, count = 0;
-  for (const gDef of wave.enemies) {
-    let def = E.ENEMIES[gDef.type];
-    if (!def) continue;
-    let n = gDef.count;
-    const seen = new Set();
-    while (def) {
-      if (seen.has(def)) {
-        throw new Error('ENEMIES splitsInto cycle reached from "' + gDef.type + '" — fix entities.js');
-      }
-      seen.add(def);
-      hp += n * Math.round(def.hp * hpMult);
-      bounty += n * def.bounty;
-      count += n;
-      const child = def.splitsInto && E.ENEMIES[def.splitsInto];
-      n = child ? n * (def.splitCount || 2) : 0;
-      def = child || null;
-    }
-  }
-  return { hp, bounty, count, income: bounty + (wave.reward || 0) };
-}
-
-function computeCurves(map) {
-  const quiet = E.mergedDifficulty('quiet', map.difficultyOverrides);
-  const rows = [];
-  let cum = quiet.startGold;
-  map.waves.forEach((w, i) => {
-    const base = waveStats(w, 1.0);
-    const q = waveStats(w, quiet.hpMult);
-    rows.push({
-      wave: i + 1,
-      isBoss: !!w.isBoss,
-      baseHp: base.hp,
-      quietHp: q.hp,
-      income: q.income,
-      cumGoldBefore: cum,
-      attrition: q.hp / cum
-    });
-    cum += q.income;
-  });
-  return rows;
-}
-
-// ─── Scripted build policies ─────────────────────────────────
-function cheapestTowerType() {
-  let best = null, bestCost = Infinity;
-  for (const [type, def] of Object.entries(E.TOWERS)) {
-    if (def.tiers[0].cost < bestCost) { best = type; bestCost = def.tiers[0].cost; }
-  }
-  return best;
-}
-
-function emptySlots(state) {
-  const used = new Set(state.towers.map(t => t.slotId));
-  return state.mapDef.buildSlots.filter(s => !used.has(s.id));
-}
-
-function cheapestUpgrade(state) {
-  let best = null, bestCost = Infinity;
-  for (const tw of state.towers) {
-    const next = E.TOWERS[tw.type].tiers[tw.tier + 1];
-    if (next && next.cost < bestCost) { best = tw; bestCost = next.cost; }
-  }
-  return best ? { tower: best, cost: bestCost } : null;
-}
-
-const POLICIES = {
-  // Always the globally cheapest affordable action; ties favor placement.
-  'greedy-cheapest': function (state) {
-    for (;;) {
-      const slots = emptySlots(state);
-      const type = cheapestTowerType();
-      const placeCost = E.TOWERS[type].tiers[0].cost;
-      const up = cheapestUpgrade(state);
-      if (slots.length && placeCost <= state.gold && (!up || placeCost <= up.cost)) {
-        if (Eng.place(state, slots[0].id, type) !== 'ok') return;
-      } else if (up && up.cost <= state.gold) {
-        if (Eng.upgrade(state, up.tower.id) !== 'ok') return;
-      } else return;
-    }
-  },
-  // Rangers on every slot, then max each one out in slot order (concentration).
-  'ranger-heavy': function (state) {
-    for (;;) {
-      const slots = emptySlots(state);
-      if (slots.length) {
-        if (E.TOWERS.ranger.tiers[0].cost > state.gold) return;
-        if (Eng.place(state, slots[0].id, 'ranger') !== 'ok') return;
-        continue;
-      }
-      const tw = state.towers.find(t => E.TOWERS[t.type].tiers[t.tier + 1]);
-      if (!tw) return;
-      if (E.TOWERS[tw.type].tiers[tw.tier + 1].cost > state.gold) return;
-      if (Eng.upgrade(state, tw.id) !== 'ok') return;
-    }
-  },
-  // Mixed composition cycling through roles, then cheapest-upgrade-first.
-  'balanced': function (state) {
-    const comp = ['ranger', 'catapult', 'ranger', 'warden', 'mage', 'ranger', 'catapult'];
-    for (;;) {
-      const slots = emptySlots(state);
-      if (slots.length) {
-        const type = comp[state.towers.length % comp.length];
-        if (E.TOWERS[type].tiers[0].cost > state.gold) return;
-        if (Eng.place(state, slots[0].id, type) !== 'ok') return;
-        continue;
-      }
-      const up = cheapestUpgrade(state);
-      if (!up || up.cost > state.gold) return;
-      if (Eng.upgrade(state, up.tower.id) !== 'ok') return;
-    }
-  }
-};
-
-// ─── Sim runner ──────────────────────────────────────────────
-// opts.slowCall: wait out the ADR-036 D4 early-call countdown before each
-// send (forfeits every bonus) — the control arm for the early-call check.
-function runScripted(mapId, difficulty, policyName, opts) {
-  const state = Eng.createState(mapId, difficulty);
-  const policy = POLICIES[policyName];
-  const slowCall = !!(opts && opts.slowCall);
-  const kills = {};
-  let elapsed = 0;
-  while (state.fsm !== 'wonRun' && state.fsm !== 'lostRun' && elapsed < MAX_SIM_MS) {
-    policy(state);
-    if (Eng.canSendNextWave(state) && (!slowCall || state.prepCountdownMs <= 0)) {
-      Eng.sendNextWave(state);
-    }
-    Eng.step(state, TICK_MS);
-    for (const ev of state.events) if (ev.kind === 'kill') kills[ev.enemyType] = (kills[ev.enemyType] || 0) + 1;
-    state.events.length = 0;
-    elapsed += TICK_MS;
-  }
-  return {
-    won: state.fsm === 'wonRun',
-    timedOut: elapsed >= MAX_SIM_MS,
-    lives: state.lives,
-    gold: state.gold,
-    goldEarned: state.goldEarned,
-    wavesCleared: state.fsm === 'wonRun' ? state.waveTotal : state.waveIndex,
-    simSec: Math.round(elapsed / 1000),
-    kills
-  };
-}
+// Scripted-build policies, runScripted, and the static curve computation
+// (waveStats/computeCurves) now live in tools/sim-core.js — see the require
+// above. The harness keeps only the hygiene micro-arena (killCheck) and the
+// acceptance/check orchestration below.
 
 // Micro-arena: one enemy of `type` against a full board of T3 rangers with
 // hacked gold — proves the type spawns, moves, and dies through the real
@@ -244,7 +102,7 @@ function killCheck(type) {
 // ─── Main ────────────────────────────────────────────────────
 const maps = Maps.listOfficial();
 console.log('CTD3 sim harness — ' + maps.length + ' official maps, ' +
-  Object.keys(E.ENEMIES).length + ' enemy types, ' + Object.keys(POLICIES).length + ' scripted builds\n');
+  Object.keys(E.ENEMIES).length + ' enemy types, ' + SimCore.BUILDS.length + ' scripted builds\n');
 
 // 1. Referenced enemy types exist.
 for (const map of maps) {
@@ -330,8 +188,8 @@ console.log('');
 const results = {};
 for (const map of maps) {
   for (const difficulty of ['quiet', 'spirited']) {
-    for (const policyName of Object.keys(POLICIES)) {
-      const r = runScripted(map.id, difficulty, policyName);
+    for (const policyName of SimCore.BUILDS) {
+      const r = runScripted(map, difficulty, policyName);
       results[map.id + '/' + difficulty + '/' + policyName] = r;
       console.log('run   ' + map.id.padEnd(14) + difficulty.padEnd(9) + policyName.padEnd(16) +
         (r.won ? 'WON ' : (r.timedOut ? 'TIMEOUT ' : 'LOST')) +
@@ -347,7 +205,7 @@ console.log('');
 // builds, register a KNOWN_FAILS entry with that rationale.
 for (const map of maps) {
   for (const difficulty of ['quiet', 'spirited']) {
-    const wonBy = Object.keys(POLICIES).filter(p => results[map.id + '/' + difficulty + '/' + p].won);
+    const wonBy = SimCore.BUILDS.filter(p => results[map.id + '/' + difficulty + '/' + p].won);
     check('completable:' + map.id + ':' + difficulty, wonBy.length > 0,
       wonBy.length ? 'won by ' + wonBy.join(',') : 'no scripted build wins');
   }
@@ -372,7 +230,7 @@ for (const map of maps) {
 // is tempo, so the difference is exactly the early-call bonuses).
 {
   const fast = results['plains/quiet/ranger-heavy'];
-  const slow = runScripted('plains', 'quiet', 'ranger-heavy', { slowCall: true });
+  const slow = runScripted(Maps.byId('plains'), 'quiet', 'ranger-heavy', { slowCall: true });
   check('early-call-banks-more', fast.won && slow.won && fast.goldEarned > slow.goldEarned,
     'early-caller ' + fast.goldEarned + 'g vs slow-caller ' + slow.goldEarned + 'g');
 }

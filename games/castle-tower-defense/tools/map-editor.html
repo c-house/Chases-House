@@ -23,6 +23,12 @@
   <script src="../wfc.js"></script>
   <script src="../wfc-rules.js"></script>
   <script src="../entities.js"></script>
+  <!-- Simulate-this-map (ADR-036 X-1): engine.js defines CTD3Engine only
+       (auto-boot lives in game.js, which is NOT loaded); sim-core.js adds the
+       shared scripted-build runner. maps.js is deliberately absent — sim-core
+       installs a single-map CTD3Maps facade around each run. -->
+  <script src="../engine.js"></script>
+  <script src="sim-core.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -823,6 +829,11 @@
     <h2 class="sg-status">Wave shape</h2>
     <div class="sg-status" data-bind="wave-shape" style="font-size:0.8rem;color:var(--warm-stone);background:rgba(40,28,18,0.5);border:1px solid rgba(200,148,62,0.3);border-radius:4px;padding:0.5rem;font-family:ui-monospace,monospace;line-height:1.5;min-height:1.4em;">(no waves)</div>
 
+    <div class="actions sg-status" style="margin-top:0.4rem;">
+      <button class="tool ember" data-action="simulate" data-bind="simulate-button" title="Run scripted builds against this map">Simulate</button>
+    </div>
+    <div class="sg-status" data-bind="sim-results" hidden style="font-size:0.8rem;color:var(--warm-stone);background:rgba(40,28,18,0.5);border:1px solid rgba(200,148,62,0.3);border-radius:4px;padding:0.5rem;margin-top:0.3rem;font-family:ui-monospace,monospace;line-height:1.5;white-space:pre;overflow-x:auto;"></div>
+
     <h2 class="sg-export">Export</h2>
     <div class="actions sg-export">
       <button class="tool active" data-action="save-user-map" data-bind="save-user-button">Save to My Maps</button>
@@ -1478,6 +1489,8 @@
       shareLink();
     } else if (name === 'publish-community') {
       publishToCommunity();
+    } else if (name === 'simulate') {
+      runSimulation();
     }
   }
 
@@ -2042,6 +2055,14 @@
     setStatus(v);
     setCanvasPill(v);
     setCopyButtonEnabled(v.ok);
+    setSimulateButtonEnabled(v.ok);
+    // Any map edit makes shown sim results stale — dim them and invite a re-run
+    // rather than presenting old WON/lives/gold as if they still hold.
+    const _simBox = document.querySelector('[data-bind="sim-results"]');
+    if (_simBox && !_simBox.hidden && _simBox.style.opacity !== '0.45') {
+      _simBox.style.opacity = '0.45';
+      _simBox.title = 'Map changed since this ran — click Simulate to refresh.';
+    }
     $('[data-bind="preview"]').textContent = buildJsonString();
     updateWaveShape();
     // Inline parse-error highlight on the waves textarea (ADR-034 Group 7).
@@ -2113,6 +2134,68 @@
     });
     el.textContent = lines.join('\n');
     el.style.whiteSpace = 'pre';
+  }
+
+  // ── "Simulate this map" (ADR-036 X-1) ──────────────────────
+  // Runs sim-core's scripted builds against the live export map in-page
+  // (engine.js + sim-core.js are loaded as siblings). Synchronous — six
+  // sims of an 8-wave map finish well under a second; a "Simulating…" beat
+  // lets the box repaint before the loop blocks. Gated on validation, the
+  // same rule as Copy JSON.
+  function setSimulateButtonEnabled(enabled) {
+    const btn = document.querySelector('[data-bind="simulate-button"]');
+    if (!btn) return;
+    btn.classList.toggle('disabled', !enabled);
+    btn.title = enabled ? 'Run scripted builds against this map' : 'Fix path validation before simulating.';
+  }
+  // On a loss/timeout, show the wave the build died on (author-loop feedback —
+  // "LOST w5/8" is diagnostic where a bare "LOST" is not); wins show lives+gold.
+  function _fmtRun(r, total) {
+    if (r.won) return 'WON ' + r.lives + 'L ' + r.gold + 'g';
+    return (r.timedOut ? 'T/O' : 'LOST') + ' w' + (r.wavesCleared + 1) + '/' + total;
+  }
+  function renderSimResults() {
+    const el = document.querySelector('[data-bind="sim-results"]');
+    if (!el) return;
+    const Sim = window.CTD3SimCore;
+    if (!Sim) { el.hidden = false; el.textContent = '(sim-core not loaded)'; return; }
+    const map = buildExportMap();
+    if (!map.waves || map.waves.length === 0) {
+      el.hidden = false; el.textContent = 'Add waves, then simulate.'; return;
+    }
+    const total = map.waves.length;
+    const pad = (s, n) => String(s).padEnd(n, ' ');
+    const short = b => b.replace('-cheapest', '').replace('-heavy', '');
+    const lines = [pad('build', 9) + pad('quiet', 14) + 'spirited'];
+    // One map object, reused across all six runs + the curve (bakeMap caches).
+    Sim.BUILDS.forEach(build => {
+      const q = Sim.runScripted(map, 'quiet', build);
+      const s = Sim.runScripted(map, 'spirited', build);
+      lines.push(pad(short(build), 9) + pad(_fmtRun(q, total), 14) + _fmtRun(s, total));
+    });
+    lines.push('', 'wave  attrition(Q)');
+    Sim.computeCurves(map).forEach(row => {
+      lines.push(' ' + pad(row.wave + (row.isBoss ? '★' : ''), 5) + ' ' + row.attrition.toFixed(2));
+    });
+    el.hidden = false;
+    el.style.opacity = '';   // fresh — clears any stale dimming
+    el.title = '';
+    el.textContent = lines.join('\n');
+  }
+  function runSimulation() {
+    const v = validate();
+    const btn = document.querySelector('[data-bind="simulate-button"]');
+    if (!v.ok) {
+      if (btn) { const orig = btn.textContent; btn.textContent = 'Fix path first'; setTimeout(() => { btn.textContent = orig; }, 1200); }
+      return;
+    }
+    const el = document.querySelector('[data-bind="sim-results"]');
+    if (el) { el.hidden = false; el.style.opacity = ''; el.title = ''; el.textContent = 'Simulating…'; }
+    // Yield one beat so "Simulating…" paints before the synchronous sims block.
+    setTimeout(() => {
+      try { renderSimResults(); }
+      catch (e) { if (el) el.textContent = 'Sim error: ' + (e && e.message); }
+    }, 20);
   }
 
   // ── Persistence (audit T5 — data-loss prevention) ──────────
