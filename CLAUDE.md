@@ -51,6 +51,8 @@ npx serve -p 3003             # Alternative dev server
 node --check <file>.js        # JS syntax validation
 ```
 
+- **Firebase (anonymous auth + RTDB writes) only works from allowlisted referrers** — `localhost:3003` and `chases.house/*` (ADR-017 API-key HTTP-referrer restriction). A dev server on any *other* port (e.g. :3004) throws `auth/requests-from-referer-http://localhost:3004-are-blocked` at the gateway — it reads like a rules/`PERMISSION_DENIED` denial but is not. Serve dev on **3003**, or run the write from the live site (`chases.house`).
+
 ## Deploy & Cache Verification (post-push)
 
 - **Verify live bytes against the git blob, never the working tree.** `core.autocrlf=true` → working tree is CRLF, git blobs and Pages both serve LF. Use `curl -sS <url> | md5sum` vs `git show HEAD:<path> | md5sum`; comparing to the on-disk file reports false STALE on every CRLF file. Same root cause: after a harness run `tools/curves/*.csv` show porcelain-modified with an *empty* `git diff` — assert byte-stability on content (`git diff`), not `git status --porcelain`.
