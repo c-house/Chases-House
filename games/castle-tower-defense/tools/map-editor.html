@@ -1118,6 +1118,10 @@
   };
   const PATH_STROKE = _cssTok('--accent-ember', '#a06828');
   const PATH_DASH   = _cssTok('--bark', '#3a2a1c');
+  // Out-of-bounds surround. Same token .canvas-wrap uses, so the area outside
+  // the playfield reads as continuous with the editor's own gutter rather
+  // than as part of the board.
+  const OUT_OF_BOUNDS = _cssTok('--ink', '#0d1410');
 
   function render() {
     const vp = viewport();
@@ -1128,42 +1132,41 @@
     // GRID_SIZE=1, tiles centered on integers) — so snapped objects render
     // centered in a cell, never on a border line. (The brighter x=0/z=0 axis
     // lines below pass through cell centers by design.)
-    // The grid tiles the WHOLE canvas, and the playfield is marked by an
-    // explicit border rather than by where the grid stops.
-    //
-    // Two earlier shapes were both wrong. Running each line the full canvas
-    // length while looping only the world's tile range drew vertical lines
-    // through the top and bottom margins with no horizontal line crossing
-    // them — bare stripes where the eye expects cells. Bounding the lines to
-    // the playfield instead removed the stripes but left the rest of the
-    // canvas blank, which in a tall window is most of it, and blank reads as
-    // "the grid failed to render". The viewport scales uniformly (Math.min),
-    // so one axis always leaves a margin; the fix is to fill that margin with
-    // real cells and say where the buildable field ends.
-    const idxRange = (px, centre) => {
-      const lo = Math.floor((0 - centre) / vp.scale) - 0.5;
-      const hi = Math.ceil((px - centre) / vp.scale) + 0.5;
-      return { lo, hi };
-    };
-    ctx.strokeStyle = 'rgba(240,230,211,0.06)';
-    ctx.lineWidth = HAIRLINE();
-    const xr = idxRange(vp.w, vp.cx);
-    for (let xi = xr.lo; xi <= xr.hi; xi += 1) {
-      const sx = crisp(vp.cx + xi * vp.scale);
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, vp.h); ctx.stroke();
-    }
-    const zr = idxRange(vp.h, vp.cy);
-    for (let zi = zr.lo; zi <= zr.hi; zi += 1) {
-      const sy = crisp(vp.cy + zi * vp.scale);
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
-    }
-
-    // Playfield bounds — the same +/-WORLD_HALF rect clicks are clamped to.
-    // Without it a full-canvas grid would imply you can build anywhere.
+    // The playfield rect — the same +/-WORLD_HALF range clicks are clamped to.
     const gx0 = crisp(vp.cx - WORLD_HALF_X * vp.scale);
     const gx1 = crisp(vp.cx + WORLD_HALF_X * vp.scale);
     const gy0 = crisp(vp.cy - WORLD_HALF_Z * vp.scale);
     const gy1 = crisp(vp.cy + WORLD_HALF_Z * vp.scale);
+
+    // Everything outside the playfield is painted OUT, not left bare. The
+    // viewport scales uniformly (Math.min), so one axis always leaves a
+    // margin between the field and the canvas edge, and that margin has to
+    // say something. Two earlier attempts said the wrong thing: full-canvas
+    // lines over the world's tile range put vertical lines out there with no
+    // horizontals crossing them (bare stripes), and simply bounding the lines
+    // left the margin identical in colour to the field, so "no grid" read as
+    // "the grid failed to render" rather than "not part of the map".
+    //
+    // Filling the surround and clearing the field back to transparent lets
+    // the canvas's own CSS background (bg-main plus its faint radials) show
+    // through inside the board only, and matches the surround to the token
+    // .canvas-wrap already uses. The grid then means exactly one thing:
+    // tiles you can build on.
+    ctx.fillStyle = OUT_OF_BOUNDS;
+    ctx.fillRect(0, 0, vp.w, vp.h);
+    ctx.clearRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
+
+    ctx.strokeStyle = 'rgba(240,230,211,0.06)';
+    ctx.lineWidth = HAIRLINE();
+    for (let xi = -WORLD_HALF_X + 0.5; xi <= WORLD_HALF_X; xi += 1) {
+      const sx = crisp(vp.cx + xi * vp.scale);
+      ctx.beginPath(); ctx.moveTo(sx, gy0); ctx.lineTo(sx, gy1); ctx.stroke();
+    }
+    for (let zi = -WORLD_HALF_Z + 0.5; zi <= WORLD_HALF_Z; zi += 1) {
+      const sy = crisp(vp.cy + zi * vp.scale);
+      ctx.beginPath(); ctx.moveTo(gx0, sy); ctx.lineTo(gx1, sy); ctx.stroke();
+    }
+
     ctx.strokeStyle = 'rgba(240,230,211,0.18)';
     ctx.strokeRect(gx0, gy0, gx1 - gx0, gy1 - gy0);
 
