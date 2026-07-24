@@ -109,7 +109,7 @@
       "WebSearch",
       "Bash(claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest)",
       "Bash(claude --version)",
-      "Bash(cd /c/Users/chase/Projects/\"Chases House\" && npx serve -p 3003)"
+      "Bash(cd /c/Users/chase/Projects/\"Chases House\" && npx serve -p 3030)"
     ],
     "deny": [],
     "ask": []

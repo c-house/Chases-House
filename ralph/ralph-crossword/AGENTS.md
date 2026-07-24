@@ -6,12 +6,12 @@ Ralph reads this at the start of every session. Keep it brief and factual.
 ## Project Stack
 - Language: HTML/CSS/JS (no TypeScript, no build step)
 - Hosting: GitHub Pages (static files only)
-- Local dev: `python -m http.server 3003` from repo root
+- Local dev: `python -m http.server 3030` from repo root
 - No test runner — browser-based validation via Chrome DevTools MCP
 
 ## Validation Commands
 ```bash
-python -m http.server 3003 &   # Start dev server
+python -m http.server 3030 &   # Start dev server
 node --check games/crossword/game.js  # JS syntax check (fallback)
 ```
 

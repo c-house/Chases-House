@@ -16,7 +16,7 @@ then exit cleanly so the next session can begin fresh.
 - **Fonts**: Fraunces (display), Bricolage Grotesque (body)
 - **Reference game**: `games/sudoku/` — closest analog (solo puzzle, grid, timer, persistence, 4 difficulty levels). Study it for patterns.
 - **All CSS is inline** in each game's `index.html` — no external CSS per game
-- **Local dev**: `python -m http.server 3003` or `npx serve -p 3003` from repo root
+- **Local dev**: `python -m http.server 3030` or `npx serve -p 3030` from repo root
 
 ## Your Loop (execute in order, every iteration)
 
@@ -43,8 +43,8 @@ then exit cleanly so the next session can begin fresh.
 
 ### 4. Validate
 - **Browser validation (preferred):** If Chrome DevTools MCP is available (`list_pages` succeeds), use it:
-  1. Start the dev server if not already running: `python -m http.server 3003 &`
-  2. `navigate_page` to `http://localhost:3003/games/crossword/`
+  1. Start the dev server if not already running: `python -m http.server 3030 &`
+  2. `navigate_page` to `http://localhost:3030/games/crossword/`
   3. `wait_for` the page to load
   4. `take_screenshot` — visually verify the rendered output (save to `temp/screenshots/`)
   5. `list_console_messages` with `types: ["error"]` — fix ALL errors before continuing

@@ -123,7 +123,10 @@ Firebase docs recommend referrer restrictions as a complement to rules. Configur
 | ----------------------- | ------------------------------------------------ |
 | `https://chases.house/*` | Production origin                               |
 | `https://*.chases.house/*` | Future subdomains                              |
-| `http://localhost:3003/*` | `python -m http.server 3003` for local dev      |
+| `http://localhost:3030/*` | `python -m http.server 3030` for local dev (current dev port) |
+| `http://localhost:3003/*` | Former dev port — kept allowlisted; see the 2026-07-24 amendment below |
+
+> **2026-07-24 amendment:** the local-dev port moved from `3003` to `3030` (3003 collided with Smart-Shopper's docker web across the shared `~/Projects` port map). `http://localhost:3030/*` was added to the API-key allowlist in Cloud Console; `3003` is retained for backward compatibility. The Decision section above records the original three-referrer config as of 2026-04-25 and is left unchanged as history.
 
 What this actually protects: requests that carry the API key in the URL — primarily Identity Toolkit (the call `signInAnonymously()` makes under the hood) — fail with `requests-from-referer-<x>-are-blocked` from any other origin. Realtime Database REST requests (`https://chases-house-default-rtdb.firebaseio.com/…`) carry an auth token rather than the API key, so the referrer restriction does **not** gate them — RTDB rules are the only thing protecting the database itself.
 

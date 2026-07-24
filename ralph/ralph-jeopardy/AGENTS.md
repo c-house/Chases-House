@@ -8,13 +8,13 @@ Ralph reads this at the start of every session. Keep it brief and factual.
 - Framework: None — static files served by GitHub Pages
 - Real-time: Firebase v10 compat SDK via CDN `<script>` tags
 - Auth: Firebase Anonymous Auth
-- Local dev: `python -m http.server 3003` or `npx serve -p 3003` from repo root
+- Local dev: `python -m http.server 3030` or `npx serve -p 3030` from repo root
 
 ## Validation Commands
 ```bash
 # No test runner — validation is browser-based via Chrome DevTools MCP
 # 1. Start dev server
-python -m http.server 3003 &
+python -m http.server 3030 &
 
 # 2. Navigate to page, take screenshot, check console errors
 # See PROMPT_BUILD.md step 3 for full protocol

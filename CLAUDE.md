@@ -46,12 +46,31 @@
 ## Commands
 
 ```bash
-python -m http.server 3003    # Local dev server (from repo root)
-npx serve -p 3003             # Alternative dev server
+python -m http.server 3030    # Local dev server (from repo root) — port 3030, see Reserved Dev Ports
+npx serve -p 3030             # Alternative dev server
 node --check <file>.js        # JS syntax validation
 ```
 
-- **Firebase (anonymous auth + RTDB writes) only works from allowlisted referrers** — `localhost:3003` and `chases.house/*` (ADR-017 API-key HTTP-referrer restriction). A dev server on any *other* port (e.g. :3004) throws `auth/requests-from-referer-http://localhost:3004-are-blocked` at the gateway — it reads like a rules/`PERMISSION_DENIED` denial but is not. Serve dev on **3003**, or run the write from the live site (`chases.house`).
+- **Firebase (anonymous auth + RTDB writes) only works from allowlisted referrers** — the dev port `localhost:3030` and `chases.house/*` (ADR-017 API-key HTTP-referrer restriction; the legacy `localhost:3003` is still allowlisted too). A dev server on any *other* port throws `auth/requests-from-referer-http://localhost:<port>-are-blocked` at the gateway — it reads like a rules/`PERMISSION_DENIED` denial but is not. Serve dev on **3030**, or run the write from the live site (`chases.house`).
+
+## Reserved Dev Ports
+
+**Chases House dev server → `3030`** (repo root; serves *all* games from one server). Migrated off `3003` on 2026-07-24 because `3003` collides with Smart-Shopper's docker web; the Firebase referrer allowlist now includes `localhost:3030` (ADR-017). Serve with the Commands above — do not hand-pick another port.
+
+**Do NOT bind these — claimed by sibling `~/Projects` repos (collisions break their active sessions):**
+
+| Port | Owner |
+|---|---|
+| 3000 | shared default (AI-Hub, Doorbell-AI, Map, Smart-Lock, Web-DnD, WebDJ) |
+| 3001 | Doorbell-AI tunnel |
+| 3002 | WebDJ tunnel (thewiseguy.ai / dj.chases.house) |
+| 3003 | Smart-Shopper web (docker) — Chases House's *former* dev port |
+| 3004 | The Lookout tunnel |
+| 5173 | Vite default (Web-DnD is the usual active session, + Orrery, others) |
+| 5180 | MyCraft (mcstructure-studio) |
+| 5432 / 5433 | Postgres / Docker |
+| 8765 | files-vault tunnel / pokemon-agent |
+| 9222 | Chrome DevTools MCP debugger (runs on the Web-DnD chrome profile) |
 
 ## Deploy & Cache Verification (post-push)
 

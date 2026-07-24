@@ -19,7 +19,7 @@ then exit cleanly so the next session can begin fresh.
 - **Reference game**: `games/chess/` — closest analog (multi-file, `window.ChessEngine` pattern → `window.Jeopardy`)
 - **All CSS is inline** in each HTML file — no external CSS per game
 - **Firebase**: v10 compat SDK via CDN `<script>` tags (no build step). Anonymous auth. Config inlined in JS.
-- **Local dev**: `python -m http.server 3003` or `npx serve -p 3003` from repo root
+- **Local dev**: `python -m http.server 3030` or `npx serve -p 3030` from repo root
 
 ## Your Loop (execute in order, every iteration)
 
@@ -45,7 +45,7 @@ then exit cleanly so the next session can begin fresh.
 - For Firebase: use v10 compat SDK via CDN, anonymous auth, server timestamps for buzz ordering
 
 ### 4. Validate
-- **Browser validation (preferred):** If Chrome DevTools MCP is available (`list_pages` succeeds), use it per CLAUDE.md instructions. Reuse existing `localhost:3003` tabs — only open new tabs when necessary. Verify: page loads, screenshot looks right, zero console errors.
+- **Browser validation (preferred):** If Chrome DevTools MCP is available (`list_pages` succeeds), use it per CLAUDE.md instructions. Reuse existing `localhost:3030` tabs — only open new tabs when necessary. Verify: page loads, screenshot looks right, zero console errors.
 - **File-level fallback:** If MCP is unavailable, validate at the file level:
   - HTML is well-formed (no unclosed tags, no mismatched quotes)
   - All `<script src="...">` references point to files that exist
