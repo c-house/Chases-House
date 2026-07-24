@@ -476,6 +476,13 @@ function clearPlayfield() {
   enemyNodes.clear();
   projNodes.clear();
   effectNodes.clear();
+  // Transient decals own per-instance GPU buffers (makeRing/makeDisc allocate
+  // fresh each) — dispose before clearing, same as the Warden auras below, so
+  // leaving a map does not leak the last frame's decals (ADR-037 sprint-6 H-1).
+  for (const o of decalsGroup.children) {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  }
   decalsGroup.clear();
   // Persistent Warden aura registry (ADR-030 §12, CRIT-2). Nodes are Groups
   // containing ring + fill children — traverse to dispose both.
@@ -821,6 +828,16 @@ function syncWardenAuras(state) {
 // ─── Range/aura decals (transient — rebuilt each frame) ──────
 // Warden aura rings live in wardenAurasGroup (persistent), NOT here.
 function syncDecals(state) {
+  // Transient decals allocate a fresh RingGeometry/CircleGeometry AND a fresh
+  // MeshBasicMaterial every frame (makeRing/makeDisc). Group.clear() detaches
+  // children but never frees their GPU buffers, so dispose them here first —
+  // otherwise renderer.info.memory.geometries climbs ~3 per rendered frame,
+  // unbounded, and only dispose() decrements it (ADR-037 sprint-6 H-1). Same
+  // dispose shape as the Warden-aura registry in clearPlayfield/syncWardenAuras.
+  for (const o of decalsGroup.children) {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  }
   decalsGroup.clear();
   // Selected tower → range circle
   const sel = state.selectedTowerId && state.towers.find(t => t.id === state.selectedTowerId);
