@@ -2,6 +2,7 @@ ralph/archived/ralph-testing/screenshots/
 temp/screenshots/
 docs/screenshots/
 docs/sfx-preview/
+chrome-mcp-profile/
 
 # Design-system source zips — extracted into .design-system/, originals discarded.
 # The extracted .design-system/ tree IS tracked (Chase's House Design System snapshot).

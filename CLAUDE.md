@@ -4,7 +4,7 @@
 
 - **Site**: Static personal website at **chases.house**
 - **Tech**: Plain HTML/CSS/JS — no build step, no framework, no backend
-- **Hosting**: GitHub Pages (push to `main` triggers deploy). Static assets sit behind a Cloudflare cache (up to ~4h stale) — purge the changed asset URL after deploy via the CF dashboard's Custom Purge (drivable through Chrome DevTools MCP; no CF API token on this box, so no scripted purge)
+- **Hosting**: GitHub Pages (push to `main` triggers deploy). Static assets sit behind a Cloudflare cache (up to ~4h stale) — purge the changed asset URL after deploy via the CF dashboard's Custom Purge (no CF API token on this box and dash-session API writes 403 — see "Cloudflare Dashboard via Chrome DevTools MCP")
 - **Domain**: chases.house (DNS via GoDaddy A records → GitHub Pages IPs)
 - **Games**: Browser games in `games/` — each self-contained with inline CSS
 - **Subsites**: Some nav links (Music → thewiseguy.ai, Lookout) point to Cloudflare-tunneled services hosted off-repo; `files.chases.house` is another tunneled subsite (ADR-013). This repo carries only their nav links / static front-ends, not the tunnels
@@ -50,6 +50,12 @@ python -m http.server 3003    # Local dev server (from repo root)
 npx serve -p 3003             # Alternative dev server
 node --check <file>.js        # JS syntax validation
 ```
+
+## Deploy & Cache Verification (post-push)
+
+- **Verify live bytes against the git blob, never the working tree.** `core.autocrlf=true` → working tree is CRLF, git blobs and Pages both serve LF. Use `curl -sS <url> | md5sum` vs `git show HEAD:<path> | md5sum`; comparing to the on-disk file reports false STALE on every CRLF file. Same root cause: after a harness run `tools/curves/*.csv` show porcelain-modified with an *empty* `git diff` — assert byte-stability on content (`git diff`), not `git status --porcelain`.
+- Only `games/**` HTML/JS is browser-served and needs purging; `docs/**.md`, `tools/*.cjs`, `tools/curves/*.csv` are Node-only.
+- Purge fired ⇔ `cf-cache-status` flips `HIT`→`MISS` on the next curl. The dashboard shows no success toast either way — the curl is the only confirmation.
 
 ## Available Custom Commands
 
@@ -158,6 +164,15 @@ After building any UI component, page, or user flow:
 - Use `evaluate_script` sparingly; filter results before returning
 - `take_screenshot` with `fullPage: true` for layout verification
 - Re-snapshot after any navigation (UIDs don't persist across page loads)
+
+---
+
+## Cloudflare Dashboard via Chrome DevTools MCP
+
+- Zone `chases.house` = `652a4b42e13da393ab5696d88737aa09`; account = `0ee1273a5cee6fea6a5a5a66666c8df6`. Purge panel: `/<account>/chases.house/caching/configuration` → Custom Purge → URL (`purge_by: files`, ≤30 URLs).
+- **Dash-session `fetch` writes 403 (CSRF) — confirmed for `purge_cache`, not just Rulesets.** GET (`/api/v4/zones?name=…`) works fine with session cookies. Don't retry the API for writes; drive the UI.
+- **Native value-setter alone will NOT enable a submit button** — nor will synthetic `input`/`change`, nor calling React's `onChange` prop directly. Working recipe: set the value *minus its last character* via the native setter, then send **one real key event** (`press_key`) for the final char. React's root listener only trusts genuine CDP input.
+- The MCP Chrome uses its own profile (`chrome-mcp-profile/`), so it has a separate CF session — the operator must log in there once; Claude cannot.
 
 ---
 
