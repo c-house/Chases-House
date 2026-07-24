@@ -1128,19 +1128,31 @@
     // GRID_SIZE=1, tiles centered on integers) — so snapped objects render
     // centered in a cell, never on a border line. (The brighter x=0/z=0 axis
     // lines below pass through cell centers by design.)
+    // Grid lines are bounded to the PLAYFIELD rect, not the canvas. The
+    // viewport scales uniformly (Math.min), so whichever axis is not the
+    // constraining one leaves a margin between the world box and the canvas
+    // edge. Running each line the full width/height instead put vertical
+    // lines through that top and bottom margin with no horizontal line ever
+    // crossing them — bare stripes where the eye expects cells. The rect
+    // below is the same +/-WORLD_HALF range clicks are clamped to.
+    const gx0 = crisp(vp.cx - WORLD_HALF_X * vp.scale);
+    const gx1 = crisp(vp.cx + WORLD_HALF_X * vp.scale);
+    const gy0 = crisp(vp.cy - WORLD_HALF_Z * vp.scale);
+    const gy1 = crisp(vp.cy + WORLD_HALF_Z * vp.scale);
+
     ctx.strokeStyle = 'rgba(240,230,211,0.06)';
     ctx.lineWidth = HAIRLINE();
     for (let xi = -WORLD_HALF_X + 0.5; xi <= WORLD_HALF_X; xi += 1) {
       const sx = crisp(vp.cx + xi * vp.scale);
-      ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, vp.h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx, gy0); ctx.lineTo(sx, gy1); ctx.stroke();
     }
     for (let zi = -WORLD_HALF_Z + 0.5; zi <= WORLD_HALF_Z; zi += 1) {
       const sy = crisp(vp.cy + zi * vp.scale);
-      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(gx0, sy); ctx.lineTo(gx1, sy); ctx.stroke();
     }
     ctx.strokeStyle = 'rgba(240,230,211,0.13)';
-    ctx.beginPath(); ctx.moveTo(crisp(vp.cx), 0); ctx.lineTo(crisp(vp.cx), vp.h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, crisp(vp.cy)); ctx.lineTo(vp.w, crisp(vp.cy)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(crisp(vp.cx), gy0); ctx.lineTo(crisp(vp.cx), gy1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gx0, crisp(vp.cy)); ctx.lineTo(gx1, crisp(vp.cy)); ctx.stroke();
 
     if (state.path.length >= 2) {
       ctx.strokeStyle = PATH_STROKE;
