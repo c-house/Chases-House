@@ -42,10 +42,15 @@ const WARDEN_AURA_FILL_OPACITY_AMP = 0.07;
 // Decision A. Mistier frost replaces prior neon 0x6fd0e0; never push back
 // toward neon 0x00d4ff. Constrained to aura ring + hover preview only.
 const WARDEN_AURA_COLOR = 0x8fc6cf;
-// Ground clearance for flat decals. Flat ground and path tiles stand 0.2 world
-// units tall, so the old 0.05 default sat INSIDE the terrain: the Warden aura
-// and its hover preview rendered on no map at all — found by the ADR-037 C-4
-// re-check, which could not judge a colour that never reached the screen.
+// Ground clearance for flat decals, and `makeRing`'s default y. Flat ground and
+// path tiles stand 0.2 world units tall, so the previous 0.05 clearance sat
+// INSIDE the terrain: the Warden aura and its hover preview rendered on no map
+// at all — found by the ADR-037 C-4 re-check, which could not judge a colour
+// that never reached the screen — and the selected tower's range circle, the
+// last caller still taking `makeRing`'s default, was buried the same way until
+// the ADR-037 sprint-5 residuals pass (R-1). `makeRing`'s default is this
+// constant now; `makeDisc` below still defaults to 0.07 and carries the same
+// latent trap, inert only because its one caller passes an explicit y.
 // 0.24 is the same clearance the slot ring already used over the 0.22-tall
 // slot slab, and staying at 0.24 keeps the aura UNDER the slot affordances
 // (ring 0.24, place-here disc 0.25) rather than inverting that layering.
@@ -820,7 +825,7 @@ function syncDecals(state) {
   // Selected tower → range circle
   const sel = state.selectedTowerId && state.towers.find(t => t.id === state.selectedTowerId);
   if (sel && sel.behavior === 'projectile' && sel.range > 0) {
-    decalsGroup.add(makeRing(sel.x, sel.z, sel.range, TOKENS.ACCENT_GOLD, 0.4));
+    decalsGroup.add(makeRing(sel.x, sel.z, sel.range, TOKENS.ACCENT_GOLD, 0.4, GROUND_DECAL_Y));
   }
   // Empty buildable slots get TWO affordances:
   //   - Always-on: subtle aged-gold ring outline (visible without selection).
@@ -859,7 +864,7 @@ function makeRing(x, z, radius, color, opacity, y) {
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, y != null ? y : 0.05, z);
+  m.position.set(x, y != null ? y : GROUND_DECAL_Y, z);
   return m;
 }
 
