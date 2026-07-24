@@ -481,6 +481,62 @@ console.log('');
   }
 }
 
+// ─── Source-level decal guards (ADR-037 sprint-6 H-2) ────────
+// scene.js is browser-only ESM (it imports the bare 'three' specifier, which
+// resolves only through the page's importmap) and cannot be require()d under
+// Node, so these are TEXT assertions over its source. They retire the ground-
+// decal burial+leak class the way a renderer test can't: written against the
+// actual function signatures, not brittle whole-line matches.
+{
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scene.js'), 'utf8');
+
+  // Parse GROUND_DECAL_Y's value from source rather than hardcoding 0.24 twice.
+  const gdyMatch = src.match(/const\s+GROUND_DECAL_Y\s*=\s*([0-9.]+)/);
+  const GDY = gdyMatch ? parseFloat(gdyMatch[1]) : NaN;
+
+  // Each flat-decal factory's default-y token: `y != null ? y : <token>`.
+  function factoryDefault(name) {
+    const at = src.indexOf('function ' + name + '(');
+    if (at < 0) return null;
+    const m = src.slice(at, at + 600).match(/y\s*!=\s*null\s*\?\s*y\s*:\s*([A-Za-z0-9_.]+)/);
+    return m ? m[1] : null;
+  }
+  const ringDefault = factoryDefault('makeRing');
+  const discDefault = factoryDefault('makeDisc');
+
+  // (1) Both factories default y to the named clearance constant.
+  check('decal-default-clearance',
+    ringDefault === 'GROUND_DECAL_Y' && discDefault === 'GROUND_DECAL_Y',
+    'makeRing->' + ringDefault + ', makeDisc->' + discDefault);
+
+  // (2) No makeRing/makeDisc call site passes a numeric y literal below the
+  //     clearance. The 6th positional arg is y; non-numeric args (the constant
+  //     itself, or a variable) are legal by (1). Definitions are skipped.
+  const buried = [];
+  for (const name of ['makeRing', 'makeDisc']) {
+    const re = new RegExp(name + '\\(', 'g');
+    let mm;
+    while ((mm = re.exec(src))) {
+      if (src.slice(Math.max(0, mm.index - 9), mm.index) === 'function ') continue; // the def
+      const close = src.indexOf(')', mm.index);
+      const args = src.slice(mm.index + name.length + 1, close).split(',').map(s => s.trim());
+      const y = args[5];
+      if (y != null && /^-?\d*\.?\d+$/.test(y) && parseFloat(y) < GDY) buried.push(name + ' y=' + y);
+    }
+  }
+  check('decal-no-buried-literals', Number.isFinite(GDY) && buried.length === 0,
+    buried.length ? buried.join('; ') : 'GROUND_DECAL_Y=' + GDY + ', no y-literal below it');
+
+  // (3) The syncDecals rebuild path frees GPU buffers before clear() — the leak
+  //     countermeasure H-1 shipped (a dispose pass). Anchor between the function
+  //     header and its first decalsGroup.clear().
+  const syncAt = src.indexOf('function syncDecals(');
+  const clearAt = src.indexOf('decalsGroup.clear()', syncAt);
+  const prelude = (syncAt >= 0 && clearAt > syncAt) ? src.slice(syncAt, clearAt) : '';
+  check('decal-dispose-present', /\.dispose\s*\(/.test(prelude),
+    'dispose() between syncDecals header and clear()');
+}
+
 // ─── Summary ─────────────────────────────────────────────────
 const failed = checks.filter(c => c.status === 'FAIL');
 const knownFailed = checks.filter(c => c.status === 'KNOWN-FAIL');

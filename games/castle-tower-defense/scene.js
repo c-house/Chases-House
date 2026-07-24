@@ -48,9 +48,11 @@ const WARDEN_AURA_COLOR = 0x8fc6cf;
 // at all — found by the ADR-037 C-4 re-check, which could not judge a colour
 // that never reached the screen — and the selected tower's range circle, the
 // last caller still taking `makeRing`'s default, was buried the same way until
-// the ADR-037 sprint-5 residuals pass (R-1). `makeRing`'s default is this
-// constant now; `makeDisc` below still defaults to 0.07 and carries the same
-// latent trap, inert only because its one caller passes an explicit y.
+// the ADR-037 sprint-5 residuals pass (R-1); the sprint-6 leak+burial pass
+// (H-1/H-2) then settled `makeDisc` onto this constant too. BOTH flat-decal
+// factories (`makeRing`, `makeDisc`) now default y to GROUND_DECAL_Y, and
+// tools/sim-harness.cjs guards it — the `decal-*` source-level checks — so the
+// burial trap cannot return via a new default or a buried call-site literal.
 // 0.24 is the same clearance the slot ring already used over the 0.22-tall
 // slot slab, and staying at 0.24 keeps the aura UNDER the slot affordances
 // (ring 0.24, place-here disc 0.25) rather than inverting that layering.
@@ -891,7 +893,7 @@ function makeDisc(x, z, radius, color, opacity, y) {
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
   const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, y != null ? y : 0.07, z);
+  m.position.set(x, y != null ? y : GROUND_DECAL_Y, z);
   return m;
 }
 
