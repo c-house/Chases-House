@@ -413,6 +413,35 @@ The seven groups carry uneven shipping risk. Order them as:
 
 **Decision: Option A.** Cyan stays desaturated at `0x8fc6cf`; never push toward neon `0x00d4ff`. Document at constant site; do not extend to other effects.
 
+**Re-check verdict — 2026-07-23 (ADR-037 C-4): `0x8fc6cf` RATIFIED against the current themed fills. The colour was never the defect; the aura was not rendering at all.**
+
+ADR-037 §3(c) called this re-check because Sprint 2's `a97b78b` gave `rulesForMap()` theme-keyed WFC palettes, changing the ground-fill density and composition the cyan is read against in the game itself. The re-check found the ground had changed in a way the plan did not anticipate: **it got taller.** The kit's ground and path tiles stand 0.2 world units high, but the aura decal was positioned at `y = 0.05` — inside the terrain — so the Warden aura rendered on **no map at all**. Proven by lifting the node to `y = 0.30` in a live session: two rings appeared immediately where nothing had been visible before. This dates to the ADR-030/031 tile renderer, which raised the ground surface and left this one decal behind; `syncDecals` had already been updated for it (the slot ring and place-here disc sit at 0.24/0.25 with a comment naming the 0.22-tall slab), but the persistent aura group had not. A colour ratified in 2026-05 had therefore been unverifiable ever since.
+
+Fixed at the position, not the palette: a named `GROUND_DECAL_Y = 0.24` in `scene.js`. No opacity, pulse, colour, or material constant was touched. 0.24 is not a universal clearance and the constant says so — path *corner* tiles reach 0.296 and clip roughly 2–5 % of a ring's circumference (measured by raycasting the circumference at every build slot on all six maps: plains 1.9 %, forest 1.8 %, tidewater 1.8 %, snowfall 2.1 %, riverbend 2.9 %, mountain 4.6 %). Going higher would clear that lip but would push the aura *above* the slot ring (0.24) and place-here disc (0.25), inverting a layering that currently works. The clip is accepted; taller scenery (hills 0.57, rocks 0.75, trees 0.96+) is meant to occlude a ground decal.
+
+**The same defect had a second instance, and it is also fixed.** Decision A scopes this exception to "aura ring **+ hover preview**". The hover preview — the ring drawn when Warden is palette-selected and a slot is hovered — reads its colour through `TOKENS.WARDEN_AURA`, the *same value under a different identifier*, and called `makeRing` without a `y`, so it inherited the same 0.05 default and was equally invisible. A player selecting Warden therefore got no coverage preview at all before spending 90 g. Both sites now take `GROUND_DECAL_Y`.
+
+**A latent bug this fix promoted, also closed.** `syncWardenAuras` built the ring geometry once, inside `if (!node)`, and an upgrade keeps the same tower id while widening `auraRadius` — so a T3 Warden drew its T1 ring (6.0 against a real 8.0: a quarter short in radius, nearly half in area). Harmless while the aura was buried; the moment it renders it becomes an affordance that lies about coverage. The geometry is now rebuilt when the radius changes (verified: T3 renders 8.0).
+
+With the aura rendering, all six official maps were judged in-browser. Coverage is stated exactly as run — the camera is orthographic and clamped 0.7–1.4, where **0.7 is zoomed OUT and 1.4 is zoomed IN**:
+
+| Map | Palette | Cameras judged | Verdict |
+|---|---|---|---|
+| plains | standard | 1.0, 1.4 | Clear — pale frost ring, unmistakably non-warm |
+| forest | forest (tree-dense) | 0.7, 1.0 | Clear |
+| mountain | mountain (hill/rock-heavy, no tree-quad) | 0.7, 1.0 | Clear — the highest occluding-feature density of the six |
+| snowfall_pass | snow (`paletteForMap` short-circuits on map id, so its `mountain` theme is inert) | 0.7, 1.0 | **Weakest but legible** — the ring stays continuous and traceable, and its blue separates cleanly from the warm beige |
+| tidewater | forest | 0.7 | Clear |
+| riverbend | forest | 0.7 | Clear |
+
+Honest coverage note: every *palette* was judged at both a normal and a zoomed-out camera. Two individual maps were not — plains lacks a 0.7 pass, and tidewater/riverbend lack a 1.0 pass; both reuse the forest palette, which was judged at both. Snowfall is the worst case and it passes, so the constant holds on the background that stresses it most.
+
+Two adjacent findings recorded rather than acted on, both outside C-4's charter:
+- **`makeRing`'s `y` default is still 0.05**, and its remaining defaulting caller is the *selected-tower range circle* (`syncDecals`). That gold circle is therefore buried and non-functional on every map today — a core affordance, one line to fix, but a different feature from the Warden cyan. Worth its own chunk.
+- The Sprint-3 observation is confirmed: snowfall's pale grey path reads with markedly less contrast against its near-white ground than the terracotta paths do against green. A path/ground contrast question, not an aura one.
+
+One allowlist entry above needs its line number refreshed rather than removed: `scene.js:702 (hover ring)` is a real and still-sanctioned site — it has moved to `scene.js:836`.
+
 ### B. Empty-slot placement disc — `--accent-glow` (not `--accent-sage`, not `--accent-gold` solid)
 
 **Conflict:** Empty-slot placement disc currently `0x6aff5a` is banned (neon). Sage `0x7a9460` carries growth/success semantics that would compete with future state cues. Gold solid is the active CTA fill — overusing it as ambient affordance breaks finite-resource discipline.

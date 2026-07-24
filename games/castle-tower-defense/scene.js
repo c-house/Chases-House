@@ -42,6 +42,17 @@ const WARDEN_AURA_FILL_OPACITY_AMP = 0.07;
 // Decision A. Mistier frost replaces prior neon 0x6fd0e0; never push back
 // toward neon 0x00d4ff. Constrained to aura ring + hover preview only.
 const WARDEN_AURA_COLOR = 0x8fc6cf;
+// Ground clearance for flat decals. Flat ground and path tiles stand 0.2 world
+// units tall, so the old 0.05 default sat INSIDE the terrain: the Warden aura
+// and its hover preview rendered on no map at all — found by the ADR-037 C-4
+// re-check, which could not judge a colour that never reached the screen.
+// 0.24 is the same clearance the slot ring already used over the 0.22-tall
+// slot slab, and staying at 0.24 keeps the aura UNDER the slot affordances
+// (ring 0.24, place-here disc 0.25) rather than inverting that layering.
+// Not a universal clearance: path CORNER tiles reach 0.296 and clip roughly
+// 2-5% of a ring's circumference, which is accepted. Taller scenery (hills
+// 0.57, rocks 0.75, trees 0.96+) is meant to occlude a ground decal.
+const GROUND_DECAL_Y = 0.24;
 const ENEMY_BOB_RATE_GROUND = 4;
 const ENEMY_BOB_RATE_FLYING = 1.6;
 const ENEMY_BOB_AMP_GROUND = 0.05;
@@ -754,12 +765,28 @@ function syncWardenAuras(state) {
       const fill = new THREE.Mesh(fillGeo, fillMat);
       node.add(ring);
       node.add(fill);
-      node.position.set(tw.x, 0.05, tw.z);
+      node.position.set(tw.x, GROUND_DECAL_Y, tw.z);
       node.userData.t0 = performance.now();
       node.userData.ring = ring;
       node.userData.fill = fill;
+      node.userData.radius = tw.auraRadius;
       wardenAuraNodes.set(tw.id, node);
       wardenAurasGroup.add(node);
+    } else if (node.userData.radius !== tw.auraRadius) {
+      // An upgrade keeps the same tower id but widens auraRadius, and the
+      // geometry above is built ONLY on first sight — so a T3 Warden used to
+      // draw its T1 ring (6.0 against a real 8.0: a quarter short in radius,
+      // nearly half in area). Harmless while the aura was buried; the moment
+      // it renders it becomes an affordance that lies about coverage.
+      node.userData.ring.geometry.dispose();
+      node.userData.fill.geometry.dispose();
+      const ringGeo = new THREE.RingGeometry(tw.auraRadius * 0.88, tw.auraRadius, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const fillGeo = new THREE.CircleGeometry(tw.auraRadius * 0.88, 48);
+      fillGeo.rotateX(-Math.PI / 2);
+      node.userData.ring.geometry = ringGeo;
+      node.userData.fill.geometry = fillGeo;
+      node.userData.radius = tw.auraRadius;
     }
     if (window.CTD3Ui.motionAllowed()) {
       const elapsed = performance.now() - node.userData.t0;
@@ -806,7 +833,7 @@ function syncDecals(state) {
       if (occupied) continue;
       // Always-on aged-gold ring around the slab — affordance without palette.
       // Slab is 0.95×0.22×0.95 centered at y=0.11; ring sits just above the top.
-      decalsGroup.add(makeRing(slot.x, slot.z, 0.62, TOKENS.ACCENT_GOLD, 0.85, 0.24));
+      decalsGroup.add(makeRing(slot.x, slot.z, 0.62, TOKENS.ACCENT_GOLD, 0.85, GROUND_DECAL_Y));
       if (state.paletteSelection) {
         // Bright vivid-green pulsing disc when palette tower is selected
         decalsGroup.add(makeDisc(slot.x, slot.z, 1.1, TOKENS.ACCENT_GLOW, pulse, 0.25));
@@ -822,7 +849,7 @@ function syncDecals(state) {
       const tier0 = def.tiers[0];
       const r = def.behavior === 'aura' ? tier0.auraRadius : tier0.range;
       const color = def.behavior === 'aura' ? TOKENS.WARDEN_AURA : TOKENS.ACCENT_EMBER;
-      decalsGroup.add(makeRing(slot.x, slot.z, r, color, 0.4));
+      decalsGroup.add(makeRing(slot.x, slot.z, r, color, 0.4, GROUND_DECAL_Y));
     }
   }
 }
