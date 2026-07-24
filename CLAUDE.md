@@ -52,6 +52,7 @@ node --check <file>.js        # JS syntax validation
 ```
 
 - **Firebase (anonymous auth + RTDB writes) only works from allowlisted referrers** — the dev port `localhost:3030` and `chases.house/*` (ADR-017 API-key HTTP-referrer restriction; the legacy `localhost:3003` is still allowlisted too). A dev server on any *other* port throws `auth/requests-from-referer-http://localhost:<port>-are-blocked` at the gateway — it reads like a rules/`PERMISSION_DENIED` denial but is not. Serve dev on **3030**, or run the write from the live site (`chases.house`).
+- **Add a dev origin to the Firebase key** (when the dev port changes / a new origin needs auth): Cloud Console → APIs & Services → Credentials → *Browser key (auto created by Firebase)* → Application restrictions = *Websites* → **Add** `http://localhost:<port>/*` → Done → **Save**. Propagation takes up to ~5 min; verify with a real `signInAnonymously()` from that origin (off-allowlist throws `auth/requests-from-referer-…-are-blocked`).
 
 ## Reserved Dev Ports
 
