@@ -1056,17 +1056,39 @@
   const ctx = canvas.getContext('2d');
   const canvasWrap = $('.canvas-wrap');
 
+  // The device-pixel ratio the backing store was last sized for. Kept as a
+  // module value rather than re-read per draw so the transform, the CSS size
+  // and the hairline snapping below can never disagree mid-frame.
+  let _dpr = window.devicePixelRatio || 1;
+
   function resizeCanvas() {
     const r = canvasWrap.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(r.width * dpr);
-    canvas.height = Math.floor(r.height * dpr);
-    canvas.style.width = r.width + 'px';
-    canvas.style.height = r.height + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    _dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * _dpr);
+    canvas.height = Math.round(r.height * _dpr);
+    // Derive the CSS size back FROM the rounded backing store. Setting it to
+    // the raw fractional rect instead leaves the real scale a hair off _dpr
+    // (measured 1.7499999 against a stated 1.75), which is enough to make the
+    // hairline snapping below land on the wrong pixel near the far edge.
+    canvas.style.width = (canvas.width / _dpr) + 'px';
+    canvas.style.height = (canvas.height / _dpr) + 'px';
+    ctx.setTransform(_dpr, 0, 0, _dpr, 0, 0);
     render();
   }
   window.addEventListener('resize', resizeCanvas);
+
+  // Snap a CSS-space coordinate to the centre of a device pixel.
+  //
+  // A canvas stroke straddles its coordinate, so a 1px line at a fractional
+  // device position is antialiased across two or three pixels. Grid lines sit
+  // at irregular fractional offsets (tile borders × a scale that changes with
+  // every window size), so consecutive lines round differently: measured gaps
+  // of 29/30/31/32/33 device px where all should be ~31.9, and brightness
+  // varying by 11%. The grid read as distorted, and differently distorted at
+  // each window size. Snapping each hairline to a pixel centre — and stroking
+  // it exactly one device pixel wide — makes the spacing uniform at any size.
+  function crisp(cssCoord) { return (Math.round(cssCoord * _dpr) + 0.5) / _dpr; }
+  const HAIRLINE = () => 1 / _dpr;
 
   function viewport() {
     const r = canvas.getBoundingClientRect();
@@ -1107,18 +1129,18 @@
     // centered in a cell, never on a border line. (The brighter x=0/z=0 axis
     // lines below pass through cell centers by design.)
     ctx.strokeStyle = 'rgba(240,230,211,0.06)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = HAIRLINE();
     for (let xi = -WORLD_HALF_X + 0.5; xi <= WORLD_HALF_X; xi += 1) {
-      const sx = vp.cx + xi * vp.scale;
+      const sx = crisp(vp.cx + xi * vp.scale);
       ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, vp.h); ctx.stroke();
     }
     for (let zi = -WORLD_HALF_Z + 0.5; zi <= WORLD_HALF_Z; zi += 1) {
-      const sy = vp.cy + zi * vp.scale;
+      const sy = crisp(vp.cy + zi * vp.scale);
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(vp.w, sy); ctx.stroke();
     }
     ctx.strokeStyle = 'rgba(240,230,211,0.13)';
-    ctx.beginPath(); ctx.moveTo(vp.cx, 0); ctx.lineTo(vp.cx, vp.h); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, vp.cy); ctx.lineTo(vp.w, vp.cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(crisp(vp.cx), 0); ctx.lineTo(crisp(vp.cx), vp.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, crisp(vp.cy)); ctx.lineTo(vp.w, crisp(vp.cy)); ctx.stroke();
 
     if (state.path.length >= 2) {
       ctx.strokeStyle = PATH_STROKE;
