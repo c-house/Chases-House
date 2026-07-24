@@ -2,7 +2,13 @@
 
 This document defines the heuristics every CTD3 map should satisfy. All H-rules are map-independent — they apply to every map's path and build-slot layout regardless of theme or wave content.
 
-New maps must pass `tools/map-editor.html validate()` (which enforces H6 automatically). The remaining rules (H1–H5, H7–H12, H8a) are a manual checklist.
+New maps must pass `tools/map-editor.html validate()`, which now enforces **every H-rule automatically**:
+
+- **Blocker tier** (in the editor): H6, H8a, H9, plus the structural checks PATH_MIN, AXIS, ZERO_LEN, SLOT_INT, NO_SLOTS, WAVES_PARSE.
+- **Warn tier** (`tools/map-rules.js`, ADR-037 C-7): H1, H2, H3, H4, H5, H7, H8, H10, H11, H12. That module is a **pure function over a map object** with no DOM — the editor calls it, and so can a layout generator in a generate-and-reject loop. `tools/map-rules-test.cjs` carries a positive and a negative control per rule, boundary probes on the thresholds, and a pinned baseline of the six official maps.
+- **Still manual:** W3 and W7 only. Both are judgement calls about feel rather than computations over a map object, and are marked "(manual)" below.
+
+The six official maps predate these rules and several violate the warn-tier ones; that is pinned as a baseline, not treated as a regression. **Nothing here may be promoted to blocker tier** without first fixing the shipped maps.
 
 ---
 

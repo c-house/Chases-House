@@ -29,6 +29,10 @@
        installs a single-map CTD3Maps facade around each run. -->
   <script src="../engine.js"></script>
   <script src="sim-core.js"></script>
+  <!-- Coverage + fairness oracle (ADR-037 C-7). Pure, DOM-free, and shared:
+       the editor renders its verdicts as warns, and the cycle-3 layout
+       generator calls the same module to reject unfair layouts. -->
+  <script src="map-rules.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -466,6 +470,20 @@
       display: block;
       margin-bottom: 0.15rem;
     }
+    /* Collapsed coverage-rule group (ADR-037 C-7) — ten layout rules would
+       otherwise bury the wave warns. Aged-gold like the warns it holds; no
+       new hue, no fill. */
+    .status .warn-group { margin-top: 0.35rem; }
+    .status .warn-group > summary {
+      cursor: pointer; list-style: none;
+      font-size: 0.74rem; color: var(--aged-gold);
+      padding: 0.1rem 0; user-select: none;
+    }
+    .status .warn-group > summary::-webkit-details-marker { display: none; }
+    .status .warn-group > summary::before { content: '▸ '; opacity: 0.7; }
+    .status .warn-group[open] > summary::before { content: '▾ '; }
+    .status .warn-group > summary:focus-visible { outline: 1px solid var(--aged-gold); outline-offset: 2px; }
+    .status .warn-group .warn-list { margin-top: 0.15rem; padding-left: 0.7rem; }
     .status .warn-list { list-style: none; margin: 0.35rem 0 0; padding: 0; }
     .status .warn-list li { color: var(--aged-gold); font-size: 0.74rem; margin: 0.15rem 0; }
 
@@ -2006,6 +2024,17 @@
       });
     }
 
+    // ── Coverage + fairness rules (ADR-037 C-7) ───────────────
+    // Every structural rule above is checked here; every COVERAGE rule lives
+    // in tools/map-rules.js as a pure function over a map object, so the
+    // cycle-3 layout generator can call the same oracle in a generate-and-
+    // reject loop. Warn-tier only, deliberately: the six official maps were
+    // hand-authored before these rules existed and several violate them, so
+    // promoting any of these to blocker would break shipped content.
+    if (window.CTD3MapRules) {
+      for (const iss of window.CTD3MapRules.check(m)) warn(iss.code, iss.message);
+    }
+
     return { ok: true, issues, totalLength: probe.totalLength, cellCount: tg.cells.length };
   }
 
@@ -2097,15 +2126,37 @@
     });
     el.appendChild(ul);
     if (warns.length) {
-      const wl = document.createElement('ul');
-      wl.className = 'warn-list';
-      warns.forEach(iss => {
-        const li = document.createElement('li');
-        li.textContent = '⚠ ';
-        _appendIssueText(li, iss);
-        wl.appendChild(li);
-      });
-      el.appendChild(wl);
+      // Warn density (ADR-037 C-6/C-7). The wave warns are about content the
+      // author just typed and stay inline. The coverage rules are about the
+      // LAYOUT and there are ten of them, so on a work-in-progress map they
+      // would otherwise bury the wave notes under a wall of amber — the
+      // starter map alone trips seven. They collapse behind a count instead,
+      // open on demand, and the group stays shut by default so the rail reads
+      // as a checklist rather than a scolding.
+      const wave = warns.filter(i => /^W/.test(i.code));
+      const layout = warns.filter(i => !/^W/.test(i.code));
+      const listOf = (items) => {
+        const wl = document.createElement('ul');
+        wl.className = 'warn-list';
+        items.forEach(iss => {
+          const li = document.createElement('li');
+          li.textContent = '⚠ ';
+          _appendIssueText(li, iss);
+          wl.appendChild(li);
+        });
+        return wl;
+      };
+      if (wave.length) el.appendChild(listOf(wave));
+      if (layout.length) {
+        const det = document.createElement('details');
+        det.className = 'warn-group';
+        const sum = document.createElement('summary');
+        sum.textContent = 'Coverage & fairness — ' + layout.length +
+          (layout.length === 1 ? ' note' : ' notes');
+        det.appendChild(sum);
+        det.appendChild(listOf(layout));
+        el.appendChild(det);
+      }
     }
   }
 
