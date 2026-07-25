@@ -1,9 +1,23 @@
 Castle Tower Defense 3D — third-party asset licenses
 ======================================================
 
-All assets in this directory are Creative Commons Zero (CC0).
-No attribution is required, but credits are listed below as
-good practice.
+Nearly all assets in this directory are Creative Commons Zero (CC0).
+No attribution is required for those, but credits are listed below
+as good practice.
+
+ONE DOCUMENTED EXCEPTION, stated up front rather than buried: the four
+Hyper3D Rodin generations listed under the heading beginning
+"MODELS — Hyper3D Rodin generations" below are NOT CC0. They predate the CC0-only
+shipping policy, are grandfathered by ADR-039 D22 as an enumerated and
+closed exception, and are scheduled for deletion (ADR-039 D24). Until
+then this file must not claim blanket CC0 coverage — an earlier version
+of this header did, and it was false.
+
+Policy of record: ADR-039 (docs/adr/039-ctd3-cc0-asset-expansion-policy-
+and-monster-suite.md). Third-party art shipped from this directory must
+be CC0 and must carry a per-file entry below. First-party art the
+operator authored (e.g. /assets/forest-house-landscape.png) is outside
+that policy and is deliberately not ledgered here.
 
 ----------------------------------------------------------------------
 MODELS — Kenney "Tower Defense Kit" 2.1
@@ -92,6 +106,228 @@ MODELS — Kenney "Tower Defense Kit" 2.1
     snow_tile_tree.glb       → snow-tile-tree.glb
     snow_tile_tree_double.glb→ snow-tile-tree-double.glb
     snow_tile_tree_quad.glb  → snow-tile-tree-quad.glb
+
+----------------------------------------------------------------------
+MODELS — Quaternius "Ultimate Monsters" (animated enemy roster, ADR-039)
+----------------------------------------------------------------------
+  Pack:     Ultimate Monsters (50 animated monsters)
+  Source:   https://quaternius.com/packs/ultimatemonsters.html
+  Author:   Quaternius (https://quaternius.com/)
+  License:  CC0 1.0 Universal (Public Domain Dedication)
+            http://creativecommons.org/publicdomain/zero/1.0/
+            Verified two ways: the CC0 link on the pack page above, and
+            the per-model "Licence: CC0 1.0" field on each model's own
+            poly.pizza page (ADR-039 D22 — the search filter is never
+            the determination; the asset's own page is).
+  Downloaded: 2026-07-24
+
+  DOWNLOAD ROUTE — the fallback, and why (ADR-039 D25 route honesty):
+    The pack page's Download button resolves to a Google Drive folder
+    (id 18m4KpzpEzhC9wl7jzr6dUc0N8Jozr79C). Every per-file endpoint on
+    that folder returned "Google Drive - Quota exceeded" on 2026-07-24
+    (drive.google.com/uc, drive.usercontent.google.com/download, with
+    and without a browser user-agent). The folder STRUCTURE enumerated
+    fine via embeddedfolderview — Big/, Blob/, Flying/, each with a
+    glTF/ subfolder — so the pack's CONTENTS (a model of each title
+    below is in the pack) and its CC0 grant were both read off the
+    source of record.
+    Stated precisely, because the distinction matters to a future
+    licence audit: no byte-level chain ties the downloaded files to
+    the Quaternius Drive copy, because the Drive bytes were never
+    obtainable. What is established is (a) a model of that title is in
+    the CC0 pack, (b) each model's own poly.pizza page declares CC0,
+    and (c) the bytes are internally consistent with Quaternius rig and
+    naming conventions. That is strong corroboration, not byte-level
+    confirmation. Anyone re-auditing should re-read each model page.
+    The bytes therefore came from the ADR-039-sanctioned poly.pizza CC0
+    mirror: https://static.poly.pizza/<ResourceID>.glb
+    Per-file publicID + ResourceID are recorded below so any re-import
+    is reproducible without re-deriving them.
+
+  SUB-PACK NOTE: Ultimate Monsters ships three stylistic sub-packs whose
+  rigs differ, which is why clip sets differ per file below:
+    Big    — full-size monsters, ~46 nodes, 14 clips incl. Walk + Run
+    Blob   — chibi/blob forms,   ~8 nodes,   9 clips incl. Walk + Jump
+    Flying — winged/hovering,   ~16-41 nodes, 8 clips incl. Fast_Flying
+  Sub-pack membership was determined per file by fingerprinting the
+  armature name, clip set, node count and mesh names — not inferred from
+  the model title. One superficially-matching candidate ("Demon",
+  armature EnemyArmature, single Atlas material, doubly-prefixed clip
+  names) was REJECTED by this check as belonging to a different
+  Quaternius pack. Caveat on the fingerprint's strength: MATERIAL names
+  are pack-wide rather than per-model, so they carry little identifying
+  weight on their own — "Mushroom King" ships an Orc_Main material and
+  "Ninja" ships a Birb_Secondary. The armature + clip-set + node-count
+  signature is what actually discriminates.
+
+  OPTIMIZATION (ADR-039 D25 — packing only, never restyling):
+    @gltf-transform: resample -> dedup -> weld -> prune -> quantize
+    (KHR_mesh_quantization, natively supported by three.js GLTFLoader,
+    so no decoder script and no importmap change). Unused animation
+    clips dropped; only the clips the game plays are kept. Materials
+    are UNTOUCHED — Quaternius palette colours are the point, and these
+    models carry zero textures (flat-colour materials only), which is
+    why no texture atlas is imported. `skin.skeleton` is unset after
+    pruning (an optional glTF hint; three.js builds its Skeleton from
+    `joints`) because pruning can otherwise leave it pointing at a node
+    that is no longer a common root — the glTF validator flagged
+    exactly this on the blob rig.
+    All nine files: glTF-Validator 0 errors.
+
+  TOOLCHAIN: glTF-Transform v4.4.1 (recorded in each file's
+  asset.generator). Quantization bit depths: position 12, normal 10,
+  weight 8, texcoord 10 — note these are PRECISION settings, not size
+  settings: 12- and 14-bit positions both pack into int16, so changing
+  them does not change the byte size.
+
+  ON THE TWO TRI COLUMNS BELOW — they are different measurements and
+  neither is a typo:
+    "page tris" is the statistic on the model's own poly.pizza page. It
+        is a THIRD-PARTY figure about the upstream source, recorded for
+        traceability only.
+    "file tris" is the shipped .glb's own triangle count, measured by
+        summing primitive index counts after load.
+  They disagree by up to 1.7x (aggregate +31%: 33,388 page vs 43,652
+  shipped), so do not size a perf budget off the page figure. The
+  optimization passes cannot ADD geometry, so the upstream source must
+  itself have had the higher count — the page statistic evidently
+  describes something narrower. "draw calls" is the number of
+  SkinnedMeshes per instance, which is what a frame actually pays:
+  materials are deliberately untouched (ADR-039 D23), so each distinct
+  material stays its own primitive.
+
+  Per-file mapping (target → source model, sub-pack, ids, sizes, hashes,
+  geometry, clips):
+
+    enemy_footman2.glb    → "Orc"              Big
+        publicID 5vO2YJsPEf  resource 52a479b3-a635-4a23-92cb-6697eaa5eed5
+        512984 → 320556 B    page tris 4312 / file tris 7344 / 11 draw calls
+        sha256 src fb5d9da18e16fd3bd6f066692576845d411acf19536d46c7598f5d701b6db19f
+        sha256 out 8873b7a7f2e44eac584a288372201a7257e09b7535711dc48e16a90c62890feb
+        clips: Walk, Run, Death
+        NOTE: 313 KB — the one file over ADR-039 D25's ~300 KB soft
+        budget, by 4.35%. Cause: 10 materials, the most of any model
+        here (next is runner2 at 7), each of which stays a separate
+        primitive because materials are untouched; plus a second skinned
+        mesh for the weapon. (The second skinned mesh alone does not
+        explain it — captain2 and slime2 also have two and both sit
+        comfortably under budget. The material count is the driver.)
+        Accepted rather than decimated: D25 sets a budget "to notice
+        violations against", tighter quantization cannot help (see the
+        bit-depth note above), and geometry decimation would mean a new
+        meshoptimizer dependency for a 13 KB saving.
+    enemy_heavy2.glb      → "Yeti"             Big
+        publicID ceRHrn8HHE  resource 40a831b3-686a-4af8-b189-a13b38a3c26a
+        423024 → 268656 B    page tris 4310 / file tris 6094 / 6 draw calls
+        sha256 src 789fcdd3d32a1bf6ceaa0e30f9ac5d8d2c52d15fa0181d4d1d980a1b2a2ac869
+        sha256 out 4f869627d2a48e5b0888fbcf998bc5bef82302924fe1b53d4a11998be02a1faa
+        clips: Walk, Run, Death
+    enemy_runner2.glb     → "Ninja"            Big
+        publicID xGYmeDpfTu  resource 2ed11876-720e-457a-8a69-4a14ba7234dc
+        457204 → 286688 B    page tris 5780 / file tris 5964 / 7 draw calls
+        sha256 src f9d38ed5156252a675b40a16c8a01795c16b78b464edbde1ab9fc46951ae420e
+        sha256 out abefff4c71fd6b9e6737f8bc74a861b8c71d9531cbac8b0e8afdb83010ca3f2c
+        clips: Walk, Run, Death
+    enemy_shielded2.glb   → "Dino"             Big
+        publicID wuerCFCWNR  resource 1c1ae302-b948-4de4-961a-44f762b722cf
+        404176 → 256988 B    page tris 4318 / file tris 5414 / 6 draw calls
+        sha256 src 19b9a3841ebfd7595da9cd595b74e231da29730fe8030a2d17a021bc26b563ef
+        sha256 out 9e87fd3c6a827a0e520be306d4a971df42cf427012aa77e452b9132f30f242a7
+        clips: Walk, Run, Death
+    enemy_captain2.glb    → "Mushroom King"    Big
+        publicID grnFTziU8u  resource 798301fb-b950-460c-9c67-526621ad8500
+        444228 → 282024 B    page tris 5116 / file tris 6044 / 7 draw calls
+        sha256 src 45bbb9d659697d0127be159af0a58fae3fe8eef430adacaf994efcf0769b2e09
+        sha256 out 48a5c4dbceeb1a3ac4e76de1b106cf67efb00ac8d3da243ec24ca0c121324661
+        clips: Walk, Run, Death
+    enemy_juggernaut2.glb → "Blue Demon"       Big
+        publicID S7jYW6Amye  resource 6fbb8914-bd11-45e1-a906-51ace2ca5d2d
+        439488 → 278180 B    page tris 4456 / file tris 5800 / 6 draw calls
+        sha256 src 6a8e743deba6f43f0f9b1e702016b04ddba1d3bf73b7101d2c86d64ae526f87c
+        sha256 out f6a015401bb330bc3f63b05c29f1150ca3846d00ca259e604e65ccf36317bfff
+        clips: Walk, Run, Death
+    enemy_slime2.glb      → "Green Blob"       Blob
+        publicID y4kJh8EeYS  resource 64ab590e-1f77-4678-b357-78c430fd73bf
+        74812 →  50580 B     page tris 1496 / file tris 1520 / 3 draw calls
+        sha256 src 31c46edd6306e4ab21bec4608b41003baa74f430f27d357b90c9b6401d88a584
+        sha256 out 71e763cdf9e82daaf7dc6eaf85c26fd4aa7b7c1d8d388602929fbbbb9adbfe5c
+        clips: Walk, Jump, Death
+        Serves BOTH the slime and mini_slime enemy types, at two
+        different presentation scales — they are one creature in the
+        design, and the Rodin pair it replaces was likewise one mesh
+        duplicated (RODIN_Slime / RODIN_Slime.002).
+    enemy_skirmisher2.glb → "Armabee"          Flying
+        publicID 42djT5zJnx  resource de63aaf6-9170-47f7-933d-439af68826a6
+        143736 → 101540 B    page tris 1544 / file tris 2280 / 5 draw calls
+        sha256 src 9a47899a2320aa42d5f550598a981c26517c6e27723980f5d2080a557eb88dc2
+        sha256 out fe699f7f175c8c16c10feca43b9444e86d986a7cd689083db5fb04af24177ea3
+        clips: Fast_Flying, Flying_Idle, Death
+    enemy_ghost2.glb      → "Ghost"            Flying
+        publicID Iip30bDHmu  resource 810f60a2-6e45-4c4e-a0d5-da91cd7288bd
+        203360 → 142720 B    page tris 2056 / file tris 3192 / 3 draw calls
+        sha256 src 4ed7656e2155d47b7d5fe08f31a7e764d79255f477d90040e4472552d7d5ac68
+        sha256 out 252359ca25adc838cbbf1525a3eea0b0c7af233a0d8879e2eee3301c73c18e37
+        clips: Fast_Flying, Flying_Idle, Death
+
+  Total added: 1,987,932 B (1.90 MB) against D25's ~12 MB sprint ceiling.
+  Nine files cover ten enemy types (slime + mini_slime share one model).
+
+  MEASURED-REALITY NOTE for whoever imports next. ADR-039 D25 called
+  ~300 KB "a comfortable rather than aggressive ceiling" on the basis of
+  one 232 KB spot-check. That premise did not survive the full import:
+  every Big-pack model arrives OPTIMIZED at 257-321 KB, i.e. at or above
+  the figure D25 cited as unoptimized, and their sources are ~2x that.
+  The budget turned out near-binding, not comfortable. Plan ~300 KB per
+  Big-pack model, not ~230 KB. The draw-call column is the other cost
+  D25 did not model at all: 3-11 per instance versus 1 for the
+  single-primitive kit meshes these replace.
+
+----------------------------------------------------------------------
+MODELS — Hyper3D Rodin generations (NOT CC0 — grandfathered, ADR-039)
+----------------------------------------------------------------------
+  Files:    enemy_juggernaut.glb, enemy_slime.glb, enemy_mini_slime.glb,
+            enemy_ghost.glb
+  Author:   generated for this project via Hyper3D Rodin (text-to-3D),
+            then exported from Blender
+  License:  Hyper3D Rodin generation terms — a per-account commercial
+            grant, NOT a public-domain dedication and NOT CC0.
+  Source URL:   unknown / not recoverable
+  Pack:         n/a (generated, not from a pack)
+  Download date: unknown — generated during the ADR-034 era (the files
+            first appear alongside the Phase-5 enemy work)
+
+  This is a BEST-EFFORT entry (ADR-039 D24): the generating session left
+  no prompt or job record, so the fields above state what is verifiable
+  from the bytes and mark the rest unknown rather than inventing a
+  provenance. What the files themselves establish:
+      glTF asset.generator : "Khronos glTF Blender I/O v5.1.19"
+      mesh names           : RODIN_Juggernaut, RODIN_Slime,
+                             RODIN_Slime.002, RODIN_Ghost
+      rig                  : none (skins: 0, animations: 0 — static)
+  The RODIN_ prefix is what identifies them; the other six enemy meshes
+  carry generator "UnityGLTF" and Kenney's enemy-ufo-* names, matching
+  the Kenney mapping above exactly.
+
+  STATUS — verify against MANIFEST.json; do not trust a remembered
+  state, and note this paragraph is written mid-transition:
+    * As of the commit that added this entry (the asset import),
+      MANIFEST.json still declares all four AND scene.js still resolves
+      enemy_<type> to them — so they ARE the live rendered models for
+      juggernaut / slime / mini_slime / ghost at that commit. They are
+      NOT yet dormant, and nothing about them has been superseded yet.
+      The nine Quaternius files above are on disk but not yet wired.
+    * The roster-swap commit later in the same ADR-039 sprint repoints
+      the enemy factory at the *2.glb models. From that commit onward
+      these four are unreferenced and retained ONLY as the rollback
+      path for the swap.
+  The authoritative check at any later date is whether MANIFEST.json and
+  scene.js's enemy factory still name them — not this prose.
+
+  ADR-039 D22 grandfathers these four filenames as an
+  enumerated, closed exception that no other asset may cite as
+  precedent, with a stated exit condition: delete them once the imported
+  roster has survived one operator playtest without a model-loading
+  regression. Deletion is an operator action.
 
 ----------------------------------------------------------------------
 AUDIO — Kenney audio packs (all CC0)
