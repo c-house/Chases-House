@@ -614,7 +614,9 @@ function tick(ts) {
       steps++;
     }
     consumeEngineEvents(state);
-    window.CTD3Scene.sync(state);
+    // Pass the fast-forward-scaled dt so skinned-enemy walk cycles advance at
+    // the same rate the enemies actually travel (ADR-039 D27).
+    window.CTD3Scene.sync(state, dt);
     window.CTD3Ui.update(state);
     if (state.fsm === 'wonRun' || state.fsm === 'lostRun') showGameOver(state);
   } else {

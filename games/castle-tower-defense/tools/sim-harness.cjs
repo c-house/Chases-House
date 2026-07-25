@@ -537,6 +537,182 @@ console.log('');
     'dispose() between syncDecals header and clear()');
 }
 
+// ─── Source-level skinned-enemy lifecycle guards (ADR-039 D27) ─
+// Same technique and same reason as the decal guards above: scene.js/assets.js
+// are browser-only ESM and cannot be require()d under Node, so these are TEXT
+// assertions. They exist because skinned+animated enemies introduced a leak
+// surface (a mixer and N per-instance skeletons per live enemy) AND a mirror-
+// image trap that is WORSE than the leak — disposing the geometry/materials that
+// clones share with the CTD3Assets cache would corrupt every future spawn. Both
+// directions are guarded, so neither can be "fixed" into the other.
+{
+  const src = fs.readFileSync(path.join(__dirname, '..', 'scene.js'), 'utf8');
+  const asrc = fs.readFileSync(path.join(__dirname, '..', 'assets.js'), 'utf8');
+
+  // Body of a top-level function: from its header to the next line-start `}`.
+  function bodyOf(source, header) {
+    const at = source.indexOf(header);
+    if (at < 0) return '';
+    const end = source.indexOf('\n}', at);
+    return end > at ? source.slice(at, end) : source.slice(at);
+  }
+
+  const disposeBody = bodyOf(src, 'function disposeEnemyNode(');
+
+  // (1) The disposal helper exists and frees all three per-instance resources:
+  //     the mixer (UNCACHED from its root, not merely dropped — the mixer keeps
+  //     an internal binding cache keyed by root), the per-instance skeletons
+  //     SkeletonUtils.clone creates, and any per-instance cloned materials.
+  const hasUncache  = /uncacheRoot\s*\(/.test(disposeBody);
+  const hasSkeleton = /skeleton[\s\S]{0,80}?\.dispose\s*\(|sk\s*\.\s*dispose\s*\(/.test(disposeBody);
+  // Assert the actual dispose CALL, not the mere mention of the field. A bare
+  // /ownedMaterials/ test false-PASSES on a leftover comment such as
+  // "// TODO: ownedMaterials cleanup moved elsewhere" — demonstrated, so the
+  // ghost-material leak ADR-039 D27 names could return with the guard green.
+  const hasOwnedMat = /for\s*\(\s*const\s+m\s+of\s+ud\.ownedMaterials\s*\)[\s\S]{0,60}?m\.dispose\s*\(/.test(disposeBody);
+  check('enemy-dispose-complete',
+    !!disposeBody && hasUncache && hasSkeleton && hasOwnedMat,
+    disposeBody
+      ? 'mixer.uncacheRoot=' + hasUncache + ', skeleton.dispose=' + hasSkeleton + ', ownedMaterials=' + hasOwnedMat
+      : 'disposeEnemyNode() not found');
+
+  // (2) INVERSE guard — the helper must NOT dispose geometry or a mesh's
+  //     material, because getMesh clones share both by reference with the
+  //     assets cache. A future session "completing" the disposal by adding
+  //     o.geometry.dispose() would blank every later spawn of that type; this
+  //     fails loudly instead. (The ownedMaterials loop disposes materials WE
+  //     cloned, via a local — that is why the pattern is `.material.dispose`
+  //     and `geometry.dispose` specifically, not any dispose call.)
+  const disposesShared = /geometry\s*\.\s*dispose\s*\(/.test(disposeBody) ||
+                         /\.\s*material\s*\.\s*dispose\s*\(/.test(disposeBody);
+  check('enemy-no-shared-dispose', !!disposeBody && !disposesShared,
+    disposesShared
+      ? 'disposeEnemyNode disposes cache-SHARED geometry/material — corrupts future spawns'
+      : 'no geometry/material dispose on the shared-clone path');
+
+  // (3) BOTH teardown sites call it. Sprint 6's decal leak was one site fixed
+  //     when two needed it; this asserts the pair rather than trusting memory.
+  const clearBody = bodyOf(src, 'function clearPlayfield(');
+  const inClear = /disposeEnemyNode\s*\(/.test(clearBody);
+  const despawnAt = src.indexOf('for (const [id, node] of enemyNodes)');
+  const deleteAt  = src.indexOf('enemyNodes.delete(', despawnAt);
+  const despawn = (despawnAt >= 0 && deleteAt > despawnAt) ? src.slice(despawnAt, deleteAt) : '';
+  const inDespawn = /disposeEnemyNode\s*\(/.test(despawn);
+  check('enemy-dispose-both-sites', inClear && inDespawn,
+    'clearPlayfield=' + inClear + ', syncEnemies despawn loop=' + inDespawn);
+
+  // (4) Skinned assets are cloned with SkeletonUtils, not Object3D.clone.
+  //     A plain clone leaves every copy deforming from the source's bones, which
+  //     looks like a rigging bug rather than a cloning bug and is easy to
+  //     reintroduce by "simplifying" getMesh back to one return path.
+  const importsSkelUtils = /SkeletonUtils\.js'/.test(asrc);
+  const routesOnSkinned  = /isSkinned\s*\(\s*id\s*\)\s*\?/.test(asrc);
+  check('enemy-skinned-clone', importsSkelUtils && routesOnSkinned,
+    'SkeletonUtils import=' + importsSkelUtils + ', getMesh routes on isSkinned=' + routesOnSkinned);
+
+  // (5) Clips survive loading. GLTFLoader hands animations back on `gltf`, NOT
+  //     on `gltf.scene`, so caching only the scene silently discards every clip
+  //     and the mixers animate nothing — a failure that looks like "the models
+  //     aren't animated" rather than "the loader dropped them".
+  check('enemy-clips-cached', /clipCache\.set\s*\(\s*id\s*,\s*gltf\.animations/.test(asrc),
+    'loadOne caches gltf.animations');
+
+  // (6) The animation ADVANCE path. Guards 1-5 all protect the leak shape; none
+  //     protected the feature, so every one of these regressions was silent:
+  //     dropping the updateEnemyMixers call from sync, or zeroing its dt, stops
+  //     all animation with a fully green harness.
+  const syncBody = bodyOf(src, 'function sync(state, dtMs)');
+  const advBody  = bodyOf(src, 'function updateEnemyMixers(');
+  const calledFromSync = /updateEnemyMixers\s*\(\s*dtMs\s*\)/.test(syncBody);
+  //     dt must come from the parameter, not a constant: `m.update(0)` or
+  //     `m.update(SOME_LITERAL)` freezes every clip while still "updating".
+  const advancesWithParamDt = /m\.update\s*\(\s*dtSec\s*\)/.test(advBody) &&
+                              /dtSec\s*=[\s\S]{0,160}?dtMs/.test(advBody);
+  check('enemy-mixers-advanced', calledFromSync && advancesWithParamDt,
+    'sync->updateEnemyMixers(dtMs)=' + calledFromSync + ', advances by param-derived dt=' + advancesWithParamDt);
+
+  // (7) Low power must actually shed the per-frame mixer cost (ADR-039 D27
+  //     "Respect low-power mode"). Deleting this one line silently reinstates a
+  //     mixer per live enemy on exactly the devices that cannot afford it.
+  const lowPowerBody = bodyOf(src, 'function setLowPowerShadows(');
+  check('enemy-lowpower-releases-mixers', /releaseAllEnemyMixers\s*\(/.test(lowPowerBody),
+    'setLowPowerShadows releases live mixers');
+
+  // (8) Skeleton sharing must key on boneInverses (same SOURCE SKIN), never on
+  //     bone identity. Three of the shipped models carry two skins with
+  //     byte-identical joint lists but deliberately different inverse bind
+  //     matrices (a KHR_mesh_quantization consequence), so a bone-uuid key
+  //     collides and rebinds the footman's weapon, the captain's mushroom and
+  //     the slime's body onto the wrong bind matrices — visible as a wrong-scale
+  //     limb, and easily misread as a bad ENEMY_VIS.scale.
+  const shareBody = bodyOf(asrc, 'function shareSkeletons(');
+  const keysOnInverses = /boneInverses/.test(shareBody);
+  const keysOnBoneUuids = /bones\s*\.\s*map\s*\([\s\S]{0,40}?uuid/.test(shareBody);
+  check('enemy-skeleton-share-key', !shareBody || (keysOnInverses && !keysOnBoneUuids),
+    shareBody ? ('keys on boneInverses=' + keysOnInverses + ', keys on bone uuids=' + keysOnBoneUuids)
+              : 'shareSkeletons absent (per-mesh skeletons — also correct)');
+
+  // (9) ROSTER COVERAGE. Every ENEMIES type must have an ENEMY_VIS entry whose
+  //     model is declared in MANIFEST.json and present on disk. Without this, a
+  //     new enemy type (or a renamed asset) silently renders a magenta
+  //     placeholder that never heals — getMesh caches the placeholder and
+  //     syncEnemies builds each node exactly once.
+  const entSrc = fs.readFileSync(path.join(__dirname, '..', 'entities.js'), 'utf8');
+  const eStart = entSrc.indexOf('const ENEMIES = {');
+  const eBody  = eStart < 0 ? '' : entSrc.slice(eStart, entSrc.indexOf('\n  };', eStart));
+  const enemyTypes = [...eBody.matchAll(/^\s{4}([a-z_]+):\s*\{/gm)].map(m => m[1]);
+
+  const visStart = src.indexOf('const ENEMY_VIS = {');
+  const visBody  = visStart < 0 ? '' : src.slice(visStart, src.indexOf('\n};', visStart));
+  const visMap = new Map();
+  for (const m of visBody.matchAll(/^\s{2}([a-z_]+):\s*\{[^}]*?model:\s*'([^']+)'[^}]*?moveClip:\s*'([^']+)'/gm)) {
+    visMap.set(m[1], { model: m[2], moveClip: m[3] });
+  }
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'assets', 'MANIFEST.json'), 'utf8'));
+  const manById = new Map(manifest.map(e => [e.id, e.path]));
+
+  const coverageGaps = [];
+  for (const t of enemyTypes) {
+    const v = visMap.get(t);
+    if (!v) { coverageGaps.push(t + ':no-ENEMY_VIS-entry'); continue; }
+    const p = manById.get(v.model);
+    if (!p) { coverageGaps.push(t + ':' + v.model + '-not-in-manifest'); continue; }
+    if (!fs.existsSync(path.join(__dirname, '..', 'assets', p))) coverageGaps.push(t + ':' + p + '-missing-on-disk');
+  }
+  check('enemy-vis-covers-roster',
+    enemyTypes.length > 0 && visMap.size > 0 && coverageGaps.length === 0,
+    coverageGaps.length ? coverageGaps.join('; ')
+      : enemyTypes.length + ' ENEMIES types, all with a manifest-declared model on disk');
+
+  // (10) Every ENEMY_VIS.moveClip must actually exist in its model's shipped
+  //      clips. A typo here is silent: scene.js falls back to the first non-death
+  //      clip and warns, but the intended animation is simply never played — and
+  //      before that fallback existed it would have looped `Death`, which is
+  //      animations[0] in every model of this roster.
+  function glbClipNames(absPath) {
+    const b = fs.readFileSync(absPath);
+    if (b.slice(0, 4).toString() !== 'glTF') return null;
+    const jsonLen = b.readUInt32LE(12);
+    const j = JSON.parse(b.slice(20, 20 + jsonLen).toString('utf8'));
+    return (j.animations || []).map(a => {
+      const parts = String(a.name).split('|');
+      return parts.length > 1 ? parts.slice(1).join('|') : a.name;
+    });
+  }
+  const clipGaps = [];
+  for (const [type, v] of visMap) {
+    const p = manById.get(v.model);
+    if (!p) continue;                       // already reported by (9)
+    const abs = path.join(__dirname, '..', 'assets', p);
+    if (!fs.existsSync(abs)) continue;
+    const names = glbClipNames(abs);
+    if (!names) { clipGaps.push(type + ':' + v.model + '-not-a-glb'); continue; }
+    if (!names.includes(v.moveClip)) clipGaps.push(type + ":moveClip '" + v.moveClip + "' not in [" + names.join(',') + ']');
+  }
+  check('enemy-vis-clips-resolve', visMap.size > 0 && clipGaps.length === 0,
+    clipGaps.length ? clipGaps.join('; ') : visMap.size + ' moveClip names all resolve in their model');
+}
+
 // ─── Summary ─────────────────────────────────────────────────
 const failed = checks.filter(c => c.status === 'FAIL');
 const knownFailed = checks.filter(c => c.status === 'KNOWN-FAIL');

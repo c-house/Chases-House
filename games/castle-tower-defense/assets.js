@@ -6,6 +6,12 @@
    ═══════════════════════════════════════════════════════════════ */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+// SkeletonUtils.clone is the ONLY correct way to copy a skinned mesh:
+// Object3D.clone(true) copies the SkinnedMesh and the bone hierarchy but leaves
+// the copy's skeleton bound to the ORIGINAL bones, so every clone deforms from
+// one shared pose. ADR-039 D27. Cheap for non-skinned assets is not the point —
+// getMesh only routes here when the cached scene actually contains a SkinnedMesh.
+import { clone as cloneSkinnedHierarchy } from 'three/addons/utils/SkeletonUtils.js';
 
 const MANIFEST_URL = 'assets/MANIFEST.json';
 const ICON_DIR     = 'assets/icons/';
@@ -13,6 +19,8 @@ const MODEL_DIR    = 'assets/';
 
 const loader = new GLTFLoader();
 const cache  = new Map();        // id → THREE.Group (parsed scene)
+const clipCache = new Map();     // id → AnimationClip[] (ADR-039 D27; empty for static kit assets)
+const skinnedIds = new Map();    // id → bool, memoized "does this scene contain a SkinnedMesh?"
 const failed = new Set();        // ids that failed to load (silenced after first warn)
 const readyCallbacks = [];
 
@@ -58,6 +66,10 @@ function loadOne(id, path) {
       MODEL_DIR + path,
       (gltf) => {
         cache.set(id, gltf.scene);
+        // Animated assets (ADR-039 monster roster) carry clips. AnimationClip is
+        // immutable sample data and AnimationMixer keys its bindings by root, so
+        // one cached clip array is safely shared by every live instance's mixer.
+        if (gltf.animations && gltf.animations.length) clipCache.set(id, gltf.animations);
         resolve(gltf.scene);
       },
       undefined,
@@ -119,9 +131,89 @@ async function preload() {
   meshes.filter(m => !CRITICAL_IDS.has(m.id)).forEach(m => loadOne(m.id, m.path));
 }
 
+// True iff the cached scene for `id` contains a SkinnedMesh. Memoized — the
+// answer is a property of the asset, and the traverse is otherwise repeated on
+// every single spawn.
+function isSkinned(id) {
+  if (skinnedIds.has(id)) return skinnedIds.get(id);
+  const g = cache.get(id);
+  if (!g) return false;                 // unknown until loaded; don't memoize a miss
+  let found = false;
+  g.traverse(o => { if (o.isSkinnedMesh) found = true; });
+  skinnedIds.set(id, found);
+  return found;
+}
+
+// The animation clips shipped with `id`, or null. Shared, not cloned (see
+// loadOne). Callers build their own AnimationMixer per instance.
+function getClips(id) {
+  return clipCache.get(id) || null;
+}
+
+// SkeletonUtils.clone gives every SkinnedMesh its OWN Skeleton, even when the
+// meshes were bound to a single shared skeleton in the source. Because the kit's
+// models split one character into one primitive per material, that turns a
+// 6-material creature into 6 skeletons — and three.js uploads each skeleton's
+// bone matrices into its own bone TEXTURE every frame, so the per-frame skinning
+// bandwidth and the live texture count both multiply by the material count
+// (measured: 6 bone textures per enemy, ~11 for the footman model).
+//
+// Meshes may share a Skeleton only when they came from the SAME glTF skin. A
+// Skeleton is (bones, boneInverses) — and matching `bones` is NOT sufficient:
+// three's GLTFLoader builds one Skeleton per skin INDEX, each carrying that
+// skin's own `inverseBindMatrices`, and these models ship skins whose joint
+// lists are byte-identical while their bind matrices deliberately differ.
+//
+// That is a direct consequence of the KHR_mesh_quantization pass documented in
+// assets/LICENSE.txt: for a skinned mesh the node transform is ignored, so
+// glTF-Transform folds each mesh's de-quantization into its inverse bind
+// matrices — and when one source skin serves meshes with different quantization
+// volumes it must SPLIT the skin. Measured in the shipped roster:
+//
+//   enemy_footman2  skin0 Orc (9 prims)            / skin1 Orc_Weapon (2)   IBM ratio 0.399
+//   enemy_captain2  skin0 MushroomKing (5)         / skin1 Mushroom (2)     IBM ratio 0.389
+//   enemy_slime2    skin0 Green_Blob.001 eyes (2)  / skin1 Green_Blob body  IBM ratio 2.713
+//
+// Keying on bone identity therefore COLLIDES on those three and rebinds the
+// second skin onto the first's bind matrices — the footman's sword at 2.5x, the
+// captain boss's mushroom at 2.57x, the slime's body at 0.37x with full-size
+// eyes. It reads like a bad ENEMY_VIS.scale and sends you to the wrong table.
+//
+// `SkeletonUtils.clone` passes the SOURCE skeleton's `boneInverses` ARRAY through
+// by reference, so within one cloned root "same boneInverses object" is exactly
+// "same source skin". Group on that identity and the dedupe is precise: the
+// footman still collapses 11 Skeletons to 2, keeping nearly all the per-frame
+// bone-texture win, with no deformation change at all.
+function shareSkeletons(root) {
+  const bySourceSkin = new Map();    // boneInverses array (object identity) → Skeleton
+  root.traverse(o => {
+    if (!o.isSkinnedMesh || !o.skeleton) return;
+    const key = o.skeleton.boneInverses;
+    if (!key) return;
+    const existing = bySourceSkin.get(key);
+    if (!existing) { bySourceSkin.set(key, o.skeleton); return; }
+    if (existing === o.skeleton) return;
+    const dead = o.skeleton;
+    // Pass bindMatrix EXPLICITLY. With it undefined, SkinnedMesh.bind calls
+    // skeleton.calculateInverses(), which would overwrite the bind matrices of
+    // the skeleton we are sharing — and boneInverses is shared by reference with
+    // the cached asset, so that would corrupt every future instance of the type.
+    o.bind(existing, o.bindMatrix);
+    // Free the surplus Skeleton's GPU resource so the dedupe cannot itself leak.
+    // Pre-render its boneTexture is still null, making this a no-op today; it is
+    // here so the invariant holds if clone-time ever moves after first render.
+    if (typeof dead.dispose === 'function') dead.dispose();
+  });
+  return root;
+}
+
 function getMesh(id) {
   const g = cache.get(id);
-  if (g) return g.clone(true);
+  // Skinned assets MUST go through SkeletonUtils.clone — a plain clone(true)
+  // leaves the copy driven by the source's bones (ADR-039 D27). Routing on
+  // content rather than on a caller-supplied flag means a future skinned asset
+  // cannot silently regress by using the wrong entry point.
+  if (g) return isSkinned(id) ? shareSkeletons(cloneSkinnedHierarchy(g)) : g.clone(true);
   // Not loaded — return placeholder and trigger lazy load.
   // Look up the manifest path. Falling back to bare `${id}.glb` was a
   // legacy ADR-028 hack that 404s for the 24 ADR-030 tile/decoration
@@ -208,5 +300,6 @@ function fireReady() {
 
 window.CTD3Assets = {
   preload, getMesh, hasMesh, getInstanced, getIconUrl, getMaterialAtlas,
+  getClips, isSkinned,
   isReady, onReady
 };

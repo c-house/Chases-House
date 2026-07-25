@@ -65,6 +65,45 @@ const ENEMY_BOB_RATE_FLYING = 1.6;
 const ENEMY_BOB_AMP_GROUND = 0.05;
 const ENEMY_BOB_AMP_FLYING = 0.18;
 
+// ─── Enemy presentation table (ADR-039 D27) ─────────────────
+// ONE keyed table, not literals scattered through syncEnemies. Every value here
+// is presentation only and is never read from or written to an engine entity
+// (ADR-030 C-1). ADR-038 D18 is NOT amended by this table: `entities.js` ENEMIES
+// keeps its exact hp/speed/armor/bounty/sizeWorld — a monster that looks heavier
+// is not heavier.
+//
+//   model     asset id (9 models cover 10 types — slime and mini_slime are the
+//             same creature at two scales, matching the RODIN_Slime /
+//             RODIN_Slime.002 pair they replace)
+//   scale     uniform scale. Derived, not guessed: targetHeight / measuredHeight,
+//             where measuredHeight is the loaded model's world-space bbox height
+//             (Quaternius monsters author at ~1.9-3.5 units; the outgoing
+//             Kenney/Rodin meshes sat at ~0.5-0.95) and targetHeight is set from
+//             the type's design weight so captain still reads biggest.
+//   yOffset   corrects models authored off the ground plane. The two Flying-pack
+//             models sit above their own origin (skirmisher +0.787, ghost +0.245
+//             pre-scale), which would stack on top of the flying baseY — so this
+//             normalises each model's base to y=0 and leaves the existing
+//             baseY/bob logic to do the elevating.
+//   moveClip  which shipped clip loops while walking. Ground types have
+//             Walk + Run; the Flying pack ships Fast_Flying / Flying_Idle and no
+//             walk at all, which is why the airborne types name a flying clip.
+//   animSpeed AnimationAction.timeScale — the clips are authored at one cadence
+//             and these creeps move at speeds from 1.1 to 4.5, so a slow heavy
+//             must not scurry. Starting values; M-3 tunes them against the eye.
+const ENEMY_VIS = {
+  footman:    { model: 'enemy_footman2',    scale: 0.278, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.00 },
+  heavy:      { model: 'enemy_heavy2',      scale: 0.398, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.75 },
+  runner:     { model: 'enemy_runner2',     scale: 0.292, yOffset: 0,      moveClip: 'Run',         animSpeed: 1.25 },
+  shielded:   { model: 'enemy_shielded2',   scale: 0.264, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.85 },
+  skirmisher: { model: 'enemy_skirmisher2', scale: 0.299, yOffset: -0.235, moveClip: 'Fast_Flying', animSpeed: 1.00 },
+  captain:    { model: 'enemy_captain2',    scale: 0.464, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.70 },
+  juggernaut: { model: 'enemy_juggernaut2', scale: 0.491, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.75 },
+  slime:      { model: 'enemy_slime2',      scale: 0.394, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.00 },
+  mini_slime: { model: 'enemy_slime2',      scale: 0.262, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.15 },
+  ghost:      { model: 'enemy_ghost2',      scale: 0.304, yOffset: -0.074, moveClip: 'Fast_Flying', animSpeed: 1.00 }
+};
+
 let scene = null;
 let ground = null;
 let castleMesh = null;
@@ -471,7 +510,11 @@ function paintDecorations(mapId) {
 // ─── clearPlayfield: between runs ────────────────────────────
 function clearPlayfield() {
   towerNodes.forEach(n => towersGroup.remove(n));
-  enemyNodes.forEach(n => enemiesGroup.remove(n));
+  // Second of the two enemy teardown sites (the first is the despawn loop in
+  // syncEnemies). Leaving a map mid-wave must free the live enemies' mixers and
+  // per-instance skeletons too, or every map change leaks a wave's worth —
+  // exactly the one-site-fixed-two-sites-needed shape of ADR-037 H-1.
+  enemyNodes.forEach(n => { disposeEnemyNode(n); enemiesGroup.remove(n); });
   projNodes.forEach(n => projectilesGroup.remove(n));
   effectNodes.forEach(n => effectsGroup.remove(n));
   towerNodes.clear();
@@ -505,13 +548,19 @@ function clearPlayfield() {
 }
 
 // ─── Entity sync (state diff → mesh transforms) ──────────────
-function sync(state) {
+// `dtMs` is the caller's frame delta, already scaled for fast-forward. It exists
+// for the skinned-enemy mixers (ADR-039 D27): taking the game's dt rather than
+// re-deriving wall-clock time here keeps walk cycles in step with path movement
+// at 2x instead of the feet sliding. Optional — updateEnemyMixers falls back to
+// a nominal frame time if it is absent, so an older call site still animates.
+function sync(state, dtMs) {
   syncTowers(state);
   syncEnemies(state);
   syncProjectiles(state);
   syncEffects(state);
   syncWardenAuras(state);
   syncDecals(state);
+  updateEnemyMixers(dtMs);
 }
 
 // Object3D.clone(true) shares materials by reference, so mutating one tower's
@@ -600,31 +649,150 @@ function flashTower(towerId) {
   node.userData.flashUntilMs = performance.now() + MUZZLE_FLASH_MS;
 }
 
+// ─── Skinned-enemy animation lifecycle (ADR-039 D27) ─────────
+// Are skeletal mixers allowed to run at all? Two independent gates, both
+// pre-existing project rules rather than new policy:
+//   - reduced motion (T13 / CTD3Ui.motionAllowed) — a walk cycle is motion
+//   - low power (CTD3Renderer.isLowPower) — a mixer per live enemy is the
+//     per-frame cost this mode exists to shed, so it is disabled outright
+//     rather than capped. Enemies then stop advancing their clip and fall back to
+//     the procedural bob below, which is what shipped before this sprint.
+function mixersAllowed() {
+  const ui = window.CTD3Ui;
+  if (ui && typeof ui.motionAllowed === 'function' && !ui.motionAllowed()) return false;
+  const r = window.CTD3Renderer;
+  if (r && typeof r.isLowPower === 'function' && r.isLowPower()) return false;
+  return true;
+}
+
+// Free everything an enemy node owns per-instance. Called from BOTH teardown
+// sites (per-enemy despawn AND clearPlayfield) — sprint 6's decal leak needed
+// exactly this pair, and missing either one leaks the same way.
+//
+// WHAT IS DELIBERATELY *NOT* DISPOSED, and why getting this wrong is worse than
+// the leak it would look like it fixes: geometry and the source materials are
+// SHARED BY REFERENCE with the CTD3Assets cache (getMesh clones from a cached
+// gltf.scene; SkeletonUtils.clone shares BufferGeometry too). Disposing them
+// here would free the GPU buffers every FUTURE spawn of that type still points
+// at. This is the opposite of the transient-decal case, where every geometry was
+// freshly allocated per call and therefore had to be disposed (ADR-037 H-1).
+// tools/sim-harness.cjs guards the distinction in both directions.
+function disposeEnemyNode(node) {
+  const ud = node.userData || {};
+  if (ud.mixer) {
+    ud.mixer.stopAllAction();
+    // Mixers retain an internal binding cache keyed by root object; dropping the
+    // reference alone is not enough.
+    ud.mixer.uncacheRoot(node);
+    ud.mixer = null;
+  }
+  // SkeletonUtils.clone builds a SEPARATE Skeleton per SkinnedMesh (measured: 11
+  // for the footman model, 3-7 for the rest) and each lazily allocates its own
+  // bone texture on first render. Those ARE per-instance and must be freed. Set
+  // -deduped in case a future asset shares one skeleton across primitives.
+  const skeletons = new Set();
+  node.traverse(o => { if (o.isSkinnedMesh && o.skeleton) skeletons.add(o.skeleton); });
+  for (const sk of skeletons) { if (typeof sk.dispose === 'function') sk.dispose(); }
+  // Materials we cloned per instance (the ghost translucency path) — these are
+  // ours, unlike the shared source materials above.
+  if (ud.ownedMaterials) {
+    for (const m of ud.ownedMaterials) m.dispose();
+    ud.ownedMaterials = null;
+  }
+}
+
+// Advance every live enemy's mixer. Driven by the existing per-frame tick:
+// game.js passes its already-fast-forward-scaled dt into sync(), so walk cycles
+// stay in step with path movement at 2× instead of sliding.
+function updateEnemyMixers(dtMs) {
+  if (!mixersAllowed()) return;
+  const dtSec = (typeof dtMs === 'number' && dtMs > 0 ? Math.min(dtMs, 250) : 16.7) / 1000;
+  for (const node of enemyNodes.values()) {
+    const m = node.userData.mixer;
+    if (m) m.update(dtSec);
+  }
+}
+
+// Drop every live mixer when the renderer trips into low power mid-run, so the
+// saving lands on the current wave rather than only on the next one. Enemies
+// alive at the moment of the switch finish their journey frozen in whatever
+// pose the mixer last wrote (NOT the bind/rest pose — stopAllAction does not
+// restore bound properties); new
+// spawns get mixers again once low power clears. Bounded and deliberate.
+function releaseAllEnemyMixers() {
+  for (const node of enemyNodes.values()) {
+    const ud = node.userData;
+    if (ud.mixer) {
+      ud.mixer.stopAllAction();
+      ud.mixer.uncacheRoot(node);
+      ud.mixer = null;
+    }
+  }
+}
+
 function syncEnemies(state) {
   const seen = new Set();
   const t = performance.now() / 1000;
   const map = state.mapDef;
   for (const en of state.enemies) {
     seen.add(en.id);
+    const vis = ENEMY_VIS[en.type] || null;
     let node = enemyNodes.get(en.id);
     if (!node) {
-      const meshId = `enemy_${en.type}`;
+      // Defensive fallback for an enemy type added ahead of its model. NOTE the
+      // legacy `enemy_<type>` ids are no longer in MANIFEST.json — their entries
+      // were dropped so preload() stops fetching a second, unused roster — so this
+      // path now yields the magenta placeholder rather than an old mesh, which is
+      // the louder and more honest failure. Dead today: ENEMY_VIS covers all ten
+      // ENEMIES keys and tools/sim-harness.cjs asserts that it still does.
+      const meshId = (vis && vis.model) || `enemy_${en.type}`;
       node = window.CTD3Assets.getMesh(meshId);
       // Ghost: per-instance translucent material so a future fade-out doesn't
-      // bleed across all ghosts (Object3D.clone shares materials by reference).
+      // bleed across all ghosts (clones share materials by reference). These
+      // clones are per-instance and therefore OURS to dispose — record them.
       if (en.type === 'ghost') {
+        const owned = [];
         node.traverse(o => {
           if (o.isMesh && o.material) {
             o.material = o.material.clone();
             o.material.transparent = true;
             o.material.opacity = 0.55;
             o.material.depthWrite = false;
+            owned.push(o.material);
           }
         });
+        node.userData.ownedMaterials = owned;
       }
       node.traverse(o => { if (o.isMesh) o.castShadow = true; });
       // Per-enemy random bob offset (presentation only — never on engine entity, ADR-030 C-1).
       node.userData.bobPhase = Math.random() * Math.PI * 2;
+
+      // One AnimationMixer per live enemy, looping its move clip.
+      const clips = window.CTD3Assets.getClips(meshId);
+      if (clips && clips.length && mixersAllowed()) {
+        const wanted = (vis && vis.moveClip) || null;
+        let clip = wanted ? THREE.AnimationClip.findByName(clips, wanted) : null;
+        if (!clip) {
+          // Fall back to the first NON-death clip, never blindly to clips[0]:
+          // every model in this roster ships `Death` first, so a mistyped
+          // moveClip would otherwise loop the death animation while walking —
+          // silently, and looking like a bad model rather than a bad string.
+          clip = clips.find(c => !/death/i.test(c.name)) || clips[0];
+          console.warn('[scene] enemy', en.type, 'moveClip', JSON.stringify(wanted),
+                       'not found in', meshId, '— falling back to', clip && clip.name,
+                       '· available:', clips.map(c => c.name).join(','));
+        }
+        if (clip) {
+          const mixer = new THREE.AnimationMixer(node);
+          const action = mixer.clipAction(clip);
+          action.timeScale = (vis && vis.animSpeed) || 1;
+          // Desync identical creeps — a whole wave stepping in perfect unison
+          // reads as one object, not a crowd.
+          action.time = Math.random() * clip.duration;
+          action.play();
+          node.userData.mixer = mixer;
+        }
+      }
       enemyNodes.set(en.id, node);
       enemiesGroup.add(node);
     }
@@ -636,9 +804,19 @@ function syncEnemies(state) {
     // Per-type movement personality. Slime + MiniSlime hop with squash-and-stretch;
     // Juggernaut has a slow heavy lurch with side-roll; Ghost gets stronger float
     // and a yaw wobble. Other types keep the original ground/flying bob.
+    const animated = !!node.userData.mixer;
+
     let bobY = 0, scaleX = 1, scaleY = 1, scaleZ = 1, yawWobble = 0;
     if (!window.CTD3Ui.motionAllowed()) {
       // motion off — leave everything at neutral
+    } else if (animated) {
+      // A real skeletal clip now owns this creature's movement, so the
+      // procedural personality below is the FALLBACK for un-animated enemies
+      // rather than a layer on top of animation. Running both would double it —
+      // a squash-and-stretch hop applied to a model that is already hopping, a
+      // lurch on top of a walk cycle. Flying types keep their elevation, which
+      // comes from baseY and not from this block. Yaw-toward-travel and the
+      // hit-flash scale below still apply: neither is in the clips.
     } else if (en.type === 'slime' || en.type === 'mini_slime') {
       const hop = Math.abs(Math.sin(t * 5.0 + phase));
       const squash = 1 - hop * 0.25;
@@ -658,22 +836,46 @@ function syncEnemies(state) {
       bobY = Math.abs(Math.sin(t * ENEMY_BOB_RATE_GROUND + phase)) * ENEMY_BOB_AMP_GROUND;
     }
 
-    node.position.set(en.x, baseY + bobY, en.z);
+    node.position.set(en.x, baseY + bobY + (vis ? vis.yOffset : 0), en.z);
     // Yaw toward direction of travel (lookahead along path), plus per-type wobble.
     if (map && map.totalLength > 0) {
       const lookT = Math.min(1, en.pathT + 0.005);
       const next = window.CTD3Engine.sampleOnPath(map, lookT);
       const dx = next.x - en.x, dz = next.z - en.z;
       if (dx !== 0 || dz !== 0) {
-        node.rotation.y = Math.atan2(dz, dx) + Math.PI + yawWobble;
+        // FORWARD-AXIS CONVENTION. The Quaternius roster is authored facing
+        // local +Z — verified on every shipped model by measuring the centroid
+        // of its eye meshes against the model's bounding-box centre. The retired
+        // Kenney enemy meshes faced -X, which is what the previous expression
+        // (`atan2(dz, dx) + PI`) encoded. Carrying that expression over to the
+        // new models rotated every creep 90 degrees off its direction of travel
+        // — measured live at exactly 90 deg error, i.e. they walked sideways.
+        //
+        // For a +Z-forward model, rotation.y = t maps local +Z to world
+        // (sin t, 0, cos t), so aligning forward with travel (dx, dz) is
+        // precisely atan2(dx, dz). ADR-030's tile work established the same
+        // class of gotcha for path tiles; this is its enemy-mesh counterpart.
+        //
+        // `yawOffset` is the per-type escape hatch for any future asset authored
+        // on a different axis — the legacy `enemy_<type>` fallback meshes would
+        // need one if they were ever rendered again.
+        const yawBase = Math.atan2(dx, dz) + ((vis && vis.yawOffset) || 0);
+        node.rotation.y = yawBase + yawWobble;
       }
     }
-    // Hit-flash scales on top of per-type squash-and-stretch.
+    // Hit-flash scales on top of the per-type base scale and (when un-animated)
+    // the squash-and-stretch. The base scale is folded in HERE rather than set
+    // once at creation because this line rewrites scale every frame.
     const flash = en.hitFlashMs > 0 ? 1.1 : 1.0;
-    node.scale.set(scaleX * flash, scaleY * flash, scaleZ * flash);
+    const base = vis ? vis.scale : 1;
+    node.scale.set(base * scaleX * flash, base * scaleY * flash, base * scaleZ * flash);
   }
   for (const [id, node] of enemyNodes) {
     if (!seen.has(id)) {
+      // Free per-instance GPU/mixer resources before dropping the node. Without
+      // this, every kill leaks its mixer bindings and its per-instance skeletons'
+      // bone textures — the skinned-mesh analogue of the ADR-037 decal leak.
+      disposeEnemyNode(node);
       enemiesGroup.remove(node);
       enemyNodes.delete(id);
     }
@@ -931,6 +1133,12 @@ function setLowPowerShadows(on) {
       if (on) o.castShadow = false;
     }
   });
+  // Skinned-enemy mixers are the other per-frame cost low power exists to shed
+  // (ADR-039 D27). Release the live ones the moment the renderer trips, so the
+  // saving lands on the wave that triggered it rather than only on the next one.
+  // mixersAllowed() independently stops new spawns from getting one while low
+  // power holds; enemies already in flight finish frozen mid-stride.
+  if (on) releaseAllEnemyMixers();
 }
 
 // ─── ?test=tile-debug visual gate (ADR-030 §21 R1 mitigation) ───
