@@ -776,7 +776,13 @@
     }
     if (enemiesEl) {
       enemiesEl.replaceChildren();
-      ['footman', 'heavy', 'runner', 'skirmisher', 'shielded', 'juggernaut', 'slime', 'ghost', 'captain'].forEach(type => {
+      // Hand-ordered rather than enumerated from ENEMIES, so `mini_slime` (a
+      // death-spawn, never scheduled into a wave) stays out. The cost of that
+      // choice: NO harness check covers this list, so a new wave-facing type
+      // must be added by hand or players meet it with no legend card at all.
+      // `drake` added for ADR-040 — its `flying · armored` tags are exactly the
+      // counterplay information that type's design depends on.
+      ['footman', 'heavy', 'runner', 'skirmisher', 'shielded', 'drake', 'juggernaut', 'slime', 'ghost', 'captain'].forEach(type => {
         const def = E.ENEMIES[type];
         if (!def) return;
         const card = el('div', { class: 'legend-card' + (def.isBoss ? ' boss' : '') }, [

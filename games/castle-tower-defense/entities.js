@@ -84,7 +84,23 @@
     juggernaut: { name: 'Juggernaut', hp: 600,  speed: 1.2, armor: 0.2,  isFlying: false, bounty: 90,  sizeWorld: 0.85 },
     slime:      { name: 'Slime',      hp: 60,   speed: 2.0, armor: 0,    isFlying: false, bounty: 8,   sizeWorld: 0.6,  splitsInto: 'mini_slime', splitCount: 2 },
     mini_slime: { name: 'Mini Slime', hp: 22,   speed: 2.6, armor: 0,    isFlying: false, bounty: 4,   sizeWorld: 0.4 },
-    ghost:      { name: 'Ghost',      hp: 55,   speed: 3.0, armor: 0,    isFlying: true,  bounty: 22,  sizeWorld: 0.55, spectralCharges: 2 }
+    ghost:      { name: 'Ghost',      hp: 55,   speed: 3.0, armor: 0,    isFlying: true,  bounty: 22,  sizeWorld: 0.55, spectralCharges: 2 },
+
+    // ADR-040 D29 — the one new type of the wave re-imagining. An ARMORED
+    // FLYER: the single cell of the (mobility x mitigation) matrix the roster
+    // left empty. It matters because applyDamage reduces PHYSICAL only by
+    // armor and Catapult cannot acquire air at all, so this is the one
+    // composition that moves Mage from luxury to parity-or-better on an air
+    // wave (Ranger T3 0.268 DPS/gold falls to 0.147 behind 0.45 armor; Mage T3
+    // is 0.148 and chains). Slow for a flyer on purpose — skirmisher 3.2 and
+    // ghost 3.0 are the fast ones; this is the air TANK.
+    // Bounty 50 is set on the effective-HP-vs-physical yardstick the rest of
+    // this table implies: 240 hp behind 0.45 armor = 436 effective HP, /50g =
+    // 8.7 effHP/gold, nearest neighbour juggernaut at 8.3. Its raw HP-per-gold
+    // of 4.8 is the load-bearing number, though — 2.3x denser than skirmisher's
+    // 2.1, which is what lets an air-signature map hold the ADR-036 D2
+    // attrition band at all instead of funding the player past its own threat.
+    drake:      { name: 'Drake',      hp: 240,  speed: 1.6, armor: 0.45, isFlying: true,  bounty: 50,  sizeWorld: 0.75 }
   };
 
   // ─── DIFFICULTY (ADR-028 §3: 2 tiers, not 3) ─────────────────

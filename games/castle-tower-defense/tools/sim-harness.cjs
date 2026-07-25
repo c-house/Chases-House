@@ -53,7 +53,18 @@ const TICK_MS = 1000 / 60; // killCheck's fixed tick (runScripted uses sim-core'
 // ─── KNOWN-FAIL registry (findings, not assertion weakening) ──
 // id → reason. Reviewed each sprint; clearing entries is part of the
 // owning chunk's acceptance (ADR-036 CH-3 for all of the below).
-const KNOWN_FAILS = {};
+const KNOWN_FAILS = {
+  // ADR-040 W8-1. The `drake` type lands with its model, manifest entry and
+  // ENEMY_VIS row in this commit, but it is not referenced by any official
+  // wave until the maps rewrite (W8-2) — so `content-reachable` cannot pass
+  // in between. This is the deliberate harness-red window between two
+  // commits, registered rather than tolerated. W8-2 MUST delete this entry.
+  // NOTE the stale-KNOWN_FAILS check below only WARNS — it does not fail the
+  // run — so nothing mechanically forces that deletion. Left as a warn to keep
+  // this chunk's harness change minimal; promoting it to a hard failure is
+  // carried forward as the obvious next guard.
+  'content-reachable:drake': 'new ADR-040 type, wired into waves by W8-2'
+};
 // (CH-1 registered 10 entries here — 4 dead Phase-5 enemy types, 6 attrition
 // findings. All cleared by CH-3's content wiring + D2 retune, 2026-07-23.)
 
@@ -689,15 +700,24 @@ console.log('');
   //      clip and warns, but the intended animation is simply never played — and
   //      before that fallback existed it would have looped `Death`, which is
   //      animations[0] in every model of this roster.
+  //      Names are compared RAW — exactly as three.js sees them. An earlier
+  //      version stripped a leading 'Armature|' prefix before comparing, which
+  //      made this check strictly MORE PERMISSIVE than the runtime: GLTFLoader
+  //      caches `gltf.animations` verbatim and scene.js resolves moveClip with
+  //      THREE.AnimationClip.findByName, an exact-string match. A prefixed clip
+  //      therefore misses at runtime, falls through to the "first non-death
+  //      clip" branch below, and plays the right animation only by ordering
+  //      luck — while this check printed PASS. That is exactly what the
+  //      ADR-040 drake import shipped into the working tree before an
+  //      in-browser console read caught it, so the false green is demonstrated,
+  //      not hypothetical. The strip is gone; the import pipeline renames clips
+  //      instead (see assets/LICENSE.txt).
   function glbClipNames(absPath) {
     const b = fs.readFileSync(absPath);
     if (b.slice(0, 4).toString() !== 'glTF') return null;
     const jsonLen = b.readUInt32LE(12);
     const j = JSON.parse(b.slice(20, 20 + jsonLen).toString('utf8'));
-    return (j.animations || []).map(a => {
-      const parts = String(a.name).split('|');
-      return parts.length > 1 ? parts.slice(1).join('|') : a.name;
-    });
+    return (j.animations || []).map(a => String(a.name));
   }
   const clipGaps = [];
   for (const [type, v] of visMap) {

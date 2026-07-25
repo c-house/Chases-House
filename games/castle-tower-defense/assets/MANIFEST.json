@@ -22,6 +22,7 @@
   { "id": "enemy_juggernaut2", "role": "enemy", "kind": "mesh", "path": "models/enemy_juggernaut2.glb" },
   { "id": "enemy_slime2",      "role": "enemy", "kind": "mesh", "path": "models/enemy_slime2.glb" },
   { "id": "enemy_ghost2",      "role": "enemy", "kind": "mesh", "path": "models/enemy_ghost2.glb" },
+  { "id": "enemy_drake2",      "role": "enemy", "kind": "mesh", "path": "models/enemy_drake2.glb" },
 
   { "id": "castle", "role": "castle", "kind": "mesh", "path": "models/castle.glb" },
   { "id": "keep_bottom",   "role": "castle", "kind": "mesh", "path": "models/keep_bottom.glb" },

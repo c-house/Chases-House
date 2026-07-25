@@ -268,9 +268,41 @@ MODELS — Quaternius "Ultimate Monsters" (animated enemy roster, ADR-039)
         sha256 src 4ed7656e2155d47b7d5fe08f31a7e764d79255f477d90040e4472552d7d5ac68
         sha256 out 252359ca25adc838cbbf1525a3eea0b0c7af233a0d8879e2eee3301c73c18e37
         clips: Fast_Flying, Flying_Idle, Death
+    enemy_drake2.glb      → "Dragon"           Flying     [ADR-040, 2026-07-25]
+        publicID 3rUm1cN3yp  resource ae5b8510-1fa5-4d53-b943-a4f3b88fb629
+        251540 → 119756 B    page tris 3826 / file tris 4562 / 5 draw calls
+        sha256 src d8a12f3f819e86518f5a44984db611ffaaa800895da33928d66519e629615705
+        sha256 out d26a82f20f503bdae053a44239c14fb7458c0fdf166dec7f7539b9a431a4f0f6
+        clips: Fast_Flying, Flying_Idle, Death
+        CLIP RENAME, and why it is part of the pipeline rather than a tweak:
+        the source names its clips `CharacterArmature|<name>` and the import
+        strips that prefix, because scene.js resolves ENEMY_VIS.moveClip with
+        THREE.AnimationClip.findByName — an EXACT match. A prefixed clip
+        therefore misses, falls through to the "first non-death clip"
+        fallback, and plays the right animation only by ordering luck while
+        warning on every spawn. Caught in-browser, not by the harness: the
+        harness's enemy-vis-clips-resolve strips the prefix before comparing,
+        so it is MORE PERMISSIVE than the runtime and passed the prefixed
+        build. All nine models above already carry bare names.
+        Downloaded: 2026-07-25. Added for the ADR-040 `drake` enemy type — the
+        armored flyer filling the roster's air+armor gap. Same download route
+        as the nine above and for the same reason: the Quaternius Drive folder
+        still returned "Quota exceeded" on 2026-07-25, so the bytes came from
+        the ADR-039-sanctioned poly.pizza CC0 mirror. Same two-way licence
+        check: the pack page's CC0 grant, plus this model's own poly.pizza page
+        reading `Licence: CC0 1.0`. The same caveat therefore applies — strong
+        corroboration, not a byte-level chain to the Drive copy.
+        Fingerprinted to the Flying sub-pack BEFORE adoption, per the method
+        above: armature CharacterArmature, 8 source clips including
+        Fast_Flying, 20 nodes, zero embedded textures — the same rig family as
+        skirmisher2 and ghost2, which is why it shares their moveClip.
+        Windows Defender: clean, before AND after optimization rewrote the
+        bytes. glTF-Validator: 0 errors (2 warnings, the same
+        NODE_SKINNED_MESH_* pair skirmisher2 and ghost2 already carry).
 
-  Total added: 1,987,932 B (1.90 MB) against D25's ~12 MB sprint ceiling.
-  Nine files cover ten enemy types (slime + mini_slime share one model).
+  Total added: 2,107,688 B (2.01 MB) against D25's ~12 MB sprint ceiling
+  (1,987,932 B from ADR-039's nine, + 119,756 B for ADR-040's drake).
+  Ten files cover eleven enemy types (slime + mini_slime share one model).
 
   MEASURED-REALITY NOTE for whoever imports next. ADR-039 D25 called
   ~300 KB "a comfortable rather than aggressive ceiling" on the basis of
@@ -281,6 +313,14 @@ MODELS — Quaternius "Ultimate Monsters" (animated enemy roster, ADR-039)
   Big-pack model, not ~230 KB. The draw-call column is the other cost
   D25 did not model at all: 3-11 per instance versus 1 for the
   single-primitive kit meshes these replace.
+  ADDENDUM (ADR-040): the note above is a BIG-pack observation and does not
+  generalise. The Flying sub-pack is materially lighter — skirmisher2 99 KB,
+  ghost2 139 KB, drake2 117 KB — so a flyer import has real headroom under
+  the ~300 KB budget where a Big-pack import does not.
+  ONE MORE FOR THE NEXT IMPORTER, learned the hard way on the drake: run the
+  model in `?test=roster` and READ THE CONSOLE before committing. The harness
+  cannot see a clip-name mismatch (see the CLIP RENAME note above), and the
+  runtime's fallback hides it behind a warning rather than a failure.
 
 ----------------------------------------------------------------------
 MODELS — Hyper3D Rodin generations (NOT CC0 — grandfathered, ADR-039)

@@ -72,7 +72,7 @@ const ENEMY_BOB_AMP_FLYING = 0.18;
 // keeps its exact hp/speed/armor/bounty/sizeWorld — a monster that looks heavier
 // is not heavier.
 //
-//   model     asset id (9 models cover 10 types — slime and mini_slime are the
+//   model     asset id (10 models cover 11 types — slime and mini_slime are the
 //             same creature at two scales, matching the RODIN_Slime /
 //             RODIN_Slime.002 pair they replace)
 //   scale     uniform scale. Derived, not guessed: targetHeight / measuredHeight,
@@ -101,7 +101,19 @@ const ENEMY_VIS = {
   juggernaut: { model: 'enemy_juggernaut2', scale: 0.491, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.75 },
   slime:      { model: 'enemy_slime2',      scale: 0.394, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.00 },
   mini_slime: { model: 'enemy_slime2',      scale: 0.262, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.15 },
-  ghost:      { model: 'enemy_ghost2',      scale: 0.304, yOffset: -0.074, moveClip: 'Fast_Flying', animSpeed: 1.00 }
+  ghost:      { model: 'enemy_ghost2',      scale: 0.304, yOffset: -0.074, moveClip: 'Fast_Flying', animSpeed: 1.00 },
+  // ADR-040 D29. Follows the same targetHeight/measuredHeight rule as every
+  // row above — an earlier draft argued for a wingspan-derived scale instead
+  // and was wrong twice over: the span it cited was mis-measured, and at a
+  // flyer-appropriate height the span never becomes a problem.
+  // Measured bind-pose (world[joint] x inverseBindMatrix, weight-blended, the
+  // only method that reproduces skirmisher's +0.787 and ghost's +0.245):
+  // 2.438 tall, 3.592 across, base +0.771 above its own origin.
+  // targetHeight 1.05 = the heavy's rendered height, which lands the drake at
+  // 1.05 tall x 1.55 wide: joint-widest with the juggernaut, comfortably under
+  // the captain, and clearly the largest flyer (ghost 0.95, skirmisher 0.70) —
+  // which is what an air TANK has to look like.
+  drake:      { model: 'enemy_drake2',      scale: 0.431, yOffset: -0.332, moveClip: 'Fast_Flying', animSpeed: 0.70 }
 };
 
 let scene = null;
@@ -747,8 +759,8 @@ function syncEnemies(state) {
       // legacy `enemy_<type>` ids are no longer in MANIFEST.json — their entries
       // were dropped so preload() stops fetching a second, unused roster — so this
       // path now yields the magenta placeholder rather than an old mesh, which is
-      // the louder and more honest failure. Dead today: ENEMY_VIS covers all ten
-      // ENEMIES keys and tools/sim-harness.cjs asserts that it still does.
+      // the louder and more honest failure. Dead today: ENEMY_VIS covers all
+      // eleven ENEMIES keys and tools/sim-harness.cjs asserts that it still does.
       const meshId = (vis && vis.model) || `enemy_${en.type}`;
       node = window.CTD3Assets.getMesh(meshId);
       // Ghost: per-instance translucent material so a future fade-out doesn't
@@ -1181,7 +1193,12 @@ const ROSTER_DEBUG_MAGNIFY = 3.0;   // display-only; ENEMY_VIS.scale is unchange
 // viewport aspect >= ~0.9 to fit an orthographic 45-degree-yaw frustum. Portrait
 // or half-width windows silently clipped the end types with nothing to indicate
 // anything was missing.
-const ROSTER_DEBUG_PITCH = 2.7;
+// Lowered 2.7 -> 2.45 when ADR-040's drake made this an ELEVEN-type sheet:
+// 10 gaps x 2.7 is 27.0 world units, which is exactly the span the 3.0 pitch
+// was reduced to escape, and the newly added type is the one at the clipped
+// edge. 2.45 restores the previous headroom (24.5). If a twelfth type lands,
+// derive the pitch from types.length rather than nudging this again.
+const ROSTER_DEBUG_PITCH = 2.45;
 
 function paintRosterDebug() {
   if (!scene) return;
