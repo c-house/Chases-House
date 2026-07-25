@@ -28,6 +28,7 @@ const SETTINGS_DEFAULTS = {
 let state = null;
 let running = false;
 let lastTs = 0;
+let rosterDebugActive = false;   // ?test=roster (ADR-039)
 let accumulator = 0;
 
 // ─── Persistence (via SharedStorage) ─────────────────────────
@@ -193,6 +194,28 @@ async function start() {
       const refresh = () => {
         attempts += 1;
         window.CTD3Scene.paintTileDebug();
+        if (attempts < 8) setTimeout(refresh, 500);
+      };
+      setTimeout(refresh, 400);
+    });
+  }
+
+  // ?test=roster — enemy-roster visual gate (ADR-039). Same shape as
+  // tile-debug: the nine monster GLBs are background-loaded after the critical
+  // preload, so paint on onReady and repaint until they are parsed in.
+  if ((new URLSearchParams(location.search).get('test') || '') === 'roster') {
+    rosterDebugActive = true;
+    window.CTD3Assets.onReady(() => {
+      window.CTD3Scene.paintRosterDebug();
+      window.CTD3Ui.setScreen('play');
+      let attempts = 0;
+      const refresh = () => {
+        // Bail if a match has started. The chain runs ~4.4s uncancelled, and a
+        // late repaint would clear the terrain paintTerrain just laid down and
+        // deregister every live enemy mid-wave.
+        if (state) return;
+        attempts += 1;
+        window.CTD3Scene.paintRosterDebug();
         if (attempts < 8) setTimeout(refresh, 500);
       };
       setTimeout(refresh, 400);
@@ -603,6 +626,7 @@ function tick(ts) {
   // Always-on
   window.CTD3Lighting.update(dtRaw);
   window.CTD3Scene.tickFireflies(dtRaw);
+  if (rosterDebugActive) window.CTD3Scene.tickRosterDebug(dtRaw);
   window.CTD3Renderer.trackFrame(dtRaw);
 
   if (isPlaying && state) {

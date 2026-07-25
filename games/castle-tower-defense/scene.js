@@ -515,6 +515,10 @@ function clearPlayfield() {
   // per-instance skeletons too, or every map change leaks a wave's worth —
   // exactly the one-site-fixed-two-sites-needed shape of ADR-037 H-1.
   enemyNodes.forEach(n => { disposeEnemyNode(n); enemiesGroup.remove(n); });
+  // The ?test=roster sheet registers its nodes in enemyNodes (so the loop above
+  // reaches them); drop its mixer list too, or tickRosterDebug keeps advancing
+  // mixers whose roots have just been uncached.
+  rosterDebugMixers.length = 0;
   projNodes.forEach(n => projectilesGroup.remove(n));
   effectNodes.forEach(n => effectsGroup.remove(n));
   towerNodes.clear();
@@ -1141,6 +1145,126 @@ function setLowPowerShadows(on) {
   if (on) releaseAllEnemyMixers();
 }
 
+// ─── ?test=roster visual gate (ADR-039) ─────────────────────
+// Renders the whole enemy roster side by side, labelled, animated, isolated from
+// gameplay. Same pattern as ?test=tile-debug below: turn "did the swap look
+// right?" from a screenshot somebody has to remember to take into a repeatable
+// check. Deliberately bypasses low power AND reduced motion, so a contended
+// machine cannot fake a pass by silently disabling the very clips under review.
+//   /games/castle-tower-defense/?test=roster
+//
+// SCOPE — read this before citing the screen as evidence. It answers four
+// questions and NO others:
+//   1. did each model load             (a failure is a magenta box, unmissable)
+//   2. is its configured clip playing  (static vs moving; clip name is labelled)
+//   3. is the skeleton bound right     (the strongest thing here — a detached or
+//      wrong-scale limb is obvious at 3x; this is what caught the boneInverses
+//      collision that mis-scaled the footman's weapon and the slime's body)
+//   4. relative scale hierarchy        (magnify is uniform, so ordering holds;
+//      the numeric ENEMY_VIS.scale is printed per model)
+//
+// What it CANNOT answer, because of what it does to the frame — it clears
+// pathGroup/decorationsGroup/towersGroup and magnifies 3x:
+//   - COHERENCE WITH THE KENNEY KIT. Every Kenney asset has just been removed
+//     from the frame. ADR-039 defers this to "the visual gate"; this screen is
+//     not it. Judge it in a live match, against path tiles and towers.
+//   - READABILITY AT GAMEPLAY DISTANCE, and figure-ground against the dark-green
+//     field and its WFC-filled decoration. 3x scale on an emptied field is the
+//     opposite of the condition being tested. Also a live-match judgement.
+//   - ABSOLUTE scale against the playfield, and yOffset grounding: every model
+//     floats a uniform 0.2 with no reference line, and the two flying types are
+//     drawn grounded rather than at their in-game baseY of 1.2. yOffset is the
+//     one ENEMY_VIS field no harness check covers.
+const rosterDebugMixers = [];
+const ROSTER_DEBUG_MAGNIFY = 3.0;   // display-only; ENEMY_VIS.scale is unchanged
+// 2.7 not 3.0: at 10 types a 3.0 pitch spans 27 world units, which needs a
+// viewport aspect >= ~0.9 to fit an orthographic 45-degree-yaw frustum. Portrait
+// or half-width windows silently clipped the end types with nothing to indicate
+// anything was missing.
+const ROSTER_DEBUG_PITCH = 2.7;
+
+function paintRosterDebug() {
+  if (!scene) return;
+  pathGroup.clear();
+  decorationsGroup.clear();
+  slotsGroup.clear();
+  towersGroup.clear();
+  // Reuse the real teardown so repainting cannot leak — this repaints on a timer
+  // while background asset fetches land.
+  for (const n of enemiesGroup.children.slice()) {
+    disposeEnemyNode(n);
+    enemiesGroup.remove(n);
+  }
+  enemyNodes.clear();
+  rosterDebugMixers.length = 0;
+
+  const types = Object.keys(ENEMY_VIS);
+  const span = (types.length - 1) * ROSTER_DEBUG_PITCH;
+  types.forEach((type, i) => {
+    const vis = ENEMY_VIS[type];
+    const node = window.CTD3Assets.getMesh(vis.model);
+    node.scale.setScalar(vis.scale * ROSTER_DEBUG_MAGNIFY);
+    const x = -span / 2 + i * ROSTER_DEBUG_PITCH;
+    node.position.set(x, 0.2 + vis.yOffset * ROSTER_DEBUG_MAGNIFY, 0);
+    node.rotation.y = Math.PI * 0.15;   // three-quarter view reads silhouette best
+    node.traverse(o => { if (o.isMesh) o.castShadow = true; });
+
+    let clipName = '(none)';
+    const clips = window.CTD3Assets.getClips(vis.model);
+    if (clips && clips.length) {
+      // Mirror syncEnemies' fallback EXACTLY: never blindly clips[0], which is
+      // `Death` in every model of this roster. A gate that loops a death
+      // animation while the game plays something else is worse than no gate —
+      // it would sign off on the divergence.
+      let clip = THREE.AnimationClip.findByName(clips, vis.moveClip);
+      if (!clip) {
+        clip = clips.find(c => !/death/i.test(c.name)) || clips[0];
+        console.warn('[scene] roster gate:', type, 'moveClip', JSON.stringify(vis.moveClip),
+                     'not found in', vis.model, '— using', clip && clip.name);
+      }
+      if (clip) {
+        clipName = clip.name;
+        const mixer = new THREE.AnimationMixer(node);
+        const action = mixer.clipAction(clip);
+        action.timeScale = vis.animSpeed || 1;
+        action.time = (i / types.length) * clip.duration;   // deterministic stagger
+        action.play();
+        node.userData.mixer = mixer;
+        rosterDebugMixers.push(mixer);
+      }
+    }
+    // Register in enemyNodes too, so clearPlayfield — the second of the two
+    // teardown sites ADR-039 D27 mandates — can actually reach these nodes. It
+    // iterates the REGISTRY, not the group, so a group-only node would survive
+    // a map start forever: ten magnified monsters parked across the playfield
+    // with no code path able to dispose them. Unreachable while ?test=roster is
+    // a UI dead end; one line to keep the D27 invariant true regardless.
+    enemyNodes.set('roster:' + type, node);
+    enemiesGroup.add(node);
+
+    // Two rows so neither overflows makeLabelTexture's 256px canvas at 28px
+    // monospace (~17 chars). The clip name is on the sheet deliberately: without
+    // it, "wrong clip playing" is the one failure this screen cannot show.
+    [type, clipName + ' ' + vis.scale].forEach((text, row) => {
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.6, 0.5),
+        new THREE.MeshBasicMaterial({ map: makeLabelTexture(text), transparent: true, depthWrite: false })
+      );
+      label.position.set(x, 0.3, 2.4 + row * 0.6);
+      label.rotation.x = -Math.PI / 2;
+      pathGroup.add(label);
+    });
+  });
+}
+
+// Advance the roster sheet's clips. Driven from game.js's always-on tick block,
+// because sync() runs only while a match is in play and this screen has no state.
+function tickRosterDebug(dtMs) {
+  if (!rosterDebugMixers.length) return;
+  const dtSec = (typeof dtMs === 'number' && dtMs > 0 ? Math.min(dtMs, 250) : 16.7) / 1000;
+  for (const m of rosterDebugMixers) m.update(dtSec);
+}
+
 // ─── ?test=tile-debug visual gate (ADR-030 §21 R1 mitigation) ───
 // Renders one of each path tile at the 4 cardinal rotations near the
 // origin with a text label showing rotation in units of π. Verifies
@@ -1228,6 +1352,7 @@ window.CTD3Scene = {
   sync, raycastFromNormalizedPointer,
   flashTower,
   paintTileDebug,
+  paintRosterDebug, tickRosterDebug,
   setLowPowerShadows,
   tickFireflies
 };
