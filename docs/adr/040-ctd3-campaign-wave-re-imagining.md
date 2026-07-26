@@ -121,7 +121,7 @@ Nor is the rule *enforced*: this sprint adds one harness check (D33's) and it is
 |---|---|---|---|
 | Plains | 0/1 | 0/23 | heavy |
 | Forest | 0/5 | 0/30 | heavy |
-| Mountain | 0/5 | 0/8 | captain |
+| Mountain | 0/5 | 0/10 | captain |
 | Tidewater | 0/5 | **6/25 = 24%** | heavy |
 | Snowfall | 0/5 | **5/20 = 25%** | drake |
 | Riverbend | 0/5 | **6/26 = 23%** | drake |
@@ -210,13 +210,17 @@ Mountain is also the one map with a bespoke reward ladder — **18 / 24 / 30 / 3
 | 3 | **Pale Company** | Spectral | ghost ×4, footman ×2 | 0.690 |
 | 4 | **Frostbacks** | Shield wall | shielded ×4, footman ×4 | 0.800 |
 | 5 | **The Long Cold** | Mixed arms | runner ×4, skirmisher ×3, footman ×3, heavy ×2 | 0.868 |
-| 6 | **Rimeguard** | Air raid | **drake ×2**, shielded ×4, footman ×2 | 0.960 |
+| 6 | **Rimeguard** | Shield wall | **drake ×2**, shielded ×4, footman ×2 | 0.960 |
 | 7 | **What the Crystals Keep** | Spectral | ghost ×17, skirmisher ×6, shielded ×1 | 1.096 |
 | 8 | **The Pass Remembers** | Mixed arms | **drake ×5**, ghost ×5, shielded ×4, heavy ×4, footman ×2 | 1.308 |
 
 ### One rule that is not about identity: the rebuild gap
 
-Every wave's group delays are laid out so **each group boundary leaves ≥3.5s** with no spawns. This clears the editor's W2 warn on all 48 waves (currently failed by 37 of 48) and gives the player a breath to rebuild mid-wave — a playability gain that costs nothing, and the reason wave 2 on most maps is authored as *two ranks of the same creature* rather than one long file.
+Every wave's group delays are laid out so **each group boundary leaves ≥3.5s** with no spawns. This clears the editor's W2 warn on all 48 waves (currently failed by 37 of 48) and gives the player a breath to rebuild mid-wave — the reason wave 2 on most maps is authored as *two ranks of the same creature* rather than one long file.
+
+**It does not cost nothing, and an earlier draft said it did.** Inserting 96 gaps of 3.5s lengthens every wave: total campaign spawn-window time goes **417s → 633s (+52%)**, worst on Riverbend (+68%) and lightest on Mountain (+28%, its waves being fewest-group). Minimum wall-clock per map rises by roughly a third before any prep countdown. That is a real change to pacing and it lands inside the "thrilling or exhausting" question the operator playtest has to settle.
+
+**Two guards, because this rule ships at zero margin.** Delays are hand-written literals laid out as *(previous group's last spawn + 3500)*, so all 96 boundaries sit at **exactly** 3500ms — any edit to a group's `count` or `spacing` that does not also move every later group's delay closes a gap. `campaign-rebuild-gap:<map>` in `tools/sim-harness.cjs` asserts the rule **per boundary**, which is strictly stronger than the editor's W2 (W2 warns only when a wave has *no* ≥3000ms gap anywhere, so on a three-group wave one closed boundary still satisfies it). Mutation-tested: `shielded 5→6` on Plains w6 drops one boundary to 2350ms, passes W2, and fails this check.
 
 ---
 
@@ -350,7 +354,13 @@ So, said plainly rather than flatteringly: **the campaign breaches its own spawn
 
 **What it does and does not close.** It gives the harness a campaign-side spawn bound it has never had. It does **not** replace the editor's W8 concurrency estimator, which remains browser-only; the concurrency figure above is measured by hand and reported, not guarded. Closing that properly is a separate piece of work and is not claimed here.
 
-This was intended to be the only change to harness *source* this sprint makes. **It is not, and the deviation is recorded rather than quietly absorbed:** the drake import turned up a demonstrated false green in `enemy-vis-clips-resolve` — it stripped an `Armature|` clip-name prefix before comparing, making it strictly more permissive than the runtime's exact-match `AnimationClip.findByName`, and it passed a build whose animation only played by ordering luck. That check is corrected in the import commit. Two harness-source changes, then: one added guard and one corrected one. Shipping a knowingly-permissive acceptance check to keep this sentence true would have been the wrong trade. Four existing checks nevertheless gain a new subject the moment `drake` enters `ENEMIES`, because they enumerate the table rather than a fixed list: `content-reachable:drake`, `spawn-and-kill:drake`, and both `enemy-vis-covers-roster` / `enemy-vis-clips-resolve`. The last two **fail immediately** unless the GLB, its `MANIFEST.json` entry, and an `ENEMY_VIS` row with a resolving `moveClip` all land in the same commit as the `entities.js` line — which is a constraint on how the type is landed, and is recorded here so it is designed for rather than discovered.
+This was intended to be the only change to harness *source* this sprint makes. **It is not, and each deviation is recorded rather than quietly absorbed.** The final count is **two added guards and one corrected one**:
+
+1. `campaign-spawn-bound:<map>` — this decision's guard.
+2. `campaign-rebuild-gap:<map>` — added because D28's rebuild gap ships at literally zero margin and had no runnable guard at all, only the browser-only editor rule. Guarding the 14%-margin metric while leaving the 0%-margin one unguarded was the wrong split.
+3. `enemy-vis-clips-resolve` — **corrected**, not added. The drake import turned up a demonstrated false green: it stripped an `Armature|` clip-name prefix before comparing, making it strictly more permissive than the runtime's exact-match `AnimationClip.findByName`, and it passed a build whose animation played only by ordering luck.
+
+Shipping an unguarded zero-margin invariant, or a knowingly-permissive acceptance check, to keep this sentence true would have been the wrong trade in both directions. Four existing checks nevertheless gain a new subject the moment `drake` enters `ENEMIES`, because they enumerate the table rather than a fixed list: `content-reachable:drake`, `spawn-and-kill:drake`, and both `enemy-vis-covers-roster` / `enemy-vis-clips-resolve`. The last two **fail immediately** unless the GLB, its `MANIFEST.json` entry, and an `ENEMY_VIS` row with a resolving `moveClip` all land in the same commit as the `entities.js` line — which is a constraint on how the type is landed, and is recorded here so it is designed for rather than discovered.
 
 ---
 
@@ -385,5 +395,6 @@ This was intended to be the only change to harness *source* this sprint makes. *
 - **Tower changes of any kind**, including tower-roster depth (ADR-038 §3(e)/D20, cycle 4).
 - **Endless calibration or any `endless.js` edit** (D32).
 - **A HUD wave-identity label.** The waves now have names; whether the player is *shown* them is a UI question this ADR deliberately does not settle. Assessed as an adjacency during the wave chunk and recorded there.
-- **Promoting D28's anchor ratio to a harness check.** Cheap and worth doing, but it is a second harness-source change and this sprint declares exactly one (D33). Carried forward.
+- **Promoting D28's anchor ratio to a harness check.** Cheap and worth doing; carried forward rather than piled onto this sprint's harness changes.
+- **Making a stale `KNOWN_FAILS` entry FAIL rather than warn.** Today `staleKnown` only prints `WARN` and the exit gate keys on `failed.length`, so a registered entry that starts passing can sit exempted from acceptance indefinitely. This sprint's W8-1 → W8-2 red window relied on discipline, not enforcement. Recorded here because it was identified while building that window and would otherwise survive only in a hand-back.
 - **Any Unity or WC3-extracted asset** — excluded by ADR-039 D22, permanently. The `docs/td-comparison` benchmark is read-only design reference, as it has been since ADR-036.

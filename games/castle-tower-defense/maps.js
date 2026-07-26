@@ -150,18 +150,33 @@
         { id: 's5', x: 8, z: 1 },
         { id: 's6', x: 9, z: -4 }
       ],
-      // Waves retuned 2026-07-23 to ADR-036 D2: attrition ratio (quiet wave
-      // HP ÷ cumulative quiet gold) rises monotonically w2→w7 — no mid-run
-      // decline. Verified by tools/sim-harness.cjs (attrition-monotone check).
+      // ─── ADR-040 D28 — PLAINS: the teaching field ───────────
+      // Signature: the teaching arc itself. One new idea per wave, in the
+      // order mass → speed → bulk → flight → armor → combination. This map
+      // deliberately carries NO slime, ghost, juggernaut or drake: the first
+      // field teaches the base five and nothing else.
+      // Group delays leave ≥3.5s between groups (editor rule W2, "rebuild
+      // room") — which is why wave 2 arrives as two ranks of the same
+      // creature rather than one long file.
       waves: [
-        wave([ g('footman', 1, 0, 0) ], 15),
-        wave([ g('footman', 6, 700, 0) ], 18),
-        wave([ g('footman', 4, 600, 0), g('skirmisher', 3, 1000, 4500) ], 22),
-        wave([ g('heavy', 2, 1500, 0), g('footman', 6, 500, 4000) ], 25),
-        wave([ g('runner', 4, 700, 0), g('footman', 4, 500, 3500), g('heavy', 2, 1600, 6000) ], 20),
-        wave([ g('shielded', 4, 1200, 0), g('heavy', 2, 1700, 5000), g('footman', 5, 500, 8000) ], 20),
-        wave([ g('skirmisher', 6, 800, 0), g('heavy', 4, 1400, 5000), g('shielded', 4, 1100, 10000) ], 15),
-        wave([ g('heavy', 7, 1100, 0), g('shielded', 5, 1200, 6000), g('runner', 6, 550, 12000), g('skirmisher', 3, 900, 16000) ], 60)
+        // w1 "First Light" — Rabble: footman x1
+        wave([ g('footman', 1, 0, 0) ], 14),
+        // w2 "The Marching Line" — Rabble: footman x6
+        wave([ g('footman', 3, 700, 0), g('footman', 3, 700, 4900) ], 16),
+        // w3 "Outriders" — Swarm: runner x4, footman x3
+        wave([ g('runner', 4, 650, 0), g('footman', 3, 600, 5450) ], 18),
+        // w4 "The Iron Few" — Tank line: heavy x3, footman x1
+        wave([ g('heavy', 3, 1500, 0), g('footman', 1, 600, 6500) ], 20),
+        // w5 "First Wings" — Air raid: skirmisher x7, heavy x1, footman x3
+        wave([ g('skirmisher', 7, 800, 0), g('heavy', 1, 1500, 8300), g('footman', 3, 550, 11800) ], 22),
+        // w6 "The Shield Wall" — Shield wall: shielded x5, footman x3, heavy x2
+        wave([ g('shielded', 5, 1150, 0), g('footman', 3, 550, 8100), g('heavy', 2, 1400, 12700) ], 24),
+        // w7 "Open-Field Muster" — Mixed arms: skirmisher x6, shielded x5, runner x2, heavy x3
+        wave([ g('skirmisher', 6, 800, 0), g('shielded', 3, 1150, 7500), g('runner', 2, 650, 13300),
+               g('heavy', 3, 1400, 17450), g('shielded', 2, 1150, 23750) ], 26),
+        // w8 "The Long Muster" — Mixed arms: shielded x7, runner x6, skirmisher x3, heavy x7
+        wave([ g('shielded', 5, 1200, 0), g('runner', 6, 550, 8300), g('skirmisher', 3, 900, 14550),
+               g('heavy', 7, 1100, 19850), g('shielded', 2, 1200, 29950) ], 60)
       ]
     },
     decorations: [
@@ -211,18 +226,31 @@
         { id: 's5', x: -3, z: 5 },
         { id: 's6', x: -6, z: 6 }
       ],
-      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Slime swarms are
-      // this map's mid-wave texture and Ghost its late anti-turtle check
-      // (CH-3 content wiring — Phase-5 types into official waves).
+      // ─── ADR-040 D28 — THE WHISPERING WOOD: swarm ───────────
+      // Signature: SWARM. The map's own description says "the wolves run
+      // fast", and its tight path and short sight lines are exactly what a
+      // running crowd punishes. Wave 7 is that signature undiluted (18
+      // runners); wave 8 leads it into a mixed climax. Slime is its texture,
+      // ghost a mid-wave guest — Snowfall owns spectral.
       waves: [
-        wave([ g('footman', 8, 600, 0) ], 14),
-        wave([ g('runner', 3, 700, 0), g('footman', 3, 500, 3500) ], 16),
-        wave([ g('slime', 2, 1200, 0), g('footman', 4, 500, 4000) ], 18),
-        wave([ g('slime', 2, 1200, 0), g('runner', 3, 650, 4500), g('footman', 2, 500, 7000) ], 18),
-        wave([ g('slime', 3, 1000, 0), g('skirmisher', 3, 900, 5000), g('heavy', 1, 0, 7500) ], 18),
-        wave([ g('runner', 8, 500, 0), g('shielded', 3, 1200, 5000), g('heavy', 1, 0, 8000) ], 20),
-        wave([ g('ghost', 6, 800, 0), g('skirmisher', 6, 700, 5000), g('shielded', 4, 1100, 9000), g('heavy', 2, 1700, 12000) ], 20),
-        wave([ g('shielded', 6, 950, 0), g('runner', 10, 450, 6000), g('skirmisher', 6, 700, 11000), g('heavy', 4, 1400, 15000), g('slime', 4, 1000, 18000) ], 70)
+        // w1 "Under the Boughs" — Rabble: footman x5
+        wave([ g('footman', 2, 800, 0), g('footman', 3, 700, 4300) ], 14),
+        // w2 "Wolves at the Trail" — Swarm: runner x4, footman x1
+        wave([ g('runner', 4, 600, 0), g('footman', 1, 550, 5300) ], 16),
+        // w3 "The Ooze" — Split mass: slime x2, footman x3
+        wave([ g('slime', 2, 1200, 0), g('footman', 3, 550, 4700) ], 18),
+        // w4 "Fleet of Foot" — Swarm: runner x6, slime x1, footman x1
+        wave([ g('runner', 6, 550, 0), g('slime', 1, 1200, 6250), g('footman', 1, 550, 9750) ], 20),
+        // w5 "Thicket Guard" — Shield wall: shielded x5, skirmisher x3, footman x1
+        wave([ g('shielded', 5, 1150, 0), g('skirmisher', 3, 850, 8100), g('footman', 1, 550, 13300) ], 22),
+        // w6 "Cold Lanterns" — Spectral: ghost x9, runner x4, heavy x1
+        wave([ g('ghost', 9, 780, 0), g('runner', 4, 600, 9740), g('heavy', 1, 1400, 15040) ], 24),
+        // w7 "The Running Tide" — Swarm: runner x18, slime x2, shielded x4
+        wave([ g('runner', 15, 470, 0), g('slime', 2, 1100, 10080), g('shielded', 4, 1150, 14680),
+               g('runner', 3, 470, 21630) ], 26),
+        // w8 "The Wood Wakes" — Mixed arms: runner x10, shielded x7, skirmisher x4, heavy x9
+        wave([ g('runner', 10, 450, 0), g('shielded', 6, 1000, 7550), g('skirmisher', 4, 750, 16050),
+               g('heavy', 9, 1200, 21800), g('shielded', 1, 1000, 34900) ], 70)
       ]
     },
     decorations: [
@@ -274,18 +302,36 @@
         { id: 's6', x: 5,  z: 0 },
         { id: 's7', x: 9,  z: 1 }
       ],
-      // Retuned to ADR-036 D2 (monotone attrition w2→w7, boss spike ~1.6
-      // preserved); Juggernaut is the mid-late mini-boss beat (CH-3).
+      // ─── ADR-040 D28 — THE STONE GATE: siege, then the boss ──
+      // Signature: SIEGE, and JUGGERNAUT IS EXCLUSIVE TO THIS MAP (it used to
+      // appear on three). Wave 6 is one juggernaut with escort, wave 7 two —
+      // and wave 8 is the campaign's only boss, which is this map's deliberate
+      // exception to "wave 8 = signature leading a mixed climax".
+      // The bespoke reward ladder (18/24/30/38/48/60, then 26, then a 250 boss
+      // purse) is deliberate: w7 is 1,200 HP of indivisible juggernaut and w8
+      // an 1,800-HP captain, so the curve needs more cumulative gold beneath
+      // both. The dip to 26 before the boss is what holds the finale spike at
+      // 1.57 instead of letting it slide toward the other maps' 1.30.
       waves: [
-        wave([ g('footman', 10, 550, 0) ], 22),
-        wave([ g('heavy', 1, 0, 0), g('footman', 3, 550, 1500), g('runner', 1, 0, 4000) ], 20),
-        wave([ g('skirmisher', 3, 900, 0), g('shielded', 2, 1400, 4000), g('footman', 1, 0, 7000) ], 20),
-        wave([ g('shielded', 4, 1100, 0), g('heavy', 1, 0, 5500) ], 22),
-        wave([ g('runner', 8, 500, 0), g('skirmisher', 4, 900, 4500), g('heavy', 1, 0, 8000) ], 22),
-        wave([ g('juggernaut', 1, 0, 0), g('heavy', 2, 1700, 3000), g('footman', 2, 500, 6000) ], 25),
-        wave([ g('juggernaut', 1, 0, 0), g('skirmisher', 8, 700, 3000), g('shielded', 4, 1100, 8000), g('heavy', 1, 0, 12000) ], 25),
-        wave([ g('heavy', 3, 1500, 0), g('shielded', 3, 1300, 5000),
-               g('captain', 1, 0, 12000), g('runner', 2, 600, 16000) ], 250, { isBoss: true })
+        // w1 "At the Gate" — Rabble: footman x5
+        wave([ g('footman', 2, 800, 0), g('footman', 3, 650, 4300) ], 18),
+        // w2 "Stone and Bone" — Tank line: heavy x1, footman x3
+        wave([ g('heavy', 1, 0, 0), g('footman', 3, 600, 3500) ], 24),
+        // w3 "The Narrow Watch" — Shield wall: shielded x2, skirmisher x2, footman x1
+        wave([ g('shielded', 2, 1300, 0), g('skirmisher', 2, 900, 4800), g('footman', 1, 600, 9200) ], 30),
+        // w4 "Hammerfall" — Tank line: heavy x3, shielded x1
+        wave([ g('heavy', 3, 1450, 0), g('shielded', 1, 1300, 6400) ], 38),
+        // w5 "The Warband" — Mixed arms: runner x6, skirmisher x4, heavy x1, footman x1
+        wave([ g('runner', 6, 550, 0), g('skirmisher', 4, 850, 6250), g('heavy', 1, 1500, 12300),
+               g('footman', 1, 600, 15800) ], 48),
+        // w6 "First Siege" — Siege: juggernaut x1, footman x5, heavy x1
+        wave([ g('juggernaut', 1, 0, 0), g('footman', 3, 550, 3500), g('heavy', 1, 1600, 8100),
+               g('footman', 2, 550, 11600) ], 60),
+        // w7 "Second Siege" — Siege: juggernaut x2, skirmisher x3, footman x1
+        wave([ g('juggernaut', 2, 2400, 0), g('skirmisher', 3, 850, 5900), g('footman', 1, 550, 11100) ], 26),
+        // w8 "The Captain Walks" — Boss: captain x1, runner x2, shielded x2, heavy x1, footman x4
+        wave([ g('captain', 1, 0, 0), g('runner', 2, 600, 3500), g('shielded', 2, 1300, 7600),
+               g('heavy', 1, 1500, 12400), g('footman', 4, 550, 15900) ], 250, { isBoss: true })
       ]
     },
     decorations: [
@@ -336,18 +382,31 @@
         { id: 's6', x: -7,  z: 0 },
         { id: 's7', x: 1,   z: 0 }
       ],
-      // Extended 2026-07-23 from the launch-era 3-wave stub to a full 8-wave
-      // list (ADR-036 CH-3) and tuned to the D2 attrition band; Slime swarms
-      // are the map's signature mid-wave texture.
+      // ─── ADR-040 D28 — TIDEWATER BEND: split mass ───────────
+      // Signature: SPLIT MASS. "Mind the hidden trails" — what you kill
+      // reveals more. Wave 7 is seven slimes undiluted (21 bodies).
+      // Wave 8 is deliberately LED by heavy+shielded with only two slimes as
+      // texture: the ADR-040 anchor rule keeps low-contrast types (ghost,
+      // slime) to ≤30% of an anchor wave's bodies and never the HP lead,
+      // until the roster-polish surround work lands. Here that is 6/25 = 24%.
       waves: [
-        wave([ g('footman', 6, 700, 0) ], 15),
-        wave([ g('footman', 4, 550, 0), g('runner', 2, 700, 3500) ], 16),
-        wave([ g('slime', 2, 1200, 0), g('footman', 3, 500, 4000) ], 18),
-        wave([ g('heavy', 3, 1400, 0), g('footman', 2, 500, 5000) ], 18),
-        wave([ g('slime', 3, 1000, 0), g('runner', 2, 650, 4500), g('heavy', 1, 0, 7000) ], 18),
-        wave([ g('skirmisher', 4, 850, 0), g('shielded', 4, 1100, 4500), g('heavy', 2, 1700, 9000) ], 20),
-        wave([ g('slime', 4, 1000, 0), g('skirmisher', 4, 800, 5000), g('shielded', 3, 1200, 9000), g('heavy', 2, 1700, 13000) ], 20),
-        wave([ g('slime', 5, 950, 0), g('runner', 6, 550, 6000), g('shielded', 4, 1150, 10000), g('heavy', 4, 1400, 14000) ], 60)
+        // w1 "Slack Water" — Rabble: footman x5
+        wave([ g('footman', 2, 800, 0), g('footman', 3, 700, 4300) ], 14),
+        // w2 "The First Bloom" — Split mass: slime x1, footman x3
+        wave([ g('slime', 1, 0, 0), g('footman', 3, 550, 3500) ], 16),
+        // w3 "Driftwood" — Tank line: heavy x2, footman x2
+        wave([ g('heavy', 2, 1500, 0), g('footman', 2, 550, 5000) ], 18),
+        // w4 "The Second Bloom" — Split mass: slime x2, runner x3, footman x1
+        wave([ g('slime', 2, 1200, 0), g('runner', 3, 650, 4700), g('footman', 1, 550, 9500) ], 20),
+        // w5 "Bank and Bar" — Shield wall: shielded x4, heavy x1, footman x2
+        wave([ g('shielded', 4, 1150, 0), g('heavy', 1, 1500, 6950), g('footman', 2, 550, 10450) ], 22),
+        // w6 "Reedwing" — Air raid: skirmisher x10, slime x2, runner x2
+        wave([ g('skirmisher', 10, 800, 0), g('slime', 2, 1100, 10700), g('runner', 2, 620, 15300) ], 24),
+        // w7 "The Tide Comes In" — Split mass: slime x7, skirmisher x4, shielded x3
+        wave([ g('slime', 7, 1000, 0), g('skirmisher', 4, 800, 9500), g('shielded', 3, 1150, 15400) ], 26),
+        // w8 "The Tide Divides" — Mixed arms: shielded x5, slime x2, runner x4, heavy x8, footman x2
+        wave([ g('shielded', 5, 1150, 0), g('slime', 2, 1000, 8100), g('runner', 4, 600, 12600),
+               g('heavy', 8, 1250, 17900), g('footman', 2, 550, 30150) ], 60)
       ]
     },
     decorations: [
@@ -394,18 +453,37 @@
         { id: 's5', x: 5,   z: -1 },
         { id: 's6', x: 10,  z: 3 }
       ],
-      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Juggernaut
-      // mini-boss beats at w6/w8, Ghost anti-turtle check at w7 (CH-3).
+      // ─── ADR-040 D28 — SNOWFALL PASS: spectral ──────────────
+      // Signature: SPECTRAL. "The crystals remember every step." Wave 7 is
+      // that signature at full strength — seventeen ghosts, the largest
+      // spectral wall in the campaign. Juggernaut is gone (Mountain owns
+      // siege); the drake visits at w6 and w8.
+      // Wave 8 is LED by drake+heavy per the anchor rule, with ghosts present
+      // in volume but neither the HP lead nor >30% of bodies (5/20 = 25%).
       waves: [
-        wave([ g('footman', 10, 550, 0) ], 20),
-        wave([ g('runner', 3, 650, 0), g('footman', 3, 500, 3500) ], 18),
-        wave([ g('skirmisher', 3, 900, 0), g('shielded', 2, 1400, 4500), g('footman', 1, 0, 7500) ], 20),
-        wave([ g('heavy', 3, 1400, 0), g('skirmisher', 3, 900, 5000) ], 20),
-        wave([ g('shielded', 4, 1100, 0), g('runner', 5, 550, 5000), g('heavy', 1, 0, 8500) ], 22),
-        wave([ g('juggernaut', 1, 0, 0), g('runner', 6, 550, 3500) ], 22),
-        wave([ g('ghost', 8, 750, 0), g('skirmisher', 6, 750, 6000), g('shielded', 5, 1000, 10000), g('heavy', 2, 1700, 14000) ], 22),
-        wave([ g('juggernaut', 1, 0, 0), g('heavy', 6, 1200, 3000), g('shielded', 6, 1000, 8000),
-               g('runner', 8, 500, 13000), g('skirmisher', 4, 800, 17000) ], 120)
+        // w1 "First Snow" — Rabble: footman x5
+        wave([ g('footman', 2, 800, 0), g('footman', 3, 650, 4300) ], 14),
+        // w2 "The Cold Road" — Swarm: runner x4, footman x1
+        wave([ g('runner', 4, 600, 0), g('footman', 1, 550, 5300) ], 16),
+        // w3 "Pale Company" — Spectral: ghost x4, footman x2
+        wave([ g('ghost', 4, 850, 0), g('footman', 2, 550, 6050) ], 18),
+        // w4 "Frostbacks" — Shield wall: shielded x4, footman x4
+        wave([ g('shielded', 4, 1150, 0), g('footman', 4, 550, 6950) ], 20),
+        // w5 "The Long Cold" — Mixed arms: runner x4, skirmisher x3, heavy x2, footman x3
+        wave([ g('runner', 4, 550, 0), g('skirmisher', 3, 800, 5150), g('heavy', 2, 1450, 10250),
+               g('footman', 3, 550, 15200) ], 22),
+        // w6 "Rimeguard" — Shield wall: drake x2, shielded x4, footman x2
+        //   Labelled Shield wall, not Air raid, on the evidence: only 2 of 8
+        //   bodies fly. Riverbend owns Air raid outright; this is Snowfall's
+        //   armour wave, and the drakes are the beat that says armour now
+        //   comes from above too.
+        wave([ g('drake', 2, 2200, 0), g('shielded', 4, 1150, 5700), g('footman', 2, 550, 12650) ], 24),
+        // w7 "What the Crystals Keep" — Spectral: ghost x17, skirmisher x6, shielded x1
+        wave([ g('ghost', 13, 720, 0), g('skirmisher', 6, 750, 12140), g('shielded', 1, 1150, 19390),
+               g('ghost', 4, 720, 22890) ], 26),
+        // w8 "The Pass Remembers" — Mixed arms: drake x5, ghost x5, shielded x4, heavy x4, footman x2
+        wave([ g('drake', 5, 1800, 0), g('ghost', 5, 730, 10700), g('shielded', 4, 1150, 17120),
+               g('heavy', 4, 1250, 24070), g('footman', 2, 550, 31320) ], 120)
       ]
     },
     decorations: [
@@ -452,18 +530,35 @@
         { id: 's5', x: 10, z: 1 },
         { id: 's6', x: -4, z: 5 }
       ],
-      // Retuned to ADR-036 D2 (monotone attrition w2→w7); Juggernaut anchors
-      // the late mobility waves — the mini-boss the runners screen for (CH-3).
+      // ─── ADR-040 D28 — RIVERBEND: air raid ──────────────────
+      // Signature: AIR RAID, and home of the DRAKE. "A footbridge keeps the
+      // keep dry" — fliers do not need the bridge. Waves 3, 5, 6 and 7 are all
+      // air-led and wave 7 is the undiluted version.
+      // The drake is what makes this map possible: a wave-8 air budget of
+      // ~2,500 HP built from 38-HP skirmishers and 55-HP ghosts alone would
+      // need 46+ bodies against a 35-spawn ceiling, and the 26-ghost version
+      // that does fit reads as Snowfall's spectral signature rather than this
+      // map's. Six drakes carry the same HP in 26 effective spawns.
       waves: [
-        wave([ g('footman', 8, 550, 0) ], 16),
-        wave([ g('runner', 4, 600, 0), g('footman', 2, 500, 3500) ], 16),
-        wave([ g('skirmisher', 4, 800, 0), g('runner', 4, 600, 4000) ], 18),
-        wave([ g('runner', 6, 500, 0), g('shielded', 3, 1300, 4500) ], 18),
-        wave([ g('skirmisher', 6, 700, 0), g('heavy', 2, 1700, 5000), g('shielded', 3, 1200, 8000) ], 20),
-        wave([ g('juggernaut', 1, 0, 0), g('runner', 8, 500, 3500) ], 20),
-        wave([ g('juggernaut', 1, 0, 0), g('runner', 10, 480, 3000), g('shielded', 4, 1100, 8000), g('skirmisher', 3, 800, 12000) ], 20),
-        wave([ g('juggernaut', 1, 0, 0), g('runner', 16, 420, 3000), g('skirmisher', 6, 650, 10000),
-               g('shielded', 5, 1100, 14000), g('heavy', 3, 1500, 18000) ], 110)
+        // w1 "Low Water" — Rabble: footman x5
+        wave([ g('footman', 2, 800, 0), g('footman', 3, 650, 4300) ], 14),
+        // w2 "The Ford" — Swarm: runner x4, footman x1
+        wave([ g('runner', 4, 600, 0), g('footman', 1, 550, 5300) ], 16),
+        // w3 "Wings over the Bend" — Air raid: skirmisher x7, footman x1
+        wave([ g('skirmisher', 5, 800, 0), g('skirmisher', 2, 800, 6700), g('footman', 1, 550, 11000) ], 18),
+        // w4 "Bridgework" — Tank line: heavy x3, runner x3
+        wave([ g('heavy', 3, 1450, 0), g('runner', 3, 620, 6400) ], 20),
+        // w5 "The Second Flight" — Air raid: skirmisher x9, ghost x5
+        wave([ g('skirmisher', 6, 780, 0), g('ghost', 5, 800, 7400), g('skirmisher', 3, 780, 14100) ], 22),
+        // w6 "Ironwing" — Air raid: skirmisher x5, runner x2, drake x3
+        wave([ g('skirmisher', 4, 800, 0), g('runner', 2, 600, 5900), g('drake', 3, 2000, 10000),
+               g('skirmisher', 1, 800, 17500) ], 24),
+        // w7 "Nothing Uses the Bridge" — Air raid: skirmisher x6, ghost x6, drake x4
+        wave([ g('skirmisher', 6, 750, 0), g('ghost', 4, 780, 7250), g('drake', 4, 1900, 13090),
+               g('ghost', 2, 780, 22290) ], 26),
+        // w8 "The Sky Falls" — Mixed arms: skirmisher x8, ghost x6, shielded x6, drake x6
+        wave([ g('skirmisher', 8, 700, 0), g('ghost', 6, 760, 8400), g('shielded', 4, 1150, 15700),
+               g('drake', 6, 1800, 22650), g('shielded', 2, 1150, 35150) ], 110)
       ]
     },
     decorations: [

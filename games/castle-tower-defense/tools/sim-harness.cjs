@@ -53,20 +53,12 @@ const TICK_MS = 1000 / 60; // killCheck's fixed tick (runScripted uses sim-core'
 // ─── KNOWN-FAIL registry (findings, not assertion weakening) ──
 // id → reason. Reviewed each sprint; clearing entries is part of the
 // owning chunk's acceptance (ADR-036 CH-3 for all of the below).
-const KNOWN_FAILS = {
-  // ADR-040 W8-1. The `drake` type lands with its model, manifest entry and
-  // ENEMY_VIS row in this commit, but it is not referenced by any official
-  // wave until the maps rewrite (W8-2) — so `content-reachable` cannot pass
-  // in between. This is the deliberate harness-red window between two
-  // commits, registered rather than tolerated. W8-2 MUST delete this entry.
-  // NOTE the stale-KNOWN_FAILS check below only WARNS — it does not fail the
-  // run — so nothing mechanically forces that deletion. Left as a warn to keep
-  // this chunk's harness change minimal; promoting it to a hard failure is
-  // carried forward as the obvious next guard.
-  'content-reachable:drake': 'new ADR-040 type, wired into waves by W8-2'
-};
+const KNOWN_FAILS = {};
 // (CH-1 registered 10 entries here — 4 dead Phase-5 enemy types, 6 attrition
-// findings. All cleared by CH-3's content wiring + D2 retune, 2026-07-23.)
+// findings. All cleared by CH-3's content wiring + D2 retune, 2026-07-23.
+// ADR-040 W8-1 registered one more — `content-reachable:drake`, red only for
+// the one commit between the type landing and its waves landing. Cleared here
+// by the wave rewrite, which is that entry's stated owner.)
 
 const checks = [];
 const staleKnown = [];
@@ -279,6 +271,83 @@ for (const map of maps) {
   }
 }
 console.log('\ncurve CSVs written to ' + path.relative(process.cwd(), curvesDir));
+
+// ─── 6b. Campaign spawn ceiling (ADR-040 D33) ────────────────
+// The campaign side of level-design rule W8. Endless has had `endless-spawn-
+// bound` since ADR-037; the campaign has never had one, and its only guard was
+// the W8 estimator inside tools/map-editor.html's validate() — browser-only,
+// and therefore unrunnable from here.
+//
+// This measures TOTAL EFFECTIVE SPAWNS per wave (split children walked), the
+// same quantity `endless-spawn-bound` measures, NOT peak concurrency — the two
+// differ by roughly 1.9x on this content and must not be conflated.
+//
+// It found real content: before the ADR-040 rewrite, forest w8 stood at 38
+// (shielded 6 + runner 10 + skirmisher 6 + heavy 4 + slime 4 -> 12 bodies),
+// i.e. the campaign was ABOVE its own ceiling and had been since ADR-036 CH-3.
+// That is why this check could not land before the wave rewrite.
+//
+// The 35 is hard-coded HERE for the reason the endless check states: a
+// threshold imported from the module under test can be raised by the same edit
+// that breaks it.
+{
+  const W8_CEILING = 35;
+  for (const map of maps) {
+    let peak = 0, peakWave = 0;
+    map.waves.forEach((w, i) => {
+      const n = Endless.effectiveSpawnCount(w, E.ENEMIES);
+      if (n > peak) { peak = n; peakWave = i + 1; }
+    });
+    check('campaign-spawn-bound:' + map.id, peak <= W8_CEILING,
+      'peak ' + peak + ' effective spawns (wave ' + peakWave + ') vs W8 ceiling ' + W8_CEILING);
+  }
+}
+
+// ─── 6c. Campaign rebuild gap (ADR-040 D28) ──────────────────
+// Every wave must contain at least one >=3.5s pause with no spawns — the
+// mid-wave breath the re-imagining introduced, and the editor rule W2 the
+// campaign failed on 37 of 48 waves before it.
+//
+// This is guarded because it ships at ZERO margin: `delay` values are
+// hand-written literals laid out as (previous group's last spawn + 3500), so
+// all 96 group boundaries in the campaign sit at exactly 3500ms. Changing any
+// group's `count` or `spacing` without also moving every later group's delay
+// silently closes the gap — e.g. plains w6 shielded 5->6 pushes that group's
+// tail 1150ms later and drops the next boundary to 2350ms, under BOTH this
+// rule and the editor's own 3000ms floor. Without this check that reverts with
+// a fully green harness, and only a browser session would ever notice.
+//
+// This asserts D28's rule, which is STRICTLY STRONGER than the editor's W2 and
+// is the one that can silently rot. W2 warns only when a wave has NO gap of
+// >=3000ms anywhere, so on a three-group wave one closed boundary still passes
+// it — the plains w6 mutation above drops boundary 1 to 2350ms while boundary 2
+// stays at 3500, and W2 is satisfied. D28 says EVERY group boundary leaves the
+// gap, so that is what is measured here: per-boundary, not the wave's maximum.
+//
+// Same shape as the ceiling check above: the threshold is hard-coded here, not
+// read from the data under test. Single-group waves have no boundary and are
+// exempt (plains w1 is one footman).
+{
+  const MIN_GAP_MS = 3500;
+  for (const map of maps) {
+    const tight = [];
+    map.waves.forEach((w, i) => {
+      const groups = w.enemies.slice().sort((a, b) => (a.delay || 0) - (b.delay || 0));
+      for (let k = 1; k < groups.length; k++) {
+        const prev = groups[k - 1];
+        const tail = (prev.delay || 0) + Math.max(0, prev.count - 1) * (prev.spacing || 0);
+        const gap = (groups[k].delay || 0) - tail;
+        if (gap < MIN_GAP_MS) {
+          tight.push('w' + (i + 1) + ' ' + prev.type + '->' + groups[k].type + ' ' + gap + 'ms');
+        }
+      }
+    });
+    check('campaign-rebuild-gap:' + map.id, tight.length === 0,
+      tight.length ? tight.join(', ')
+        : map.waves.length + ' waves, every group boundary >=' + MIN_GAP_MS + 'ms');
+  }
+}
+
 
 // ─── 7. Endless mode (ADR-037 C-1) ───────────────────────────
 // D6 makes harness coverage mandatory for any new selectable mode, so every
