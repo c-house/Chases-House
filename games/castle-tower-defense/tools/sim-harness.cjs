@@ -881,6 +881,56 @@ console.log('');
   }
   check('enemy-vis-clips-resolve', visMap.size > 0 && clipGaps.length === 0,
     clipGaps.length ? clipGaps.join('; ') : visMap.size + ' moveClip names all resolve in their model');
+
+  // (11) FLYER GROUND DISCS (ADR-041 D38). Two invariants, both of which fail
+  //      silently in the shipped game: a flyer with no disc looks like a ground
+  //      unit, and a disc shed under low power removes the depth cue at exactly
+  //      the moment it is the ONLY one left (the cast shadow is already gone).
+  const decalBody = bodyOf(src, 'function syncDecals(');
+  //      (a) Every flying type is covered. Asserted STRUCTURALLY — the branch
+  //          must read isFlying off the ENEMIES table, not test a hardcoded list
+  //          of type names, because a hardcoded list silently omits the next
+  //          flyer added (ADR-040's drake was exactly that event).
+  const discIsDataDriven = /\.isFlying/.test(decalBody) && /makeDisc\s*\(/.test(decalBody);
+  const discHardcodesTypes = /['"](?:skirmisher|ghost|drake)['"]/.test(decalBody);
+  //      (b) Not shed under low power. syncDecals must contain no low-power
+  //          branch at all, and setLowPowerShadows must not touch decalsGroup.
+  const lowPowerBody2 = bodyOf(src, 'function setLowPowerShadows(');
+  const discSurvivesLowPower = !/isLowPower/.test(decalBody) && !/decalsGroup/.test(lowPowerBody2);
+  //      (c) The disc clears path CORNERS (0.296), which GROUND_DECAL_Y (0.24)
+  //          does not — parsed from source so the constant and the rule cannot
+  //          drift apart, the same way decal-no-buried-literals parses its.
+  const flyerY = (src.match(/const\s+FLYER_DISC_Y\s*=\s*([0-9.]+)/) || [])[1];
+  const clearsCorners = flyerY !== undefined && parseFloat(flyerY) > 0.296;
+  const usesNamedY = /makeDisc\s*\([^)]*FLYER_DISC_Y/.test(decalBody);
+  const flyerTypes = enemyTypes.filter(t => new RegExp('^\\s{4}' + t + ':.*isFlying:\\s*true', 'm').test(entSrc));
+  check('enemy-flyer-disc',
+    flyerTypes.length > 0 && discIsDataDriven && !discHardcodesTypes &&
+    discSurvivesLowPower && clearsCorners && usesNamedY,
+    flyerTypes.length + ' flying types (' + flyerTypes.join(',') + ')' +
+    ', data-driven=' + discIsDataDriven + ', hardcoded-list=' + discHardcodesTypes +
+    ', survives-low-power=' + discSurvivesLowPower +
+    ', FLYER_DISC_Y=' + flyerY + ' >0.296=' + clearsCorners + ', named-y=' + usesNamedY);
+
+  // (12) LOW-POWER RECOVERY IS TWO-WAY (ADR-041 D39). Both halves were one-way
+  //      and both failed silently: castShadow was cleared with no else branch, so
+  //      only creeps spawned after recovery ever cast again; and mixers were
+  //      released with nothing re-attaching, so a trip-and-clear cycle left
+  //      animated and frozen creeps side by side for the rest of the run.
+  //      Guarded as a PAIR because fixing either alone still leaves a one-way path.
+  //      Asserted on the ASSIGNMENTS, not on the shape around them. An earlier
+  //      cut tested `/else\s+if[\s\S]{0,120}_castShadowPreLowPower/`, which
+  //      false-passes on an EMPTY else-branch and on a comment mentioning both
+  //      tokens — the same false-green this file already documents for the
+  //      `/ownedMaterials/` guard, and it bites here because bodyOf() returns the
+  //      20-line explanatory comment along with the code.
+  const recordsShadow  = /_castShadowPreLowPower\s*=\s*o\.castShadow/.test(lowPowerBody2);
+  const restoresShadow = /o\.castShadow\s*=\s*o\.userData\._castShadowPreLowPower/.test(lowPowerBody2);
+  const reattachesMixers = /else[\s\S]{0,80}attachAllEnemyMixers\s*\(/.test(lowPowerBody2) &&
+                           /function attachAllEnemyMixers\s*\([\s\S]{0,600}attachEnemyMixer\s*\(/.test(src);
+  check('enemy-lowpower-recovers', recordsShadow && restoresShadow && reattachesMixers,
+    'castShadow recorded on trip=' + recordsShadow + ', restored on clear=' + restoresShadow +
+    ', mixers re-attached on clear=' + reattachesMixers);
 }
 
 // ─── Summary ─────────────────────────────────────────────────

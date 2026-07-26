@@ -60,6 +60,33 @@ const WARDEN_AURA_COLOR = 0x8fc6cf;
 // 2-5% of a ring's circumference, which is accepted. Taller scenery (hills
 // 0.57, rocks 0.75, trees 0.96+) is meant to occlude a ground decal.
 const GROUND_DECAL_Y = 0.24;
+// Flying-unit ground disc (ADR-041 D38). DELIBERATELY NOT GROUND_DECAL_Y, and the
+// comment above says why: path CORNER tiles reach 0.296, and the 2-5% clipping
+// that buys is accepted for a STATIC RING but fatal for a filled disc travelling
+// under a flyer, because every campaign path bends repeatedly. 0.32 clears 0.296
+// by 0.024 — the same order of margin GROUND_DECAL_Y takes over the 0.22-tall
+// slot slab. Named rather than a call-site literal for exactly the reason
+// GROUND_DECAL_Y is: `decal-no-buried-literals` only rejects y BELOW the
+// clearance, so a bare 0.32 would be unguarded in both directions.
+//
+// LAYERING CONSEQUENCE, stated because it inverts the existing order: at 0.32 the
+// disc renders ABOVE the Warden aura (0.24), the slot ring (0.24) and the
+// place-here disc (0.25). Deliberate — the disc must read as attached to its
+// flyer — and the occlusion is transient, since a flyer crosses a slot in a
+// fraction of a second.
+//
+// Its PURPOSE is surviving low power. Flyers sit at baseY 1.2 and their only
+// depth cue is an offset cast shadow, which vanishes exactly when the renderer
+// sheds shadows. syncDecals runs every frame with no low-power branch, so the
+// disc does not.
+const FLYER_DISC_Y = 0.32;
+// Radius scales with the type's sizeWorld against a reference size, so a drake
+// (0.75) gets a wider disc than a ghost (0.55). The reference is a NAMED
+// constant rather than a divisor buried at the call site — the same trap
+// GROUND_DECAL_Y and `decal-no-buried-literals` exist to close, one level up.
+const FLYER_DISC_REF_SIZE = 0.55;
+const FLYER_DISC_RADIUS_AT_REF = 0.42;
+const FLYER_DISC_OPACITY = 0.30;
 // Ghost body alpha (ADR-041 D36(b)). The figure-ground lever's differential half.
 // This value is scene.js's OWN presentation choice — written onto materials this
 // file clones PER INSTANCE and records in userData.ownedMaterials, never a
@@ -743,6 +770,45 @@ function disposeEnemyNode(node) {
   }
 }
 
+// Which clip loops while this creature moves. ONE implementation, three callers
+// (syncEnemies, attachAllEnemyMixers, paintRosterDebug) — paintRosterDebug's own
+// comment used to say "Mirror syncEnemies' fallback EXACTLY", which is a standing
+// invitation to divergence rather than a guarantee against it.
+//
+// Never fall back blindly to clips[0]: every model in this roster ships `Death`
+// first, so a mistyped moveClip would loop the death animation while walking,
+// silently, looking like a bad model rather than a bad string.
+function resolveMoveClip(clips, wanted, context) {
+  if (!clips || !clips.length) return null;
+  let clip = wanted ? THREE.AnimationClip.findByName(clips, wanted) : null;
+  if (!clip) {
+    clip = clips.find(c => !/death/i.test(c.name)) || clips[0];
+    console.warn('[scene]', context, 'moveClip', JSON.stringify(wanted),
+                 'not found — falling back to', clip && clip.name,
+                 '· available:', clips.map(c => c.name).join(','));
+  }
+  return clip;
+}
+
+// Build and start a looping mixer for one enemy node. Shared by first-sight
+// creation and by low-power recovery so the two cannot drift apart.
+function attachEnemyMixer(node, meshId, context, vis) {
+  const clips = window.CTD3Assets.getClips(meshId);
+  // `context` names the TYPE as well as the model, because slime and mini_slime
+  // share enemy_slime2 — a warning naming only the model cannot say which of the
+  // two owns the bad moveClip.
+  const clip = resolveMoveClip(clips, vis && vis.moveClip, context);
+  if (!clip) return;
+  const mixer = new THREE.AnimationMixer(node);
+  const action = mixer.clipAction(clip);
+  action.timeScale = (vis && vis.animSpeed) || 1;
+  // Desync identical creeps — a whole wave stepping in perfect unison reads as
+  // one object, not a crowd.
+  action.time = Math.random() * clip.duration;
+  action.play();
+  node.userData.mixer = mixer;
+}
+
 // Advance every live enemy's mixer. Driven by the existing per-frame tick:
 // game.js passes its already-fast-forward-scaled dt into sync(), so walk cycles
 // stay in step with path movement at 2× instead of sliding.
@@ -764,11 +830,35 @@ function updateEnemyMixers(dtMs) {
 function releaseAllEnemyMixers() {
   for (const node of enemyNodes.values()) {
     const ud = node.userData;
+    // The ?test=roster sheet registers its nodes here so clearPlayfield can
+    // reach them, but its header comment claims it "deliberately bypasses low
+    // power ... so a contended machine cannot fake a pass by silently disabling
+    // the very clips under review." That claim was false for mixers: this loop
+    // killed them on a trip and nothing re-attached, leaving tickRosterDebug
+    // advancing uncached-root mixers. Skipping them here makes the comment true
+    // and makes attachAllEnemyMixers' `!ud.meshId` skip correct by design rather
+    // than by accident.
+    if (ud.isRosterDebug) continue;
     if (ud.mixer) {
       ud.mixer.stopAllAction();
       ud.mixer.uncacheRoot(node);
       ud.mixer = null;
     }
+  }
+}
+
+// The other half of the above, and it did not exist (ADR-041 D39(i)). Releasing
+// mixers on the low-power TRIP was one-way: nothing re-attached on clear, and
+// mixersAllowed() independently denies a mixer to anything spawned WHILE low
+// power holds. So a trip-and-clear cycle left every creep alive at the trip AND
+// every creep spawned during it permanently frozen, animated creeps walking
+// beside frozen ones for the rest of the run.
+function attachAllEnemyMixers() {
+  if (!mixersAllowed()) return;
+  for (const node of enemyNodes.values()) {
+    const ud = node.userData;
+    if (ud.mixer || !ud.meshId) continue;
+    attachEnemyMixer(node, ud.meshId, ud.enemyType + '/' + ud.meshId, ENEMY_VIS[ud.enemyType] || null);
   }
 }
 
@@ -813,32 +903,17 @@ function syncEnemies(state) {
       // Per-enemy random bob offset (presentation only — never on engine entity, ADR-030 C-1).
       node.userData.bobPhase = Math.random() * Math.PI * 2;
 
-      // One AnimationMixer per live enemy, looping its move clip.
-      const clips = window.CTD3Assets.getClips(meshId);
-      if (clips && clips.length && mixersAllowed()) {
-        const wanted = (vis && vis.moveClip) || null;
-        let clip = wanted ? THREE.AnimationClip.findByName(clips, wanted) : null;
-        if (!clip) {
-          // Fall back to the first NON-death clip, never blindly to clips[0]:
-          // every model in this roster ships `Death` first, so a mistyped
-          // moveClip would otherwise loop the death animation while walking —
-          // silently, and looking like a bad model rather than a bad string.
-          clip = clips.find(c => !/death/i.test(c.name)) || clips[0];
-          console.warn('[scene] enemy', en.type, 'moveClip', JSON.stringify(wanted),
-                       'not found in', meshId, '— falling back to', clip && clip.name,
-                       '· available:', clips.map(c => c.name).join(','));
-        }
-        if (clip) {
-          const mixer = new THREE.AnimationMixer(node);
-          const action = mixer.clipAction(clip);
-          action.timeScale = (vis && vis.animSpeed) || 1;
-          // Desync identical creeps — a whole wave stepping in perfect unison
-          // reads as one object, not a crowd.
-          action.time = Math.random() * clip.duration;
-          action.play();
-          node.userData.mixer = mixer;
-        }
+      // Recorded so low-power recovery can rebuild this node's mixer without
+      // re-deriving the id (ADR-041 D39). NOT recorded for a magenta placeholder:
+      // that asset is still in flight, so by the time low power cleared its clips
+      // could have arrived while this node is still a bone-less box — binding a
+      // mixer to that warns per track and animates nothing.
+      if (!node.userData.isPlaceholder) {
+        node.userData.meshId = meshId;
+        node.userData.enemyType = en.type;
       }
+      // One AnimationMixer per live enemy, looping its move clip.
+      if (mixersAllowed()) attachEnemyMixer(node, meshId, en.type + '/' + meshId, vis);
       enemyNodes.set(en.id, node);
       enemiesGroup.add(node);
     }
@@ -1112,6 +1187,45 @@ function syncDecals(state) {
       }
     }
   }
+  // Flying units get a ground disc (ADR-041 D38) — air/ground identity and a
+  // depth cue that SURVIVES LOW POWER, which the offset cast shadow does not.
+  //
+  // OWNERSHIP: these live in decalsGroup, rebuilt and disposed here every frame
+  // by the pass at the top of this function. That is the whole reason this is the
+  // owner rather than a registry keyed by enemy id — it adds NO new teardown
+  // site, and `decal-dispose-present` already guards the one it uses. Sprint 6's
+  // leak history is why a third teardown site would be a real cost.
+  //
+  // These must NEVER be disposed in disposeEnemyNode: `enemy-no-shared-dispose`
+  // fails on geometry/material disposal inside that function by design, because
+  // that path must not free cache-shared clone resources. If a disc ever seems to
+  // need disposal there, the ownership choice was wrong, not the guard.
+  //
+  // Cost, recorded rather than hidden: one CircleGeometry + one MeshBasicMaterial
+  // allocated and freed per flyer per frame. Snowfall w7 fields 17 ghosts, so
+  // that is up to ~23 alloc/dispose pairs per frame in the mode entered BECAUSE
+  // frames are already slow. A pooled rebuild is the named follow-up (the same
+  // one ADR-037 H-1 declined to take for the existing decals).
+  if (state.enemies && state.enemies.length) {
+    const ENEMIES = window.CTD3Entities.ENEMIES;
+    for (const en of state.enemies) {
+      const def = ENEMIES[en.type];
+      if (!def || !def.isFlying) continue;
+      const radius = FLYER_DISC_RADIUS_AT_REF * (def.sizeWorld / FLYER_DISC_REF_SIZE);
+      // Dark and desaturated, not a coloured surface: it has to read as a shadow.
+      // A new tinted ground surface under every flyer would hollow out the palette
+      // discipline the rest of this sprint argues for.
+      //
+      // OVERLAP IS ACCEPTED, not overlooked — closing the adjacency question
+      // ADR-041 D38 assigned to this chunk. Two coplanar depthWrite:false discs
+      // do not z-fight, they BLEND: 0.30 becomes ~0.51 two-deep and ~0.66
+      // three-deep. Snowfall w7's 17 ghosts bunch at corners, so clusters will
+      // darken. Accepted because the disc is a shadow and shadows do pool, and
+      // because de-duplicating overlaps per frame costs more than the artifact;
+      // revisit if a wave ever reads as a dark blob rather than as creeps.
+      decalsGroup.add(makeDisc(en.x, en.z, radius, TOKENS.BG_DEEP, FLYER_DISC_OPACITY, FLYER_DISC_Y));
+    }
+  }
   // Hovered slot + palette selection → placement preview range circle
   if (state.paletteSelection && state.hoverSlotId) {
     const slot = state.mapDef.buildSlots.find(s => s.id === state.hoverSlotId);
@@ -1172,19 +1286,43 @@ function raycastFromNormalizedPointer(nx, ny) {
 }
 
 function setLowPowerShadows(on) {
-  // When on, disable shadow casting; add blob decals under entities later.
-  // (Phase-2 stub.)
+  // ADR-041 D39(ii). This used to read `if (on) o.castShadow = false;` with NO
+  // else branch, so low power was one-way: renderer.js restores
+  // shadowMap.enabled symmetrically and freshly-spawned enemies get castShadow
+  // = true, but every mesh that existed at the trip — towers, castle,
+  // decorations, slot slabs, creeps mid-transit — silently never cast again.
+  //
+  // Restoring per-mesh from a RECORDED value, not by blanket-setting true: flat
+  // decals, the AO disc, label planes and the firefly Points never cast, and a
+  // blanket restore would newly enable them, turning a fix into a regression.
+  //
+  // Meshes created WHILE low power holds have no recorded value and are left
+  // alone. That is not an oversight — towers, upgrades, enemies, decorations,
+  // the castle and slot slabs can all be built mid-low-power, and game.js calls
+  // setLowPower(true) from saved settings BEFORE paintTerrain runs, so on a
+  // forced-low-power boot the entire playfield is in that class. Restoring an
+  // unrecorded `undefined` would reintroduce the exact bug being fixed. It costs
+  // nothing to leave them: renderer.shadowMap.enabled is false throughout low
+  // power, so nothing casts regardless — this per-mesh pass is a cost
+  // optimisation, not the visual gate.
   scene.traverse(o => {
-    if (o.isMesh) {
-      if (on) o.castShadow = false;
+    if (!o.isMesh) return;
+    if (on) {
+      if (o.userData._castShadowPreLowPower === undefined) {
+        o.userData._castShadowPreLowPower = o.castShadow;
+      }
+      o.castShadow = false;
+    } else if (o.userData._castShadowPreLowPower !== undefined) {
+      o.castShadow = o.userData._castShadowPreLowPower;
+      delete o.userData._castShadowPreLowPower;
     }
   });
   // Skinned-enemy mixers are the other per-frame cost low power exists to shed
   // (ADR-039 D27). Release the live ones the moment the renderer trips, so the
-  // saving lands on the wave that triggered it rather than only on the next one.
-  // mixersAllowed() independently stops new spawns from getting one while low
-  // power holds; enemies already in flight finish frozen mid-stride.
+  // saving lands on the wave that triggered it rather than only on the next one
+  // — and RE-ATTACH them on clear, which is the half that was missing.
   if (on) releaseAllEnemyMixers();
+  else attachAllEnemyMixers();
 }
 
 // ─── ?test=roster visual gate (ADR-039) ─────────────────────
@@ -1259,16 +1397,12 @@ function paintRosterDebug() {
     let clipName = '(none)';
     const clips = window.CTD3Assets.getClips(vis.model);
     if (clips && clips.length) {
-      // Mirror syncEnemies' fallback EXACTLY: never blindly clips[0], which is
-      // `Death` in every model of this roster. A gate that loops a death
-      // animation while the game plays something else is worse than no gate —
-      // it would sign off on the divergence.
-      let clip = THREE.AnimationClip.findByName(clips, vis.moveClip);
-      if (!clip) {
-        clip = clips.find(c => !/death/i.test(c.name)) || clips[0];
-        console.warn('[scene] roster gate:', type, 'moveClip', JSON.stringify(vis.moveClip),
-                     'not found in', vis.model, '— using', clip && clip.name);
-      }
+      // Uses the SAME resolver as syncEnemies rather than a copy of it. A gate
+      // that loops a death animation while the game plays something else is
+      // worse than no gate — it would sign off on the divergence — and this
+      // block previously guaranteed agreement only by a comment saying "mirror
+      // syncEnemies' fallback EXACTLY".
+      const clip = resolveMoveClip(clips, vis.moveClip, 'roster gate: ' + type);
       if (clip) {
         clipName = clip.name;
         const mixer = new THREE.AnimationMixer(node);
@@ -1286,6 +1420,7 @@ function paintRosterDebug() {
     // a map start forever: ten magnified monsters parked across the playfield
     // with no code path able to dispose them. Unreachable while ?test=roster is
     // a UI dead end; one line to keep the D27 invariant true regardless.
+    node.userData.isRosterDebug = true;   // exempt from low-power mixer release
     enemyNodes.set('roster:' + type, node);
     enemiesGroup.add(node);
 

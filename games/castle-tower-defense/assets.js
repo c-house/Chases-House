@@ -94,6 +94,11 @@ function makePlaceholderMesh() {
   const mesh = new THREE.Mesh(geo, mat);
   const group = new THREE.Group();
   group.add(mesh);
+  // Marked so callers can tell "the asset is still in flight" from "this is the
+  // model". scene.js's low-power mixer recovery needs it: a placeholder has none
+  // of the model's bones, so binding a mixer to one emits a PropertyBinding
+  // warning per track and animates nothing.
+  group.userData.isPlaceholder = true;
   return group;
 }
 
