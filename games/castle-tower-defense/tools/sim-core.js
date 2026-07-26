@@ -31,28 +31,48 @@
   // The split chain is walked recursively so a future chain-split type
   // (child that itself splits) is counted, not silently dropped; a cycle
   // in ENEMIES splitsInto throws rather than hanging or undercounting.
-  function waveStats(wave, hpMult) {
+  // ONE walk, used two ways. waveStatsByType returns the per-type breakdown the
+  // ADR-040 D28 anchor rule needs; waveStats is its aggregation, which is what
+  // the curve computation and the spawn-ceiling checks consume.
+  //
+  // These were briefly two separate walks guarded by a cross-check on their
+  // totals. That guard was worthless and is gone: both totals are sums over the
+  // same terms regardless of which TYPE each term is attributed to, so a
+  // mis-attribution — the only error the per-type version can make that the
+  // aggregate cannot — passed the cross-check while reporting a wrong ratio.
+  // Deriving one from the other removes the divergence instead of watching for it.
+  function waveStatsByType(wave, hpMult) {
     const ENEMIES = E().ENEMIES;
-    let hp = 0, bounty = 0, count = 0;
+    const bodies = {}, hp = {}, bounty = {};
     for (const gDef of wave.enemies) {
       let def = ENEMIES[gDef.type];
       if (!def) continue;
-      let n = gDef.count;
+      let n = gDef.count, name = gDef.type;
       const seen = new Set();
       while (def) {
         if (seen.has(def)) {
           throw new Error('ENEMIES splitsInto cycle reached from "' + gDef.type + '" — fix entities.js');
         }
         seen.add(def);
-        hp += n * Math.round(def.hp * hpMult);
-        bounty += n * def.bounty;
-        count += n;
-        const child = def.splitsInto && ENEMIES[def.splitsInto];
+        bodies[name] = (bodies[name] || 0) + n;
+        hp[name] = (hp[name] || 0) + n * Math.round(def.hp * hpMult);
+        bounty[name] = (bounty[name] || 0) + n * def.bounty;
+        const childName = def.splitsInto;
+        const child = childName && ENEMIES[childName];
         n = child ? n * (def.splitCount || 2) : 0;
+        name = childName;
         def = child || null;
       }
     }
-    return { hp, bounty, count, income: bounty + (wave.reward || 0) };
+    return { bodies, hp, bounty };
+  }
+
+  function waveStats(wave, hpMult) {
+    const per = waveStatsByType(wave, hpMult);
+    const sum = o => Object.values(o).reduce((s, v) => s + v, 0);
+    const bounty = sum(per.bounty);
+    return { hp: sum(per.hp), bounty, count: sum(per.bodies),
+             income: bounty + (wave.reward || 0) };
   }
 
   function computeCurves(map) {
@@ -209,5 +229,34 @@
     }
   }
 
-  window.CTD3SimCore = { runScripted, computeCurves, waveStats, BUILDS, TICK_MS, MAX_SIM_MS };
+  // ─── Figure-ground anchor rule (ADR-040 D28) ─────────────────
+  // The ONE place the threshold and the low-contrast type set live. It sits in
+  // sim-core rather than in the harness because this is the module both the Node
+  // harness and the browser map-editor already share — a rule about wave
+  // composition belongs beside waveStats, not inside one of its two consumers.
+  //
+  // THREE THINGS THIS RULE IS NOT, because each is easy to get wrong:
+  //   1. "Anchor" names the wave-1 and wave-8 SLOTS, not an enemy type. There is
+  //      no "anchor enemy".
+  //   2. The low-contrast types are SUMMED, not checked individually — three
+  //      types at 15% each is a 45% violation, not three passes.
+  //   3. It does NOT constrain drake, juggernaut or captain. The drake leading
+  //      Snowfall w8 (an ADR-040 exception) and Riverbend w8 (its OWNER map, so
+  //      compliance rather than an exception), and the captain leading Mountain
+  //      w8, are all outside this rule and must never be flagged.
+  //
+  // RELAXATION IS OWNED BY ADR-041 D41, which sets the measured figure-ground
+  // separation each of these types must hold before this may be loosened — so a
+  // future session amends that ADR and edits this constant, rather than fighting
+  // an unattributed check. As of ADR-041's addendum (2026-07-26) the condition is
+  // NOT met: ghost now passes on all three of its maps, but mini_slime still
+  // fails on tidewater. This rule stands.
+  const ANCHOR_RULE = {
+    MAX_SHARE: 0.30,
+    TYPES: ['ghost', 'slime', 'mini_slime'],
+    SLOTS: [1, 8]
+  };
+
+  window.CTD3SimCore = { runScripted, computeCurves, waveStats, waveStatsByType,
+                         ANCHOR_RULE, BUILDS, TICK_MS, MAX_SIM_MS };
 })();

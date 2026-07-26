@@ -348,6 +348,87 @@ console.log('\ncurve CSVs written to ' + path.relative(process.cwd(), curvesDir)
   }
 }
 
+// ─── 6d. Figure-ground anchor rule (ADR-040 D28, promoted here) ──
+// ADR-040 recorded this as prose and said so: "the ratio is hand-measured prose,
+// and a later composition edit that pushes Tidewater w8 to 32% would fail
+// nothing." This is that check. The threshold, the type set and the slot list
+// live in ONE place — SimCore.ANCHOR_RULE — which also carries the three ways
+// this rule is routinely misread and names ADR-041 D41 as the owner of its
+// relaxation.
+{
+  const ANCHOR_RULE = SimCore.ANCHOR_RULE;
+  const perType = SimCore.waveStatsByType;
+  const anchorRows = [];
+  for (const map of maps) {
+    const violations = [];
+    let measured = 0;
+    for (const slot of ANCHOR_RULE.SLOTS) {
+      const wave = map.waves[slot - 1];
+      if (!wave) continue;
+      const { bodies, hp } = perType(wave, 1.0);
+      measured++;
+      const totalBodies = Object.values(bodies).reduce((s, v) => s + v, 0);
+      const lowBodies = ANCHOR_RULE.TYPES.reduce((s, t) => s + (bodies[t] || 0), 0);
+      const share = totalBodies ? lowBodies / totalBodies : 0;
+      // HP lead is per TYPE, and the low-contrast types are summed for the share
+      // but compared individually for the lead — a wave whose largest single HP
+      // contributor is a low-contrast type is the failure ADR-040 hit on its
+      // first draft (Snowfall w8 with 14 ghosts leading by both measures).
+      // Ties resolve TOWARD the low-contrast type: with a strict `>` the winner
+      // of a tie is whichever group the author happened to list first, so the
+      // same composition could pass or fail on ordering alone.
+      let leadType = null, leadHp = -1;
+      for (const [t, v] of Object.entries(hp)) {
+        if (v > leadHp || (v === leadHp && ANCHOR_RULE.TYPES.includes(t))) { leadHp = v; leadType = t; }
+      }
+      const leadIsLow = ANCHOR_RULE.TYPES.includes(leadType);
+      const ratioStr = lowBodies + '/' + totalBodies;
+      anchorRows.push(map.id + ' w' + slot + ': ' + ratioStr +
+        ' = ' + (share * 100).toFixed(1) + '%, HP lead ' + leadType);
+      if (share > ANCHOR_RULE.MAX_SHARE) {
+        violations.push('w' + slot + ' low-contrast ' + ratioStr +
+          ' = ' + (share * 100).toFixed(1) + '% > ' + (ANCHOR_RULE.MAX_SHARE * 100).toFixed(1) + '%');
+      }
+      if (leadIsLow) {
+        violations.push('w' + slot + ' HP lead is low-contrast type "' + leadType + '"');
+      }
+    }
+    // `measured` guards against a vacuous pass: a map missing both slots would
+    // otherwise report "within 30% and not HP-led" having checked nothing.
+    check('anchor-ratio:' + map.id, violations.length === 0 && measured === ANCHOR_RULE.SLOTS.length,
+      violations.length ? violations.join('; ')
+        : measured !== ANCHOR_RULE.SLOTS.length
+          ? 'only ' + measured + ' of ' + ANCHOR_RULE.SLOTS.length + ' anchor slots exist on this map'
+          : measured + ' anchor slots within ' + (ANCHOR_RULE.MAX_SHARE * 100).toFixed(0) + '% and not HP-led');
+  }
+  // ADR-040's twelve-anchor table, reproduced from live data as the acceptance
+  // evidence that this check measures what that table measured.
+  console.log('      anchors: ' + anchorRows.join(' | '));
+  // The two anchors that genuinely exercise the threshold (ADR-040 records that
+  // the other ten are 0% by construction). Pinned as regression fixtures so a
+  // composition edit that moves them shows up as a named failure rather than as
+  // a silently different percentage inside a still-passing ratio check.
+  // Pinned as the RATIO, not the rounded percent: 6/25 and 7/29 are both "24%",
+  // so a percent fixture would let tidewater w8 gain four bodies including a
+  // low-contrast one and still pass.
+  {
+    const lastSlot = ANCHOR_RULE.SLOTS[ANCHOR_RULE.SLOTS.length - 1];
+    const exercised = { tidewater: '6/25', snowfall_pass: '5/20' };
+    const drift = [];
+    for (const [mapId, expectRatio] of Object.entries(exercised)) {
+      const row = anchorRows.find(r => r.startsWith(mapId + ' w' + lastSlot + ':'));
+      const got = row && row.match(/: (\d+\/\d+) =/);
+      const ratio = got ? got[1] : '(no w' + lastSlot + ' row)';
+      if (ratio !== expectRatio) {
+        drift.push(mapId + ' w' + lastSlot + ' ' + ratio + ' (ADR-040 recorded ' + expectRatio + ')');
+      }
+    }
+    check('anchor-exercised-fixtures', drift.length === 0,
+      drift.length ? drift.join(', ')
+        : 'tidewater w8 6/25, snowfall_pass w8 5/20 — unchanged since ADR-040');
+  }
+}
+
 
 // ─── 7. Endless mode (ADR-037 C-1) ───────────────────────────
 // D6 makes harness coverage mandatory for any new selectable mode, so every
@@ -803,12 +884,39 @@ console.log('');
 }
 
 // ─── Summary ─────────────────────────────────────────────────
-const failed = checks.filter(c => c.status === 'FAIL');
-const knownFailed = checks.filter(c => c.status === 'KNOWN-FAIL');
-const passed = checks.filter(c => c.status === 'PASS');
+// A stale KNOWN_FAILS entry — one whose check now PASSES — silently disarms that
+// check: the id stays registered, so if the finding ever regresses it prints
+// KNOWN-FAIL and is excluded from acceptance, forever. This used to WARN only,
+// and the exit gate keys on failed.length, so a forgotten entry stayed green
+// indefinitely. The ADR-040 W8-1 -> W8-2 red window was cleared by discipline
+// rather than by enforcement; this is the enforcement (ADR-040 listed it as
+// out-of-scope, and ADR-041's addendum to that ADR records it as done).
+// Registered through check() so it counts toward failed.length like any other.
 for (const id of staleKnown) {
   warn('stale KNOWN_FAILS entry now passing — remove it so future regressions fail loudly: ' + id);
 }
+// ORPHANS are the same defect by the likelier route. staleKnown is only appended
+// from inside check(), so an entry whose id is typo'd — or whose check was later
+// renamed or deleted — never reaches it and sits registered forever, disarming
+// nothing but reading as if it guards something. A rename is far more likely than
+// a typo, which is exactly why this half matters.
+const orphanKnown = Object.keys(KNOWN_FAILS).filter(id => !checks.some(c => c.id === id));
+for (const id of orphanKnown) {
+  warn('orphan KNOWN_FAILS entry matches no check (renamed or deleted?): ' + id);
+}
+const knownRot = staleKnown.concat(orphanKnown);
+check('known-fails-not-stale', knownRot.length === 0,
+  knownRot.length
+    ? knownRot.length + ' entr' + (knownRot.length === 1 ? 'y' : 'ies') + ' to remove from KNOWN_FAILS: ' +
+      staleKnown.map(id => id + ' (now passing)').concat(orphanKnown.map(id => id + ' (matches no check)')).join(', ')
+    : Object.keys(KNOWN_FAILS).length + ' registered, none stale or orphaned');
+
+// Tallied AFTER the stale-KNOWN_FAILS check above, so that check counts toward
+// failed.length like every other. Computing these first is what made the old
+// version advisory: the entry printed WARN and the exit gate never saw it.
+const failed = checks.filter(c => c.status === 'FAIL');
+const knownFailed = checks.filter(c => c.status === 'KNOWN-FAIL');
+const passed = checks.filter(c => c.status === 'PASS');
 console.log('\n' + passed.length + ' pass, ' + failed.length + ' fail, ' + knownFailed.length + ' known-fail' +
   (knownFailed.length ? ' (documented, excluded from acceptance)' : ''));
 if (failed.length === 0) {

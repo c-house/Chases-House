@@ -398,3 +398,101 @@ Shipping an unguarded zero-margin invariant, or a knowingly-permissive acceptanc
 - **Promoting D28's anchor ratio to a harness check.** Cheap and worth doing; carried forward rather than piled onto this sprint's harness changes.
 - **Making a stale `KNOWN_FAILS` entry FAIL rather than warn.** Today `staleKnown` only prints `WARN` and the exit gate keys on `failed.length`, so a registered entry that starts passing can sit exempted from acceptance indefinitely. This sprint's W8-1 → W8-2 red window relied on discipline, not enforcement. Recorded here because it was identified while building that window and would otherwise survive only in a hand-back.
 - **Any Unity or WC3-extracted asset** — excluded by ADR-039 D22, permanently. The `docs/td-comparison` benchmark is read-only design reference, as it has been since ADR-036.
+
+---
+
+## Addendum — 2026-07-26
+
+Two items this ADR carried forward are now done, recorded here so they survive in
+the repo rather than only in a hand-back. **The body above is unchanged.**
+
+### D28's anchor ratio is now a harness check, not prose.
+
+This ADR was explicit that the rule was unenforced — *"the ratio is hand-measured
+prose, and a later composition edit that pushes Tidewater w8 to 32% would fail
+nothing"* — and named promoting it as cheap. `tools/sim-harness.cjs` now carries
+**`anchor-ratio:<map>`** for all six maps, asserting D28 verbatim: in a **wave 1
+or a wave 8**, `ghost` + `slime` + `mini_slime` (split children counted, summed
+across the three) must be **≤30% of the wave's bodies** AND must not be the
+wave's **largest HP contributor**.
+
+The threshold, the type set and the slot list live in **one** named exported
+constant, `CTD3SimCore.ANCHOR_RULE` in `tools/sim-core.js` — placed there rather
+than in the harness because sim-core is the module the Node harness and the
+browser map-editor already share. Its comment names **ADR-041 D41** as the owner
+of any relaxation, so a future session amends that ADR and edits one constant
+instead of arguing with an unattributed check.
+
+**The twelve-anchor table above reproduces exactly from live data**, and is
+printed by the harness on every run as its acceptance evidence:
+
+| | w1 | w8 | w8 HP lead |
+|---|---|---|---|
+| Plains | 0/1 | 0/23 | heavy |
+| Forest | 0/5 | 0/30 | heavy |
+| Mountain | 0/5 | 0/10 | captain |
+| Tidewater | 0/5 | **6/25 = 24%** | heavy |
+| Snowfall | 0/5 | **5/20 = 25%** | drake |
+| Riverbend | 0/5 | **6/26 = 23%** | drake |
+
+The drake leading Snowfall w8 and Riverbend w8, and the captain leading Mountain
+w8, are **recorded exceptions and are correctly not flagged** — the rule
+constrains only the three low-contrast types.
+
+A second check, **`anchor-exercised-fixtures`**, pins the two anchors that
+genuinely exercise the threshold (Tidewater w8 24%, Snowfall w8 25%) as
+regression fixtures, since the other ten are 0% by construction and a ratio check
+alone would let those two drift silently inside a still-passing verdict.
+
+Per-type bodies and HP come from a new `CTD3SimCore.waveStatsByType`, and
+**`waveStats` is now its aggregation** — one walk, one cycle-detection path.
+
+An earlier cut of this work had *two* walks guarded by a cross-check on their
+totals. A review demonstrated that guard worthless: both totals are sums over the
+same terms **regardless of which type each term is attributed to**, so the one
+error the per-type walk can make that the aggregate cannot — a mis-attribution —
+passed the cross-check while reporting a wrong ratio (a seeded attribution bug
+reported Tidewater w8 as 8% instead of 24%, cross-check green). Deriving one from
+the other removes the divergence rather than watching for it, and satisfies the
+repo's highest-priority DRY rule that the duplicated walk violated. **The refactor
+is provably inert: all seven `tools/curves/*.csv` are byte-identical after it.**
+
+Mutation-tested, each failing loudly and for the right reason:
+
+| Mutation | Result |
+|---|---|
+| +8 ghosts on Tidewater w8 | `anchor-ratio:tidewater` → `14/33 = 42.4% > 30.0%` |
+| Slime HP raised, share held at 6/25 | `anchor-ratio:tidewater` → *"HP lead is low-contrast type slime"* — the HP-lead branch in isolation |
+| +1 slime +1 footman on Tidewater w8 | `anchor-exercised-fixtures` → `9/29 (ADR-040 recorded 6/25)` |
+| `KNOWN_FAILS` entry for a passing check | `known-fails-not-stale` → *"(now passing)"* |
+| `KNOWN_FAILS` id matching no check | `known-fails-not-stale` → *"(matches no check)"* |
+
+Two further review findings were fixed rather than deferred. The HP-lead
+comparison used a strict `>`, so a **tie** was decided by whichever group the
+author listed first — the same composition could pass or fail on authoring order
+alone; ties now resolve *toward* the low-contrast type. And the fixtures pin the
+**ratio** (`6/25`, `5/20`), not the rounded percent, because `6/25` and `7/29` are
+both "24%" and a percent fixture would let a wave gain four bodies including a
+low-contrast one and still pass.
+
+The stale-entry check also covers **orphans** — a `KNOWN_FAILS` id matching no
+check at all. `staleKnown` is only appended from inside `check()`, so a typo'd or
+(far more likely) *renamed* check leaves its entry registered forever, reading as
+a guard while guarding nothing. That was the same defect by the likelier route
+and is now caught by the same assertion.
+
+### A stale `KNOWN_FAILS` entry now FAILS instead of warning.
+
+Listed in this ADR's out-of-scope as a known gap. Previously `staleKnown` only
+printed `WARN` while the exit gate keyed on `failed.length`, so a forgotten entry
+stayed green forever — an entry left registered after its finding is fixed
+silently disarms that check, because a later regression prints `KNOWN-FAIL` and
+is excluded from acceptance. **The W8-1 → W8-2 red window this ADR opened relied
+on discipline rather than enforcement.**
+
+`known-fails-not-stale` now runs through `check()` like any other assertion, and
+the summary tallies were moved to run *after* it — computing them first is
+precisely what made the old version advisory. Mutation-tested: registering
+`anchor-ratio:plains` (which passes) yields `ACCEPTANCE: FAIL`, exit 1.
+
+**Harness: 97 → 105 pass, 0 fail, 0 known-fail.**
