@@ -60,6 +60,32 @@ const WARDEN_AURA_COLOR = 0x8fc6cf;
 // 2-5% of a ring's circumference, which is accepted. Taller scenery (hills
 // 0.57, rocks 0.75, trees 0.96+) is meant to occlude a ground decal.
 const GROUND_DECAL_Y = 0.24;
+// Ghost body alpha (ADR-041 D36(b)). The figure-ground lever's differential half.
+// This value is scene.js's OWN presentation choice — written onto materials this
+// file clones PER INSTANCE and records in userData.ownedMaterials, never a
+// property of enemy_ghost2.glb. Provenance checked rather than assumed
+// (`git log -S "opacity = 0.55"`): it entered in bae9bac, two months BEFORE the
+// ADR-039 roster swap, for the PREVIOUS ghost model, and c562919 carried it
+// through untouched — so 0.55 was never tuned for the model now on screen.
+// Raising it is
+// therefore not the post-load material retinting ADR-034 Decision C excludes:
+// alpha is not colour, and no hue/saturation/lightness of the asset is overridden.
+//
+// It was 0.55, and that was the measured defect rather than a taste call. At 0.55
+// the green field blends THROUGH the body, so the ghost rendered green and sat at
+// delta-a* +0.6..+4.9 against a reference cohort at +15..+27 — the only type in
+// the roster failing to separate from the field on the green-red axis, on all
+// three maps it appears on. The measured green was the FIELD, not the ghost.
+// 0.78 restores the body while keeping the spectral read (at 1.0 the type stops
+// being a ghost, and the change would no longer be a readability fix).
+// ADR-041 permits 0.70-0.85; outside that range is a fresh decision.
+//
+// This is the WHOLE of the figure-ground lever. ADR-041 D36(a) also specified a
+// warm rim/kicker DirectionalLight; it was built, measured, and REMOVED, because
+// it moved the metric by ~0.25 dE while the alpha moved it by ~8 (see the
+// ADR-041 addendum of 2026-07-26). lighting.js is therefore untouched by this
+// sprint and ADR-034 Group 2's lighting acceptance is NOT amended after all.
+const GHOST_OPACITY = 0.78;
 const ENEMY_BOB_RATE_GROUND = 4;
 const ENEMY_BOB_RATE_FLYING = 1.6;
 const ENEMY_BOB_AMP_GROUND = 0.05;
@@ -772,7 +798,11 @@ function syncEnemies(state) {
           if (o.isMesh && o.material) {
             o.material = o.material.clone();
             o.material.transparent = true;
-            o.material.opacity = 0.55;
+            o.material.opacity = GHOST_OPACITY;
+            // Stays FALSE at the raised alpha (ADR-041 D36(b)). At 0.78 the body
+            // is still transparent, so depthWrite:true would clip what renders
+            // behind it and would newly interact with the ground decals under
+            // the creep — trading a readability fix for a sorting bug.
             o.material.depthWrite = false;
             owned.push(o.material);
           }

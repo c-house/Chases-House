@@ -267,3 +267,240 @@ Relaxation still requires **its own ADR amendment**, and the harness constant P-
 - Four failed metric versions and one broken sampler are recorded so they are not re-derived.
 - One ADR-034 Group-2 acceptance clause is amended by name, in wording, with every other Group-2 value left exact-hex — and the lever's main risk (tower cone re-neon) carries a named rollback trigger and a visual check that can fail a numerically-passing build.
 - **This ADR records that one third of its own premise did not survive measurement** (`slime`), that its metric carries a known bias in favour of the ghost fix, and that the anchor-rule retirement it exists to enable may not complete this sprint.
+
+---
+
+## Addendum — 2026-07-26
+
+Written after implementing D36 and re-running D34 against the result. Four things
+the ADR body asserted did not survive contact with the measurement, and they are
+recorded here rather than by rewriting the body (landed ADRs are point-in-time).
+
+### A1 — The instrument was interfering with the thing it measured.
+
+D34's v5 renders the frame twice and reads back the full canvas twice **per
+frame** — ~15 MB of synchronous `readPixels` per frame. That pushed frame time
+past `renderer.js`'s 33 ms auto-low-power trigger, and **low power silently
+engaged mid-collection**: shadows shed, mixers released, DPR dropped. The
+aggregator never reported it. A frame measured in low power is not the frame a
+player sees, so any before/after comparison spanning a trip is invalid.
+
+**Hardened, instrument-side only (no game code changed):** read back only the
+**union rect** of the live creeps rather than the whole canvas, force low power
+off for the duration of a collection, and neuter `trackFrame`'s auto-trip while
+collecting. Frame rate during collection went from ~1 fps back to 40–60.
+
+**The hardened instrument is reproducible — on the maps where it was repeated.**
+Two independent lever-off runs of forest w6: ghost 23.42 / 23.49 (0.3%), runner
+33.59 / 33.72 (0.4%), heavy 30.98 / 30.64 (1.1%). Riverbend's ghost was repeated
+across configurations and spreads ~2% (29.40 / 30.06), so **0.3% is a forest
+figure, not a global one.**
+
+**D35's numbers were taken before this hardening and do NOT reproduce.** Stating
+the real range rather than a flattering one: D35 runs high by **0.4% to 45%**, and
+crucially the *reference* types moved far more than the at-risk types — forest
+slime +0.4%, forest ghost +3.9%, riverbend ghost +3.9%, snowfall ghost +7.9%,
+forest runner +11.9%, riverbend skirmisher +18.1%, snowfall skirmisher +18.8%,
+**riverbend drake +44.5% (34.35 → 23.77)**.
+
+**The drake outlier is reconciled rather than absorbed.** 34.35 sits 35% above the
+top of the drake's own hardened spread (22.07–25.47), so A2's ±7% noise story does
+**not** cover it — the D35 drake reading is a casualty of the unhardened
+instrument (a collection that dipped into low power sheds shadows, which changes
+the surround term materially) and is **discarded**, not averaged in. That
+asymmetry — references moving more than subjects — is also why the re-measured
+cohort denominators in A4 are so much lower than D35's.
+
+**The table in A4 below is the baseline of record.**
+
+### A2 — A regression that was never real, caught before it changed the design.
+
+The first lever-on riverbend run showed `drake` falling 25.47 → 21.94 (−13.9%),
+breaching the non-regression clause, and it had a plausible-sounding
+explanation ready (AgX desaturating an already-warm creep as the rim pushes it up
+the tone curve). **That explanation was wrong and the regression was noise.**
+
+Two checks killed it. Dropping rim intensity 0.55 → 0.36 moved the drake by
+**0.07** — no dose-response, so the rim was not the cause. Then a second
+lever-**off** baseline read **22.07**, bracketing both lever-on readings. The
+drake's own run-to-run spread on riverbend is 22.07–25.47 (±7%) against ±1% for
+ghost and skirmisher, because riverbend fields only ~6 drakes and it is the
+largest, most irregular silhouette in the roster — few individuals, high matte
+variance. **Low-n, wing-shaped types need repeat runs before any delta on them is
+believed.** Had the first reading been trusted, the sprint would have withdrawn
+its lever over a phantom.
+
+### A3 — D36(a), the warm rim light, was built, measured, and REMOVED.
+
+It moved the metric by **~0.25 ΔE** (forest ghost 31.63 with rim vs 31.32
+without; riverbend ghost 29.81 at rim 0.55 and 30.06 at rim 0.36 — inside noise,
+and not even consistently signed). **D36(b), the ghost's alpha, did all of the
+work: ~+8 ΔE.**
+
+*(Riverbend's shipped, no-rim run of record is 29.40 — see A4. The three riverbend
+ghost readings 29.40 / 29.81 / 30.06 span 2.2% across two rim settings and none,
+which is both the evidence that the rim is inert and the reason A1 no longer
+claims 0.3% reproducibility off forest.)*
+
+Shipping a second `DirectionalLight` that measurably does nothing would have
+bought a per-frame cost, a material recompile, a named tower-cone-re-neon risk,
+and an ADR-034 Group 2 amendment — for no measured benefit. That is precisely the
+unfalsifiable-improvement trade this ADR exists to refuse, so the rim was removed
+and `lighting.js` is **untouched** by this sprint.
+
+**Consequence — this ADR's `Amends:` header is void.** ADR-034 Group 2's `PRESETS`
+exact-hex clause and its DirectionalLight-delta clause are **NOT amended**. No
+Group-2-owned value moved. The `Amends:` line at the top of this document
+described the plan, and the plan changed; this addendum is the correction.
+
+The rim may still help perceptually in ways a mass statistic like ΔE_body cannot
+see (edge definition on a silhouette). No evidence was produced for that, so it is
+carried as an open idea, not a shipped feature.
+
+### A4 — Baselines of record, results, and the gate verdict.
+
+Hardened instrument. BEFORE = lever off; AFTER = shipped build (ghost alpha only).
+Where two baseline runs exist the mean is shown.
+
+| Map | Type | BEFORE | AFTER | Δ |
+|---|---|---|---|---|
+| forest | **ghost** | 23.46 | **31.32** | **+7.86 (+33.5%)** |
+| snowfall_pass | **ghost** | 24.59 | **33.08** | **+8.49 (+34.5%)** |
+| riverbend | **ghost** | 21.97 | **29.40** | **+7.43 (+33.8%)** |
+| tidewater | **slime** | 30.92 | 30.98 | +0.2% |
+| forest | **slime** | 39.18 | *(unchanged by construction)* | — |
+| tidewater | **mini_slime** | 26.37 | 26.13 | −0.9% |
+| forest | **mini_slime** | **37.10** | *(unchanged by construction)* | — |
+| forest | runner *(ref)* | 33.66 | 32.65 | −3.0% |
+| forest | heavy *(ref)* | 30.81 | 30.93 | +0.4% |
+| tidewater | shielded *(ref)* | 35.61 | 35.96 | +1.0% |
+| snowfall_pass | skirmisher *(ref)* | 30.70 | 30.34 | −1.2% |
+| riverbend | skirmisher *(ref)* | 28.52 | 27.61 | −3.2% |
+| riverbend | drake *(ref)* | 23.77 | 23.50 | −1.1% |
+
+*"Unchanged by construction"*: the shipped build differs from baseline **only** in
+`GHOST_OPACITY`, which is written onto ghost materials alone, so no non-ghost type
+can move. Measured anyway on four maps as an empirical check of that structural
+argument — every reference type came back within ±3.2%, i.e. inside run-to-run
+variance. **`mini_slime`'s forest baseline (37.10) closes the coverage gap D41
+named.**
+
+**Non-regression clause — reported against an AMENDED denominator, and saying so.**
+D37 words the clause as "90% of its own **D35** baseline". It is computed here
+against the **hardened lever-off** baseline instead, because a pre/post comparison
+that straddles the A1 instrument fix measures the instrument, not the lever. On
+that basis it **PASSES**, worst case riverbend skirmisher 96.8%. Against D37's
+literal D35 denominator it would *fail* on four of five reference types (drake
+68.4%, riverbend skirmisher 82.0%, snowfall skirmisher 83.2%, forest runner
+86.7%) — but every one of those "failures" is the D35 reading being wrong, per
+A1's 0.4–45% non-reproducibility, not the lever degrading anything. **D37's clause
+is amended to read "hardened lever-off baseline"**, deliberately and here, rather
+than quietly satisfied.
+
+**Bias control — the check D37 made mandatory, now actually run.** D37 required
+`fill` and `Lab_surround` to be reported because raising the ghost's alpha
+enlarges the 6/255 matte and could inflate ΔE by moving edge pixels from surround
+into figure. **The bias did not materialise:**
+
+| Map | Type | fill BEFORE → AFTER | Lab_surround shift |
+|---|---|---|---|
+| forest | ghost | 0.288 → 0.287 | **1.02** |
+| forest | runner *(ref)* | 0.342 → 0.322 | 1.44 |
+| riverbend | ghost | 0.320 → 0.314 | **0.41** |
+| riverbend | skirmisher *(ref)* | 0.198 → 0.212 | 0.42 |
+| snowfall_pass | ghost | 0.321 → 0.318 | **0.24** |
+| snowfall_pass | skirmisher *(ref)* | 0.193 → 0.212 | 0.14 |
+
+The ghost's matte is **flat to within 0.006** on all three maps — at 0.55 its
+pixels already cleared the 6/255 gate almost everywhere, so there were few
+sub-threshold pixels for the alpha to recruit. D37's disqualifying condition was
+"a ghost `Lab_surround` shift materially larger than the cohort's"; the ghost's
+shift is **smaller than or equal to** its cohort's on all three maps. The +8 ΔE is
+therefore recorded as gain, having passed the control that would have called it
+otherwise.
+
+**Gate verdict** — T2 ≥ 28.0, and T1 = 0.80 × the **re-measured lever-off** cohort:
+
+**T1's denominator is re-derived, not the D35 "frozen" value, and that is a change
+to D37 stated here rather than slipped through.** D37 froze the denominator to stop
+a lever moving numerator and denominator together. Re-deriving it from **lever-off**
+runs preserves that property exactly — a lever-off cohort is lever-invariant by
+construction — while dropping D35's discredited numbers. The substitution lowers
+three of four thresholds (forest 26.48→26.93 up, tidewater 29.89→28.49, snowfall
+29.17→24.56, riverbend 27.21→20.92), so it is stated explicitly: **every verdict
+below is unchanged if D35's frozen denominators are used instead**, which is why
+the correction is recorded rather than re-litigated. Cohort membership (D35's
+n≥100 rule, `n` shown): forest = runner (1,059); tidewater = shielded (310);
+snowfall_pass = skirmisher (1,360); riverbend = median(skirmisher 4,025, drake
+533). `heavy` and `footman` appear as reference rows but miss n≥100 in the
+re-measured pass and are excluded from denominators.
+
+| Type | Map | AFTER | T1 | T2 | Verdict |
+|---|---|---|---|---|---|
+| ghost | forest | 31.32 | ≥26.93 ✓ | ✓ | **PASS** |
+| ghost | snowfall_pass | 33.08 | ≥24.56 ✓ | ✓ | **PASS** |
+| ghost | riverbend | 29.40 | ≥20.92 ✓ | ✓ | **PASS** |
+| slime | forest | 39.18 | ≥26.93 ✓ | ✓ | PASS |
+| slime | tidewater | 30.98 | ≥28.49 ✓ | ✓ | PASS |
+| mini_slime | forest | 37.10 | ≥26.93 ✓ | ✓ | PASS |
+| mini_slime | tidewater | 26.13 | ≥28.49 ✗ | ✗ | **FAIL** |
+
+Rows marked *"unchanged by construction"* in the table above carry their BEFORE
+value in the AFTER column; the column label is loose for those two cells and the
+value is a baseline, not a re-measurement.
+
+**The ghost — the defect this sprint exists to fix, and the one ADR-040 D28's
+anchor rule was written against — is closed on all three maps it appears on.**
+
+**`mini_slime` on tidewater remains open**, exactly as D41 warned it might. The
+diagnosis is now sharper than D41's: `slime` and `mini_slime` are the *same model
+and material* on the same map, differing only in scale (0.394 vs 0.262 → 38×52 px
+vs 26×34 px), and they measure 30.98 vs 26.13. The gap is **size**, not colour, so
+no surround lever can close it — the instruments that could are a scale change, an
+outline, or a size-aware disc, none of which this ADR decided. **It is not
+attempted at the gate**, because inventing a lever to pass a threshold is the
+failure mode D37 exists to prevent.
+
+**T2's floor is NOT re-derived downward.** Under the hardened instrument the
+weakest qualifying reference is `drake` at 23.77, which would mechanically lower
+the floor to ~23 and pass `mini_slime` by arithmetic. D37 anticipated this: a
+cohort member failing T2 triggers a **fresh decision**, not a silent lowering.
+Recorded: **`drake` on riverbend sits below the 28.0 floor**, and whether that is a
+drake readability finding or an artifact of its high measurement variance (A2) is
+an open question for a later sprint.
+
+### A5 — Consequences for D41.
+
+D41's retirement condition is **not** met: it requires all three types to pass on
+every map, and `mini_slime`/tidewater does not. ADR-040 D28's anchor rule
+therefore **stands**, and P-3's harness check is the right place for it. The
+remaining distance is one type on one map, with a named cause (size) and no
+decided instrument.
+
+### A6 — D36's human visual confirmation: PARTIALLY performed, and recorded as such.
+
+D36 made a visual check an exit criterion *"allowed to fail a numerically-passing
+build"*, precisely because a numeric gate with a tunable parameter is satisfiable
+by tuning. Reporting exactly what was and was not done, because claiming this one
+without evidence would be the failure it was written to catch:
+
+**Performed.** One screenshot at true gameplay camera (forest w6, ghosts live, no
+`?test=roster`): the ghost now reads as a solid dark figure against the field and
+path, where the equivalent baseline frame showed creeps that were hard to pick out
+at all. All six official maps loaded and spawned: **zero magenta placeholders**
+(mesh counts 84–91), and **zero console errors and zero warnings** across the whole
+pass. Leak gate: `memory.geometries` **flat at 176, delta 0 across 320 rendered
+frames** after wave clear, `programs.length` constant at 12, `memory.textures`
+delta 0.
+
+**NOT performed.** A six-map screenshot pass judged one map at a time, and the
+`/frontend-design` treatment critique the sprint mandates. **The specific question
+those exist to answer — does the ghost still read as SPECTRAL at 0.78, or merely
+as a dark solid? — is therefore unanswered by anything but the author's own
+single frame.** `scene.js`'s comment asserts the spectral read survives; that
+assertion is a design intent, not a verified finding, and the tower-cone re-neon
+half of the criterion is moot only because D36(a) was removed.
+
+**Consequence: P-1 carries this as an open residual, not a pass.** It is cheap to
+close (six screenshots and a critique) and it is the one criterion that could still
+overturn the alpha value inside its permitted 0.70–0.85 band.
