@@ -1,17 +1,16 @@
 Castle Tower Defense 3D — third-party asset licenses
 ======================================================
 
-Nearly all assets in this directory are Creative Commons Zero (CC0).
-No attribution is required for those, but credits are listed below
-as good practice.
+All assets in this directory are Creative Commons Zero (CC0). No
+attribution is required, but credits are listed below as good practice.
 
-ONE DOCUMENTED EXCEPTION, stated up front rather than buried: the four
-Hyper3D Rodin generations listed under the heading beginning
-"MODELS — Hyper3D Rodin generations" below are NOT CC0. They predate the CC0-only
-shipping policy, are grandfathered by ADR-039 D22 as an enumerated and
-closed exception, and are scheduled for deletion (ADR-039 D24). Until
-then this file must not claim blanket CC0 coverage — an earlier version
-of this header did, and it was false.
+That sentence is now true without qualification. It was NOT true between
+the ADR-034-era Rodin import and 2026-07-31, and an earlier version of
+this header asserted it anyway. The four non-CC0 files are gone; the
+correction and the removal are both recorded under "MODELS — Hyper3D
+Rodin generations (REMOVED)" below. ADR-039 D22 now has NO live
+exceptions, and the spent clause is not available to any future asset as
+precedent.
 
 Policy of record: ADR-039 (docs/adr/039-ctd3-cc0-asset-expansion-policy-
 and-monster-suite.md). Third-party art shipped from this directory must
@@ -323,51 +322,47 @@ MODELS — Quaternius "Ultimate Monsters" (animated enemy roster, ADR-039)
   runtime's fallback hides it behind a warning rather than a failure.
 
 ----------------------------------------------------------------------
-MODELS — Hyper3D Rodin generations (NOT CC0 — grandfathered, ADR-039)
+MODELS — Hyper3D Rodin generations (REMOVED 2026-07-31 — exception spent)
 ----------------------------------------------------------------------
   Files:    enemy_juggernaut.glb, enemy_slime.glb, enemy_mini_slime.glb,
-            enemy_ghost.glb
-  Author:   generated for this project via Hyper3D Rodin (text-to-3D),
-            then exported from Blender
+            enemy_ghost.glb  — DELETED, no longer in this directory.
   License:  Hyper3D Rodin generation terms — a per-account commercial
             grant, NOT a public-domain dedication and NOT CC0.
-  Source URL:   unknown / not recoverable
-  Pack:         n/a (generated, not from a pack)
-  Download date: unknown — generated during the ADR-034 era (the files
-            first appear alongside the Phase-5 enemy work)
 
-  This is a BEST-EFFORT entry (ADR-039 D24): the generating session left
-  no prompt or job record, so the fields above state what is verifiable
-  from the bytes and mark the rest unknown rather than inventing a
-  provenance. What the files themselves establish:
+  This entry is retained as a TOMBSTONE, not as a live ledger row. It
+  stays because the four binaries remain reachable in git history, and a
+  reader who finds a non-CC0 blob in this repo's past needs to be able to
+  find out what it was and why. Deleting the entry along with the files
+  would leave that question unanswerable.
+
+  Provenance, as recorded when they were ledgered (best-effort per D24 —
+  the generating session left no prompt or job record):
       glTF asset.generator : "Khronos glTF Blender I/O v5.1.19"
       mesh names           : RODIN_Juggernaut, RODIN_Slime,
                              RODIN_Slime.002, RODIN_Ghost
       rig                  : none (skins: 0, animations: 0 — static)
-  The RODIN_ prefix is what identifies them; the other six enemy meshes
-  carry generator "UnityGLTF" and Kenney's enemy-ufo-* names, matching
-  the Kenney mapping above exactly.
+  The RODIN_ prefix is what identified them.
 
-  STATUS — verify against MANIFEST.json; do not trust a remembered
-  state, and note this paragraph is written mid-transition:
-    * As of the commit that added this entry (the asset import),
-      MANIFEST.json still declares all four AND scene.js still resolves
-      enemy_<type> to them — so they ARE the live rendered models for
-      juggernaut / slime / mini_slime / ghost at that commit. They are
-      NOT yet dormant, and nothing about them has been superseded yet.
-      The nine Quaternius files above are on disk but not yet wired.
-    * The roster-swap commit later in the same ADR-039 sprint repoints
-      the enemy factory at the *2.glb models. From that commit onward
-      these four are unreferenced and retained ONLY as the rollback
-      path for the swap.
-  The authoritative check at any later date is whether MANIFEST.json and
-  scene.js's enemy factory still name them — not this prose.
+  WHY THEY ARE GONE. ADR-039 D22 grandfathered exactly these four
+  filenames as an enumerated, closed exception, retained only as the
+  rollback path for the roster swap, with one exit condition: the
+  imported roster surviving an operator playtest WITHOUT A MODEL-LOADING
+  REGRESSION. That condition is now discharged. The 2026-07-26 playtest
+  (docs/handoffs/2026-07-26-roster-playtest.md) reported one or two
+  creeps that "did not look animated" and did NOT identify the cause, so
+  the note explicitly did not discharge D22 on its own. The sprint-10 X-3
+  diagnosis settled it: driving the real render path across all six
+  campaign maps, 11/11 roster types loaded with zero placeholders, 11/11
+  resolved their moveClip exactly, and 11/11 ran a mixer. The defect was
+  a procedural-layer suppression in syncEnemies, not a load failure — a
+  class against which a rollback to these models is no remedy at all.
+  Fixed in "ctd3: scene — procedural-layer suppression static-enemy fix".
 
-  ADR-039 D22 grandfathers these four filenames as an
-  enumerated, closed exception that no other asset may cite as
-  precedent, with a stated exit condition: delete them once the imported
-  roster has survived one operator playtest without a model-loading
-  regression. Deletion is an operator action.
+  D22 now has NO live exceptions. This clause is spent and is explicitly
+  NOT precedent: a non-CC0 asset arriving after ADR-039 is refused
+  outright, and "we can ledger it honestly and delete it later" is
+  reasoning that was available only to these four files, only because
+  they were already shipped when the policy was written.
 
 ----------------------------------------------------------------------
 AUDIO — Kenney audio packs (all CC0)
