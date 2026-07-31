@@ -167,3 +167,53 @@ If you tighten the player-record schema (the `$other: false` block), make sure b
 - **App Check**: Firebase's recommended next layer. Attests that requests come from a registered web app. Worth adding once we observe any abuse signal; not needed on day one.
 - **Room-code hardening**: if guess-the-code abuse appears, switch to 6 characters or rate-limit room creation per UID via Cloud Functions.
 - **Rule tightening on the `game/` subtree**: validate `currentClue` shape, `pickingPlayer` matches a known player ID, etc. Skipped for now to avoid breaking the live game during further development.
+
+---
+
+## Addendum — 2026-07-31: the "operator Firebase visit" dependency for community publishing is RETIRED
+
+Recorded here because this ADR is where a session looks when it hits a Firebase
+denial, and because a three-sprint blocker was carried against it.
+
+**Verdict: the blocker was a phantom.** Community publishing has worked the
+whole time. It was executed for real this session, end to end, from
+`localhost:3030`.
+
+**The load-bearing evidence, in the order it matters:**
+
+1. **`signInAnonymously()` RESOLVED** from `http://localhost:3030` — uid
+   `tmcCc8O0ToNBkeO9zuyH3dKN1F52`, `isAnonymous: true`, 364 ms. No
+   `auth/requests-from-referer-…-are-blocked`. This is the fact that separates
+   an auth-gateway failure from a rules failure, and it is why the earlier
+   `PERMISSION_DENIED` reports were a misdiagnosis rather than a finding: the
+   failing sessions served on `:3004`, which is not on the API key's HTTP-
+   referrer allowlist, so anonymous auth failed, `auth == null`, and the RTDB
+   correctly refused the write.
+2. **A real publish through the editor's own control** (`tools/map-editor.html`
+   → Publish) returned *"Published as TWBZ."*
+3. **The write is really in the database**: reading `ctd3-community/TWBZ` back
+   returns `{map, meta, updatedAt}`, `displayName` "The New Field".
+4. **The live read path shows it**: the game's COMMUNITY tab lists "The New
+   Field · by anonymous · code TWBZ".
+5. **An endless run started from that community entry** via the real
+   "Import & play · Quiet" button reached **wave 5** with 16 lives on
+   `user:community-TWBZ`. Zero console errors or warnings throughout.
+6. **`ctd3:scores` is byte-identical** across the whole exercise (`null` →
+   `null`), while the endless result correctly landed under `ctd3:endless` at
+   `user:community-TWBZ:quiet`. The separation this ADR's consumers depend on
+   holds in practice, not just in comment.
+
+**No rules change was needed and none was made.** The published rules already
+permit the write: under `ctd3-community`, `$code` carries
+`".write": "auth != null"` plus the 4-uppercase-letter code-shape validation.
+
+**The standing operator dependency is now only `ctd3-scores`** — the leaderboard
+path (ADR-038 T-3/D17), which genuinely does need a console paste because the
+RTDB root denies by default. Community publishing is not on that list.
+
+**Operator note — one piece of live litter.** The map published as proof, code
+**TWBZ** ("The New Field"), is real and visible to anyone opening the COMMUNITY
+tab. It was deliberate and authorised by the verification brief, and it was left
+in place rather than deleted unilaterally. To remove it, from a page served on
+`localhost:3030` or the live site:
+`await SharedFirebase.init(); await SharedFirebase.signInAnonymously(); await SharedFirebase.ref('ctd3-community/TWBZ').set(null);`
