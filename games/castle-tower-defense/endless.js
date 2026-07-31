@@ -27,22 +27,99 @@
 (function () {
   'use strict';
 
-  // ─── Tunable constants (ADR-037 D9) ──────────────────────────
-  // Starting values taken from the Element TD reference (×1.178/level HP
-  // against ~1.0925 bounty growth), not from CTD play. C-3 replaces them
-  // with measured values.
+  // ─── Tunable constants — CALIBRATED (ADR-037 D9, ADR-038 T-1) ────────
+  //
+  // STATUS. These entered as Element TD reference values (×1.178/level HP
+  // against ~1.0925 bounty growth) rather than CTD measurements. **T-1 ran that
+  // calibration** — 6 official maps × 3 seeds (7 / 101 / 2029) × both
+  // difficulties, every scripted arm plus the banking and call-early poles —
+  // and the headline result is that the reference values SURVIVED measurement:
+  // every calibrated quantity landed inside its target band, so the numbers
+  // below did not move. What changed is their standing — they are no longer
+  // inherited-and-unverified.
+  //
+  // Measured at these values (tools/sim-harness.cjs, section 7 — every figure
+  // here is the harness's own printed output, not a side measurement):
+  //   balanced survival   quiet 22–26 waves · spirited 19–21   (band 15–35)
+  //   balanced duration   quiet 926–1185 s · spirited 795–919  (band 600–1800)
+  //   build separation    worst pair 3 waves                    (≥3 required)
+  //   interest share      17.9% worst of total income           (<35% ceiling)
+  //   dominance margin    always-bank 0.0%, call-early 5.3%     (≤15% allowed)
+  //   build saturation    spending stops at wave 8–10           (≥5 required)
+  //
+  // TWO OF THOSE ARE NOT COMFORTABLE AND THE TABLE SHOULD NOT BE READ AS IF
+  // THEY WERE. Build separation lands EXACTLY on its threshold — the worst cell
+  // (mountain/spirited/seed 101, depths 17/17/20) has zero headroom, so a small
+  // content nudge can turn that check red. And the widening is what revealed
+  // it: the pre-T-1 single-cell figure was a spread of 8.
+  //
+  // HOW THESE ARE ACTUALLY LOCKED, stated precisely because an earlier draft of
+  // this comment overclaimed it. The outcome bands are wide, and mutation
+  // testing shows BOUNTY_GAP, INTEREST_RATE, BUY_LIFE_GROWTH and both SCALARS
+  // can all move without turning a single band red — three of them move no CSV
+  // byte either. So the real lock is `endless-constants-pinned`, which pins
+  // every tunable below by value: recalibrating means editing that pin in the
+  // same commit. The bands catch gross behavioural drift, the CSVs make curve
+  // changes diffable, and the pin is what makes a silent constant edit
+  // impossible. Note the CSVs are a diffable ARTIFACT, not an automatic gate —
+  // the harness rewrites them and exits 0.
+  //
+  // THE FINDING THAT MATTERS MOST IS NOT A CONSTANT (ADR-038 D20). The balanced
+  // build stops spending at wave 8–10 and then plays 9–17 further waves with a
+  // full board and maxed tiers, having spent only 11–21% of its lifetime
+  // income. Endless has roughly nine waves of economy followed by seventeen of
+  // watching. That is the scope input D20 asked this pass to produce, and it is
+  // also why `endless-dominance-margin` has no power over the numbers below —
+  // see the long note at that check.
+  //
   const ENDLESS_GROWTH      = 1.15;   // per-enemy HP multiplier per wave
   const BOUNTY_GAP          = 1.07;   // bounty grows at GROWTH/GAP — ETD's deliberate ~7%/wave compounding gap
   const INTEREST_RATE       = 0.02;   // fraction of banked gold paid per period
   const INTEREST_PERIOD_MS  = 15000;  // 2% / 15s of unpaused sim time
-  // Per-period ceiling on interest. Uncapped 2%/15s compounds without limit
-  // once a build fills every slot and stops spending: measured at 46% of all
-  // income on a long run, which is the "bank everything, win" degeneracy
-  // ADR-037's risk table names — and it also swamps the early-call bonus the
-  // interest is supposed to be in tension with. The cap keeps interest fully
-  // proportional below a ~2500g bank (where the bank-vs-spend decision is
-  // live) and flat above it. Measured 16-17% of income with this value.
+  // Per-period ceiling on interest, and the ONE knob T-1 was asked to settle
+  // deliberately: a cap on the payout versus simply lowering the rate.
+  //
+  // THE CAP WINS, and the measurement is what decides it (6 maps × 3 seeds,
+  // worst interest share of total income, against the harness's 35% ceiling):
+  //     rate 0.02 + cap 50   →  17.9%   (51% of the ceiling)   ← shipped
+  //     rate 0.02, uncapped  →  45.7%   BREACHES the ceiling
+  //     rate 0.01, uncapped  →  25.0%   (71% of the ceiling)
+  // A lower rate does clear the ceiling, but it buys that by halving the
+  // incentive EVERYWHERE — including early, where choosing between banking
+  // 200g and placing a tower is the decision interest exists to create. The cap
+  // leaves interest fully proportional below the saturation bank
+  // (INTEREST_CAP / INTEREST_RATE = 2500g), exactly where that decision is
+  // live, and flattens it only above — so it removes the degeneracy without
+  // flattening the mechanic.
+  //
+  // WHAT THE DEGENERACY ACTUALLY IS. The 45.7% figure has been described as the
+  // "bank everything, win" failure. **It is an INCOME-COMPOSITION degeneracy,
+  // not a strategic one**: interest becomes the dominant source of gold,
+  // swamping both bounty and the early-call bonus it is meant to be in tension
+  // with. The cap is still the right fix, but for that reason rather than the
+  // one the old note implied.
+  //
+  // The stronger claim — "and banking does not out-run building either" — is
+  // one this repo CANNOT currently make, and the honest statement of why is
+  // more useful than the claim. T-1's always-bank arm measures +0.0% at every
+  // reserve floor under every interest configuration, including a deliberately
+  // absurd 0.20-uncapped patch that accrues ~263 million gold. That is not
+  // evidence about the design; it is an artifact of build saturation (above):
+  // after wave 8–10 there is nothing to buy, so no amount of gold converts into
+  // depth and no economic strategy can express dominance either way. Read
+  // `endless-dominance-margin` as "no dominance was OBSERVABLE", never as "no
+  // dominance exists".
   const INTEREST_CAP        = 50;
+  // Buy-a-life cost curve. UNCHANGED by T-1, and the reason is a limitation
+  // rather than a result: no scripted policy models *when* buying a life is
+  // correct, so the only arm available is "buy greedily whenever affordable" —
+  // a strawman in both directions (it can bankrupt its own board, and it never
+  // declines a bad purchase). What that arm does establish is a bound: at these
+  // values it gains at most **+13.0%** run depth over the balanced build, i.e.
+  // inside the same ≤15% margin the dominance check uses, so the curve is not
+  // obviously mispriced. Its *shape* is unmeasured and stays that way until an
+  // arm exists that can judge a purchase. Recorded so a future pass does not
+  // read "unchanged" as "verified".
   const BUY_LIFE_BASE       = 100;    // first purchased life
   const BUY_LIFE_GROWTH     = 1.5;    // cost = BASE × GROWTH^(lives already bought)
   const BOSS_CADENCE        = 10;     // a boss-flagged anchor every Nth wave
@@ -100,6 +177,17 @@
   // earned it, so block 0 never opens with juggernauts. Counts are authored
   // so that effective spawns (split children included) stay ≤ ~22 — all
   // difficulty growth goes into HP, never into entity count (D9).
+  //
+  // T-1 FINDING, recorded and deliberately NOT acted on here (this was a
+  // constants-only pass; `minBlock` is content, not a tunable). At the
+  // calibrated curve the deepest run anywhere across 6 maps × 3 seeds is
+  // **wave 26**, so block 3 (waves 31+) is never entered and `bulwark` and
+  // `stormfront` are **unreachable** — 10 of 12 templates are live content.
+  // `mixedhost` and `deluge` (block 2, waves 21–30) are reached only by the
+  // balanced build; the two naive arms die at waves 10–19 across the matrix
+  // (12–19 on quiet, as low as 10 on spirited). Lowering those two
+  // `minBlock`s is the obvious response and it is a content decision that
+  // wants its own commit and its own re-baseline, not a line in a calibration.
   const TEMPLATES = [
     { id: 'rabble',     minBlock: 0, groups: [ g('footman', 10, 520, 0), g('runner', 4, 650, 5200) ] },
     { id: 'swiftfoot',  minBlock: 0, groups: [ g('runner', 9, 520, 0), g('footman', 6, 480, 5000) ] },

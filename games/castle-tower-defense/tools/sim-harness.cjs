@@ -444,6 +444,94 @@ console.log('');
   const INTEREST_MAX_SHARE = 0.35; // cumulative interest ÷ cumulative income
   const endlessMap = Maps.byId('plains');
 
+  // ─── T-1 calibration coverage (ADR-038 T-1) ────────────────
+  // The pre-T-1 endless checks all measured plains / quiet / seed 7 — one map,
+  // one difficulty, one seed. T-1 widens the run-based ones to a real matrix.
+  //
+  // WHY MAPS BELONG ON THE RUN AXIS BUT NOT ON THE CSV AXIS. `waveFor(i, seed)`
+  // takes no map, and no official map defines `difficultyOverrides` (verified:
+  // zero occurrences in maps.js), so endless *curve* content varies only by
+  // seed and difficulty — different maps at one seed emit byte-identical rows,
+  // which is why the CSVs below are per seed × difficulty and not per map.
+  // Runs are different: they depend on the map through its path and its build
+  // slots, so every run-based assertion ranges over maps as well.
+  // Derived from listOfficial() rather than hardcoded, so a seventh official map
+  // is covered by every endless assertion on the day it lands instead of being
+  // silently excluded — which is how the neighbouring campaign sections iterate.
+  const CAL_MAPS = maps.map(m => m.id);
+  const CAL_SEEDS = [7, 101, 2029];
+  const CAL_DIFFS = ['quiet', 'spirited'];
+
+  // Calibrated targets. Held HERE rather than read from endless.js, for the
+  // reason `endless-spawn-bound` already states: a threshold imported from the
+  // module under test can be raised by the same edit that breaks it.
+  const SURVIVAL_MIN = 15, SURVIVAL_MAX = 35;   // waves, balanced build
+  const DURATION_MIN = 600, DURATION_MAX = 1800; // sim-seconds, balanced build
+  const DOMINANCE_MARGIN = 0.15;                 // bank / call-early vs balanced
+  const BANK_MIN_WAVES = 10;                     // non-vacuity floor for the bank arm
+  const BUILD_SEPARATION_MIN = 3;                // waves between best and worst build
+  const SATURATION_MIN_WAVE = 5;                 // the build phase must last this long
+
+  // Every endless tunable, pinned. This is the regression lock the CSVs and the
+  // outcome bands do NOT provide: the bands are wide enough that BOUNTY_GAP,
+  // INTEREST_RATE, BUY_LIFE_GROWTH and both SCALARS can move without turning a
+  // single check red, and three of those move no CSV byte either (the CSV
+  // columns are functions of the HP/bounty/reward curve alone). Measured by
+  // mutation, not assumed.
+  //
+  // This check is not a quality judgement — it asserts only that a change to a
+  // calibrated constant is DELIBERATE. Recalibrating means editing this pin in
+  // the same commit, which is the ADR-041 D37 pattern: change a documented
+  // constant rather than silently drift past an unattributed check.
+  const CALIBRATED_CONSTANTS = {
+    ENDLESS_GROWTH: 1.15, BOUNTY_GAP: 1.07,
+    INTEREST_RATE: 0.02, INTEREST_PERIOD_MS: 15000, INTEREST_CAP: 50,
+    BUY_LIFE_BASE: 100, BUY_LIFE_GROWTH: 1.5,
+    BOSS_CADENCE: 10, FIXED_OPENING: 5,
+    BASE_REWARD: 20, BOSS_REWARD: 70
+  };
+
+  // One matrix, computed once, read by every widened/new check below.
+  const matrix = [];
+  for (const mapId of CAL_MAPS) {
+    const m = Maps.byId(mapId);
+    for (const seed of CAL_SEEDS) {
+      for (const difficulty of CAL_DIFFS) {
+        const runs = {};
+        for (const build of SimCore.BUILDS) {
+          runs[build] = runScripted(m, difficulty, build,
+            { endless: true, seed, maxWaves: WAVE_CAP });
+        }
+        matrix.push({ mapId, seed, difficulty, runs });
+      }
+    }
+  }
+  const cell = (mapId, seed, difficulty) =>
+    matrix.find(c => c.mapId === mapId && c.seed === seed && c.difficulty === difficulty);
+  console.log('endless calibration matrix: ' + CAL_MAPS.length + ' maps x ' +
+    CAL_SEEDS.length + ' seeds x ' + CAL_DIFFS.length + ' difficulties x ' +
+    SimCore.BUILDS.length + ' builds = ' + (matrix.length * SimCore.BUILDS.length) + ' runs');
+
+  // 7e0. Calibrated constants are pinned (T-1). See CALIBRATED_CONSTANTS above
+  // for why the outcome bands and the CSVs do not cover this on their own.
+  {
+    const drift = [];
+    for (const [k, v] of Object.entries(CALIBRATED_CONSTANTS)) {
+      if (Endless[k] !== v) drift.push(k + ' ' + v + '→' + Endless[k]);
+    }
+    // SCALARS is an object, so it is compared field-wise rather than by identity.
+    if (Endless.SCALARS.startGoldMult !== 1.25) {
+      drift.push('SCALARS.startGoldMult 1.25→' + Endless.SCALARS.startGoldMult);
+    }
+    if (Endless.SCALARS.startLivesMult !== 1.0) {
+      drift.push('SCALARS.startLivesMult 1→' + Endless.SCALARS.startLivesMult);
+    }
+    check('endless-constants-pinned', drift.length === 0,
+      drift.length ? 'UNPINNED DRIFT: ' + drift.join(', ') +
+                     ' — recalibrating means editing CALIBRATED_CONSTANTS in this file too'
+                   : (Object.keys(CALIBRATED_CONSTANTS).length + 2) + ' tunables at their calibrated values');
+  }
+
   // 7a. Determinism — the generator is pure over (waveIndex, seed).
   {
     const seqA = [], seqB = [];
@@ -571,20 +659,221 @@ console.log('');
   }
 
   // 7f. Build separation — build choice must move survival depth, or the
-  // mode is a slot machine.
-  check('endless-build-separation', best - worst >= 3,
-    'depths ' + depths.join('/') + ' — spread ' + (best - worst) + ' waves (>=3 required)');
+  // mode is a slot machine. WIDENED by T-1 from plains/quiet/seed 7 to the
+  // whole matrix: the worst pair now governs, not the one that was measured.
+  {
+    let worstSpread = Infinity, where = '', detail = '';
+    for (const c of matrix) {
+      const d = SimCore.BUILDS.map(b => c.runs[b].wavesCleared);
+      const sp = Math.max.apply(null, d) - Math.min.apply(null, d);
+      if (sp < worstSpread) {
+        worstSpread = sp;
+        where = c.mapId + '/' + c.difficulty + '/seed' + c.seed;
+        detail = d.join('/');
+      }
+    }
+    check('endless-build-separation', worstSpread >= BUILD_SEPARATION_MIN,
+      'worst pair ' + where + ' depths ' + detail + ' — spread ' + worstSpread +
+      ' waves (>=' + BUILD_SEPARATION_MIN + ' required) across ' + matrix.length + ' map/seed/difficulty cells');
+  }
+
+  // 7f2. NEW (T-1). Survival band — the calibrated run depth, in waves.
+  //
+  // SCOPED TO THE BALANCED BUILD, deliberately. The band describes a competent
+  // player and the two naive arms are not that: across this matrix they run
+  // 12-19 waves on quiet and as low as 10 on spirited, so 30 of the 72 naive
+  // runs are BELOW the band's floor. An unscoped band would fail on arms it was
+  // never chosen for — it would have to be widened until it asserted nothing.
+  // Measured: balanced 22-26 quiet, 19-21 spirited — inside 15-35 on both.
+  {
+    const bad = [];
+    let lo = Infinity, hi = -Infinity;
+    for (const c of matrix) {
+      const w = c.runs.balanced.wavesCleared;
+      lo = Math.min(lo, w); hi = Math.max(hi, w);
+      if (w < SURVIVAL_MIN || w > SURVIVAL_MAX) {
+        bad.push(c.mapId + '/' + c.difficulty + '/seed' + c.seed + ' w' + w);
+      }
+    }
+    check('endless-survival-band', bad.length === 0,
+      'balanced ' + lo + '-' + hi + ' waves across ' + matrix.length + ' cells (band ' +
+      SURVIVAL_MIN + '-' + SURVIVAL_MAX + ')' + (bad.length ? ' — OUT: ' + bad.join(', ') : ''));
+  }
+
+  // 7f3. NEW (T-1). Duration band, in SIM-SECONDS — what the wave band was only
+  // ever a proxy for (ADR-038 §2.1: "short enough that a run is one sitting").
+  //
+  // ALSO SCOPED TO BALANCED, and the reason is worth stating correctly because
+  // the obvious one is backwards. On plains/quiet/seed 7 alone the naive arms
+  // run ~670s, which sits inside 600-1800 and looks like a vacuous pass. Across
+  // the full matrix they run 375-744s, so 38 of 72 naive runs are BELOW the
+  // floor: unscoped, this band would fail loudly on arms it was never chosen to
+  // describe. Either way it must be scoped to the arm it was picked to bracket.
+  // Measured: balanced 926-1185s quiet, 795-919s spirited (13.3-19.75 min).
+  {
+    const bad = [];
+    let lo = Infinity, hi = -Infinity;
+    for (const c of matrix) {
+      const s = c.runs.balanced.simSec;
+      lo = Math.min(lo, s); hi = Math.max(hi, s);
+      if (s < DURATION_MIN || s > DURATION_MAX) {
+        bad.push(c.mapId + '/' + c.difficulty + '/seed' + c.seed + ' ' + s + 's');
+      }
+    }
+    check('endless-duration-band', bad.length === 0,
+      'balanced ' + lo + '-' + hi + 's across ' + matrix.length + ' cells (band ' +
+      DURATION_MIN + '-' + DURATION_MAX + 's = ' + (DURATION_MIN / 60) + '-' + (DURATION_MAX / 60) +
+      ' min)' + (bad.length ? ' — OUT: ' + bad.join(', ') : ''));
+  }
+
+  // 7f4. NEW (T-1). No dominant strategy — neither an always-bank nor an
+  // always-call-early policy may run more than 15% deeper than the balanced
+  // one (the figure ADR-037 C-3 named, carried forward by ADR-038 §7 T-1).
+  //
+  // Both poles run the BALANCED composition, so this isolates the economic
+  // decision from the build decision.
+  //
+  // ═══ READ THIS BEFORE TRUSTING A PASS HERE ═══════════════════════════════
+  // THIS CHECK HAS NO POWER OVER THE INTEREST CONSTANTS TODAY, and saying so is
+  // the honest form of the result. `endless-build-saturation` below measures
+  // why: the balanced build stops spending at wave 8-10 and then plays 9-17
+  // further waves with a full board and maxed tiers, spending only 11-21% of
+  // its lifetime income. After saturation there is nothing left to buy, so run
+  // depth is a function of the HP curve against a frozen board and is causally
+  // disconnected from every gold constant.
+  //
+  // Demonstrated rather than reasoned: patched to INTEREST_RATE 0.20 with the
+  // cap removed, the banking arm accrues ~263,000,000 gold and still returns a
+  // +0.0% margin, because it spends the identical 1,885g the balanced build
+  // does. Adding the game's only late gold sink does not rescue it either — an
+  // arm that converts its hoard into purchased lives also measures +0.0%, since
+  // at wave-26 HP a maxed board leaks whole waves and a dozen bought lives buy
+  // well under one extra wave.
+  //
+  // So a PASS here means "no dominance was observable", NOT "no dominance
+  // exists". The check is kept because it is T-1's named acceptance criterion,
+  // because it is the falsifiable record of that limitation, and because it
+  // regains power the moment endless gains a late-game gold sink — which is
+  // exactly what ADR-038 D20's tower-depth work would add. The guard against
+  // the interest degeneracy is `endless-interest-bound`, which does fire
+  // (measured: 45.7% uncapped, 40.5% at a 5s period, both FAIL).
+  // ═════════════════════════════════════════════════════════════════════════
+  //
+  // The non-vacuity clause stays regardless: an always-bank arm that never
+  // builds dies at wave 1-2 and satisfies "no deeper than balanced" trivially —
+  // measured, with a naive "skip the policy under a floor" construction every
+  // floor >= endless start gold collapsed to 2 waves. It does not fire against
+  // the current opts.bank, which builds unrestricted while any slot is empty;
+  // it is coverage against a future rewrite of that arm.
+  //
+  // Three reserve floors are swept rather than one, because the strongest
+  // banking strategy is not known a priori: 300 (light), 1500, and the
+  // saturation bank INTEREST_CAP/INTEREST_RATE where interest goes flat. Only
+  // the lightest ever sets `worstBank` — the two hoarding floors measure
+  // strictly worse (-20.8% to -73.7%) and appear in the detail string only.
+  // That third floor reads two values from the module under test, which the
+  // threshold policy above forbids; it is a PROBE POINT rather than a
+  // threshold, and the consequence of it moving is a weaker arm, never a
+  // weaker bar.
+  {
+    const FLOORS = [300, 1500,
+      (Endless.INTEREST_CAP != null && Endless.INTEREST_RATE > 0)
+        ? Math.round(Endless.INTEREST_CAP / Endless.INTEREST_RATE) : 2500];
+    let worstBank = -Infinity, wbWhere = '', worstEarly = -Infinity, weWhere = '';
+    let vacuous = [];
+    for (const c of matrix) {
+      const base = c.runs.balanced.wavesCleared;
+      const opts = { endless: true, seed: c.seed, maxWaves: WAVE_CAP };
+      const map = Maps.byId(c.mapId);
+      for (const f of FLOORS) {
+        const r = runScripted(map, c.difficulty, 'balanced', Object.assign({ bank: f }, opts));
+        const margin = (r.wavesCleared - base) / base;
+        if (margin > worstBank) {
+          worstBank = margin;
+          wbWhere = c.mapId + '/' + c.difficulty + '/seed' + c.seed + ' floor' + f +
+                    ' w' + r.wavesCleared + ' vs balanced w' + base;
+        }
+        // Non-vacuity: the arm must have played. Only the LIGHTEST floor is
+        // required to clear the bar — a full hoard is *supposed* to be bad, and
+        // demanding depth from it would assert the degeneracy is survivable.
+        if (f === FLOORS[0] && (r.towersStanding === 0 || r.wavesCleared < BANK_MIN_WAVES)) {
+          vacuous.push(c.mapId + '/' + c.difficulty + '/seed' + c.seed +
+                       ' towers ' + r.towersStanding + ' w' + r.wavesCleared);
+        }
+      }
+      const e = runScripted(map, c.difficulty, 'balanced', Object.assign({ callEarly: true }, opts));
+      const em = (e.wavesCleared - base) / base;
+      if (em > worstEarly) {
+        worstEarly = em;
+        weWhere = c.mapId + '/' + c.difficulty + '/seed' + c.seed +
+                  ' w' + e.wavesCleared + ' vs balanced w' + base;
+      }
+    }
+    check('endless-dominance-margin',
+      vacuous.length === 0 && worstBank <= DOMINANCE_MARGIN && worstEarly <= DOMINANCE_MARGIN,
+      'always-bank worst +' + (worstBank * 100).toFixed(1) + '% (' + wbWhere + '); ' +
+      'call-early worst +' + (worstEarly * 100).toFixed(1) + '% (' + weWhere + '); ' +
+      'limit +' + (DOMINANCE_MARGIN * 100) + '%' +
+      (vacuous.length ? ' — VACUOUS bank arm (built nothing or died before wave ' +
+        BANK_MIN_WAVES + '): ' + vacuous.join(', ')
+       : '; bank arm non-vacuous on all ' + matrix.length + ' cells'));
+  }
+
+  // 7f5. NEW (T-1). Build saturation — the wave index after which the balanced
+  // build has nothing left to buy. This is ADR-038 **D20's** named scope input
+  // ("identify the wave index beyond which marginal build decisions stop
+  // changing run depth"), which T-1 owes cycle 4's tower-depth adjudication.
+  //
+  // Measured across all 36 cells: saturation at wave **8-10**, followed by
+  // **9-17 idle waves**, with only **11.2-21.3%** of lifetime income ever
+  // spent. A 26-wave run therefore contains roughly nine waves of economy and
+  // seventeen of watching — which is the strongest evidence this project has
+  // produced for D20, and the direct cause of endless-dominance-margin having
+  // no economic power (see its note above).
+  //
+  // ASSERTED IN THE DIRECTION THAT CAN ACTUALLY BREAK: the build phase must
+  // last at least SATURATION_MIN_WAVE waves. A change that let the board fill
+  // and max out almost immediately — a large SCALARS.startGoldMult, a cheaper
+  // tier ladder — would erase the opening's decisions entirely, and nothing
+  // else in this file would notice. The idle-wave count is REPORTED, not
+  // bounded: it is today's finding, not today's requirement, and bounding it
+  // would assert that a known design gap must persist.
+  {
+    let worstSat = Infinity, where = '', maxIdle = 0, minSpend = 1, maxSpend = 0;
+    let loSat = Infinity, hiSat = 0;
+    for (const c of matrix) {
+      const r = c.runs.balanced;
+      const sat = r.lastSpendWave;
+      loSat = Math.min(loSat, sat); hiSat = Math.max(hiSat, sat);
+      if (sat < worstSat) { worstSat = sat; where = c.mapId + '/' + c.difficulty + '/seed' + c.seed; }
+      maxIdle = Math.max(maxIdle, r.wavesCleared - sat);
+      const frac = r.goldSpent / Math.max(1, r.goldEarned);
+      minSpend = Math.min(minSpend, frac); maxSpend = Math.max(maxSpend, frac);
+    }
+    check('endless-build-saturation', worstSat >= SATURATION_MIN_WAVE,
+      'balanced stops spending at wave ' + loSat + '-' + hiSat + ' (>=' + SATURATION_MIN_WAVE +
+      ' required; earliest ' + where + '); up to ' + maxIdle + ' idle waves after it; ' +
+      (minSpend * 100).toFixed(1) + '-' + (maxSpend * 100).toFixed(1) +
+      '% of lifetime income ever spent — ADR-038 D20 scope input');
+  }
 
   // 7g. Selection→effect (ADR-036 D6, mandatory for a new selectable mode).
   // Directional, like every sibling difficulty check in this file: "merely
   // different" would pass an inverted scalar that made spirited the easy one.
+  // WIDENED by T-1 from one map/seed to every map × seed.
   {
-    const q = endlessRuns.balanced;
-    const s = runScripted(endlessMap, 'spirited', 'balanced',
-      { endless: true, seed: SEED, maxWaves: WAVE_CAP });
-    check('endless-selection-effect', s.wavesCleared < q.wavesCleared,
-      'quiet w' + q.wavesCleared + '/' + q.goldEarned + 'g vs spirited w' +
-      s.wavesCleared + '/' + s.goldEarned + 'g (spirited must run shallower)');
+    const bad = [];
+    for (const mapId of CAL_MAPS) for (const seed of CAL_SEEDS) {
+      const q = cell(mapId, seed, 'quiet').runs.balanced;
+      const s = cell(mapId, seed, 'spirited').runs.balanced;
+      if (!(s.wavesCleared < q.wavesCleared)) {
+        bad.push(mapId + '/seed' + seed + ' quiet w' + q.wavesCleared +
+                 ' vs spirited w' + s.wavesCleared);
+      }
+    }
+    check('endless-selection-effect', bad.length === 0,
+      (CAL_MAPS.length * CAL_SEEDS.length) + ' map/seed pairs, spirited must run shallower' +
+      (bad.length ? ' — NOT SHALLOWER: ' + bad.join(', ') : ' — all pairs directional'));
   }
 
   // 7g2. The early-call bonus is KEPT in endless and deliberately opposes
@@ -607,38 +896,88 @@ console.log('');
   // auto-sends, so the default scripted run forfeits every early-call bonus
   // and accrues the maximum interest available; that is the worst case the
   // bound has to hold against).
+  // WIDENED by T-1 from plains/quiet/seed 7 to the whole matrix. This is the
+  // check the INTEREST_CAP-versus-lower-rate decision was settled against:
+  // measured worst share is 16.7% with the cap, 45.7% uncapped at the same
+  // rate (a breach), and 25.0% at half the rate uncapped. See endless.js.
   {
-    let worstShare = 0, worstBuild = '', worstEarned = 0;
-    for (const build of SimCore.BUILDS) {
-      const r = endlessRuns[build];
-      // goldEarned is cumulative TOTAL income, interest included — the
-      // brief's denominator. The share of non-interest income is reported
-      // alongside so the stricter reading is visible without being asserted.
-      const share = r.interestEarned / Math.max(1, r.goldEarned);
-      if (share > worstShare) { worstShare = share; worstBuild = build; worstEarned = r.interestEarned; }
+    let worstShare = 0, worstWhere = '', worstEarned = 0, worstRun = null;
+    for (const c of matrix) {
+      for (const build of SimCore.BUILDS) {
+        const r = c.runs[build];
+        // goldEarned is cumulative TOTAL income, interest included — the
+        // brief's denominator. The share of non-interest income is reported
+        // alongside so the stricter reading is visible without being asserted.
+        const share = r.interestEarned / Math.max(1, r.goldEarned);
+        if (share > worstShare) {
+          worstShare = share; worstEarned = r.interestEarned; worstRun = r;
+          worstWhere = build + ' @ ' + c.mapId + '/' + c.difficulty + '/seed' + c.seed;
+        }
+      }
     }
-    const worstRun = endlessRuns[worstBuild];
-    const exInterest = worstEarned / Math.max(1, worstRun.goldEarned - worstEarned);
+    // worstRun stays null when no run earned any interest at all (rate 0, or a
+    // cap of 0). That is a legitimate configuration and must report a check
+    // rather than die with a TypeError inside the detail string.
+    const exInterest = worstRun
+      ? worstEarned / Math.max(1, worstRun.goldEarned - worstEarned) : 0;
     check('endless-interest-bound', worstShare < INTEREST_MAX_SHARE,
-      'worst ' + worstBuild + ' ' + (worstShare * 100).toFixed(1) + '% of total income (<' +
-      (INTEREST_MAX_SHARE * 100) + '% required); ' + (exInterest * 100).toFixed(1) + '% of earned-other');
+      'worst ' + (worstWhere || 'no run earned interest') + ' ' +
+      (worstShare * 100).toFixed(1) + '% of total income (<' +
+      (INTEREST_MAX_SHARE * 100) + '% required); ' + (exInterest * 100).toFixed(1) +
+      '% of earned-other; across ' + (matrix.length * SimCore.BUILDS.length) + ' runs');
   }
 
-  // 7i. Endless curve CSV — the artifact the next tuning pass starts from,
+  // 7i. Endless curve CSVs — the artifact the next tuning pass starts from,
   // written alongside (never over) the six campaign curves.
+  //
+  // T-1 widens this from one file to a per-seed × per-difficulty SET, and the
+  // axis choice is deliberate: `waveFor(i, seed)` takes no map and no official
+  // map defines `difficultyOverrides`, so two different maps at one seed emit
+  // byte-identical rows. A per-MAP set would be six copies of the same file
+  // wearing different names. Seed and difficulty are the axes that actually
+  // move the content, so those are the axes the files carry.
+  //
+  // These CSVs are also the tightest regression lock in this section: the
+  // survival and duration bands catch gross drift, but any change to
+  // ENDLESS_GROWTH, BOUNTY_GAP, BOSS_CADENCE or the reward constants moves
+  // these rows byte-for-byte and shows up as a diff.
   {
-    const rows = ['wave,isBoss,spawnCount,hpScale,bountyScale,waveHpQuiet,reward'];
-    const quiet = E.mergedDifficulty('quiet', endlessMap.difficultyOverrides, Endless.SCALARS);
-    for (let i = 0; i < WAVE_CAP; i++) {
-      const w = Endless.waveFor(i, SEED);
-      const stats = SimCore.waveStats(w, quiet.hpMult * Endless.hpScale(i));
-      rows.push([i + 1, w.isBoss, Endless.effectiveSpawnCount(w, E.ENEMIES),
-        Endless.hpScale(i).toFixed(3), Endless.bountyScale(i).toFixed(3),
-        stats.hp, w.reward].join(','));
+    const emit = (file, seed, difficulty) => {
+      const rows = ['seed,difficulty,wave,isBoss,spawnCount,hpScale,bountyScale,waveHp,reward'];
+      const d = E.mergedDifficulty(difficulty, endlessMap.difficultyOverrides, Endless.SCALARS);
+      for (let i = 0; i < WAVE_CAP; i++) {
+        const w = Endless.waveFor(i, seed);
+        const stats = SimCore.waveStats(w, d.hpMult * Endless.hpScale(i));
+        rows.push([seed, difficulty, i + 1, w.isBoss, Endless.effectiveSpawnCount(w, E.ENEMIES),
+          Endless.hpScale(i).toFixed(3), Endless.bountyScale(i).toFixed(3),
+          stats.hp, w.reward].join(','));
+      }
+      fs.writeFileSync(path.join(curvesDir, file), rows.join('\n') + '\n');
+      return file;
+    };
+    const written = [];
+    for (const seed of CAL_SEEDS) for (const difficulty of CAL_DIFFS) {
+      written.push(emit('endless-seed' + seed + '-' + difficulty + '.csv', seed, difficulty));
     }
-    fs.writeFileSync(path.join(curvesDir, 'endless-plains-quiet.csv'), rows.join('\n') + '\n');
-    console.log('endless curve CSV written to ' +
-      path.relative(process.cwd(), path.join(curvesDir, 'endless-plains-quiet.csv')));
+
+    // The legacy file, kept under its historical name and its original column
+    // set so its git history stays a continuous series rather than a delete and
+    // an add. It is the seed-7/quiet row-set; `endless-seed7-quiet.csv` carries
+    // the same waves with the self-describing header.
+    {
+      const rows = ['wave,isBoss,spawnCount,hpScale,bountyScale,waveHpQuiet,reward'];
+      const quiet = E.mergedDifficulty('quiet', endlessMap.difficultyOverrides, Endless.SCALARS);
+      for (let i = 0; i < WAVE_CAP; i++) {
+        const w = Endless.waveFor(i, SEED);
+        const stats = SimCore.waveStats(w, quiet.hpMult * Endless.hpScale(i));
+        rows.push([i + 1, w.isBoss, Endless.effectiveSpawnCount(w, E.ENEMIES),
+          Endless.hpScale(i).toFixed(3), Endless.bountyScale(i).toFixed(3),
+          stats.hp, w.reward].join(','));
+      }
+      fs.writeFileSync(path.join(curvesDir, 'endless-plains-quiet.csv'), rows.join('\n') + '\n');
+      written.push('endless-plains-quiet.csv');
+    }
+    console.log('endless curve CSVs written (' + written.length + '): ' + written.join(', '));
   }
 }
 

@@ -181,6 +181,30 @@
   // countdown (no early-call bonus, maximum interest accrual). callEarly is
   // the opposite pole. maxWaves is a run cap so a build that refuses to die
   // is reported as capped rather than silently eating the whole sim budget.
+  //
+  // opts.bank = <gold floor> (ADR-038 T-1): the ALWAYS-BANK pole, the arm the
+  // ≤15% dominance assertion needs and the one INTEREST_CAP was added against.
+  //
+  // It is a run OPTION and deliberately NOT a fourth POLICIES entry, because
+  // BUILDS = Object.keys(POLICIES) drives the campaign matrix, the
+  // `completable:` checks and the editor's Simulate panel — none of which has
+  // any notion of banking.
+  //
+  // WHAT IT DOES, and why the obvious construction is vacuous. Simply skipping
+  // policy(state) while gold is under a floor builds NOTHING when the floor
+  // exceeds endless start gold (275 = 220 x SCALARS.startGoldMult), dies at
+  // wave 1-2, and then trivially satisfies "no deeper than balanced" — a check
+  // that passes because the arm never played. Measured: every floor >= 300
+  // collapsed to 2 waves.
+  //
+  // So the arm is defined the way endless.js's own INTEREST_CAP note defines
+  // the degeneracy — "uncapped interest compounds without limit once a build
+  // fills every slot and stops spending". It runs the composition policy
+  // UNCHANGED while any build slot is still empty, so it always builds a real
+  // board; once the board is full it holds `bank` gold in reserve and lets the
+  // policy spend only the surplus on upgrades. A large floor is therefore
+  // "fill the board, then hoard instead of upgrading", which is the strategy
+  // under test rather than a strawman.
   function runScripted(map, difficulty, build, opts) {
     const engine = Eng();
     const policy = POLICIES[build];
@@ -196,8 +220,28 @@
         endless ? { endless: true, seed: o.seed != null ? o.seed : 1 } : undefined);
       const kills = {};
       let elapsed = 0, hitWaveCap = false;
+      const bankFloor = (o.bank > 0) ? o.bank : 0;
+      // ADR-038 D20's named scope input, which T-1 owes: the wave index after
+      // which no further gold is spent, i.e. where marginal build decisions
+      // stop existing. Tracked here rather than reconstructed by re-running at
+      // ascending wave caps, which costs one run per wave per cell.
+      let lastSpendWave = 0, prevSpent = 0;
       while (state.fsm !== 'wonRun' && state.fsm !== 'lostRun' && elapsed < MAX_SIM_MS) {
-        policy(state);
+        if (bankFloor && emptySlots(state).length === 0) {
+          // Board is full: spend only what sits above the reserve. Restored in
+          // `finally` so a policy that throws cannot swallow the banked gold.
+          if (state.gold > bankFloor) {
+            const held = bankFloor;
+            state.gold -= held;
+            try { policy(state); } finally { state.gold += held; }
+          }
+        } else {
+          policy(state);
+        }
+        // +1 so this is the 1-based wave number the purchase happened DURING,
+        // matching every other wave number this file and the CSVs report.
+        // state.waveIndex counts waves already cleared.
+        if (state.goldSpent !== prevSpent) { prevSpent = state.goldSpent; lastSpendWave = state.waveIndex + 1; }
         if (endless) {
           if (o.callEarly && engine.canSendNextWave(state)) engine.sendNextWave(state);
         } else if (engine.canSendNextWave(state) && (!slowCall || state.prepCountdownMs <= 0)) {
@@ -222,6 +266,15 @@
         livesBought: state.livesBought,
         wavesCleared: state.fsm === 'wonRun' ? state.waveTotal : state.waveIndex,
         simSec: Math.round(elapsed / 1000),
+        // Additive (ADR-038 T-1). The dominance check's non-vacuity clause needs
+        // to prove the banking arm actually built a board rather than passing by
+        // never playing; wave count alone cannot distinguish those.
+        // Named "standing", not "built": it is the live tower count, which
+        // equals the number built only because no scripted policy sells.
+        towersStanding: state.towers.length,
+        // Wave index of the last gold spend (ADR-038 D20 scope input). Read by
+        // endless-build-saturation.
+        lastSpendWave,
         kills
       };
     } finally {

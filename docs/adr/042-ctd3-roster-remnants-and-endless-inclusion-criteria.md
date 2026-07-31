@@ -186,3 +186,47 @@ Inclusion must leave X-1's calibrated **≤15 % dominance margin** holding, **me
 - **The instrument.** No change to D34's three-pass method or to D37's thresholds, in either direction.
 - **Campaign balance.** ADR-038 D18 is absolute for the whole of this sprint. Nothing above edits a wave, a reward, an `ENEMIES` stat or a star threshold.
 - **The ghost's D36 residual** — whether it reads as *spectral* at 0.78 rather than as a dark solid. It is an operator-eye question, made fresher by X-3 restoring the float, and no machine measurement in this repo can answer it.
+
+---
+
+## Addendum — 2026-07-31
+
+X-1's verdict on **D45**, appended as that decision requires. Measured with a paired with/without sweep over **6 official maps × 3 seeds (7 / 101 / 2029)**, **quiet only**, all three scripted arms, `maxWaves` 60. The candidate template mirrors the shape of the existing air templates: `drake ×4, skirmisher ×5, runner ×5`.
+
+**Reproducibility, disclosed rather than implied.** D45 required the candidate template to be a *local, uncommitted experiment* so that a NO verdict leaves `endless.js` untouched, and that is what this was. The figures below are therefore a **recorded measurement, not a re-runnable artifact**: nothing in the repo regenerates them, unlike the calibration numbers, which are printed by `node tools/sim-harness.cjs` on every run and pinned by committed CSVs. Re-deriving them means re-authoring the template. That is the cost D45's ordering clause accepted deliberately; it is named here so a later reader does not mistake this table for harness output.
+
+### A1 — The criteria all PASS. There is no wall.
+
+**A confound in the first attempt, corrected before it produced a verdict.** The candidate was first authored at `minBlock: 2` (waves 21+). At the calibrated curve the two physical-only arms die at waves 17–19, so **they never met a drake** — measured drake kills across every run: **0**, and their depth was unchanged to three decimals. A criterion about physical-only arms, measured on arms that never faced the type, would have been a null result read as a pass. Re-run at `minBlock: 1` (waves 11+), where all three arms meet it: **118 drake kills**, and the numbers below are from that run.
+
+| | without drake | with drake | Δ |
+|---|---|---|---|
+| mean depth, `greedy-cheapest` | 17.44 | 17.28 | **−0.16 (−0.9 %)** |
+| mean depth, `ranger-heavy` | 17.44 | 17.28 | **−0.16 (−0.9 %)** |
+| mean depth, `balanced` | 24.56 | 23.56 | **−1.00 (−4.1 %)** |
+| **gap** (balanced − physical-only mean) | **7.11** | **6.28** | **−0.83 — NARROWS** |
+
+**C1 — PASS, and the direction inverts the hypothesis.** C1 fails only on a *widening*. The gap **narrowed**: the magic-carrying arm lost more depth to drakes than the physical-only arms did. The per-arm deltas C1 requires show this is not the cancellation C1 warned about — both arms moved the same way, `balanced` simply moved further, so there is no hidden wall being averaged out.
+
+The cause is the confound D45 named in advance: `balanced` carries **2 of 7** slots as catapults, which are `targets: 'ground'` and cannot acquire a flyer at all. Losing two towers outright costs `balanced` more than the 0.55× physical multiplier costs a pure-ranger board. **This is a property of the scripted arm, not of the design** — a human facing air-heavy waves would re-compose toward Mage, and no scripted policy can. So C1 is honestly read as *"no wall"*, not as *"the drake is bad for Mage."*
+
+**Magnitude, stated so it is not over-claimed.** 0.83 waves sits well inside `balanced`'s own seed-to-seed spread of 22–26 waves. The direction is consistent; the size is not large.
+
+**C2 — PASS, and the pass is worth almost nothing.** Post-inclusion dominance margins, on this experiment's quiet-only scope: always-bank **0.0 %**, call-early **0.0 %** (pre-inclusion, same scope: 0.0 % and 4.2 %), against the ≤15 % limit. *The shipped harness figure is 5.3 %, not 4.2 %, because it also ranges over spirited — the two numbers are different scopes, not a discrepancy.*
+
+The reason the pass means little is recorded in `endless.js` and at the check itself: the balanced build stops spending at **wave 8–10** and then plays 9–17 waves with a frozen board, so run depth is causally disconnected from every gold constant and **no** economic pole can express dominance — with or without a drake. C2 was answerable; it was simply never going to discriminate. Recorded rather than banked as evidence.
+
+**C3 — PASS, measured the discriminating way D45 required** rather than on the single default seed: across the swept seeds the drake appears in **12 waves**, and peak effective spawns **on drake-bearing waves** is **14**, against the 35 ceiling.
+
+**ADR-040 D32's safety concern is therefore retired on evidence.** The exclusion no longer rests on "we have not measured it."
+
+### A2 — Inclusion is nonetheless DECLINED this pass, and why that is a decision rather than a park.
+
+Passing the criteria makes inclusion *permitted*, not *warranted*, and no measured benefit was produced to weigh against two real costs:
+
+1. **It would invalidate, in its own commit, every number this chunk exists to establish.** Adding a template changes `blockAssignment`'s pool, which re-shuffles every wave for every seed. All seven committed endless CSVs re-baseline, and the survival band, duration band, build separation, interest bound and dominance margin — measured and locked hours earlier — would all need re-measuring in the same commit. The calibration's regression locks would be born already re-baselined, which is precisely the attribution muddle ADR-040 D32 declined this change to avoid.
+2. **The only measured effect runs against the type's own design rationale in this mode.** ADR-040 D29 built the drake so Mage moves "from luxury to parity-or-better on an air wave." Measured in endless, it makes the Mage-carrying arm relatively *worse*. That is explicable (see C1) but it is not evidence for admission, and the instrument that could produce such evidence — an arm that adapts composition to wave content — does not exist.
+
+**Named unblock, and it is a pairing rather than a deferral.** Inclusion belongs in a pass that **owns endless content**, because there is already a second endless-content finding waiting for exactly that pass: at the calibrated curve the deepest run anywhere is **wave 26**, so block 3 is never entered and the templates **`bulwark` and `stormfront` are unreachable** — 10 of 12 templates are live content. Both changes are template-list edits wanting the same endless-CSV re-baseline and the same re-measurement of the five calibrated targets. Doing them together costs one re-baseline instead of two and lets each be attributed.
+
+**Consequence:** `endless.js`'s template list is untouched by X-1, D32's exclusion stands — now with a measured reason rather than a zero-work default — and the constants pass stays constants-only.
