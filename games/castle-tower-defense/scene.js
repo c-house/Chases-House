@@ -144,6 +144,11 @@ const ENEMY_BOB_AMP_FLYING = 0.18;
 //   animSpeed AnimationAction.timeScale — the clips are authored at one cadence
 //             and these creeps move at speeds from 1.1 to 4.5, so a slow heavy
 //             must not scurry. Starting values; M-3 tunes them against the eye.
+//   proceduralMotion
+//             OPTIONAL. Keep syncEnemies' procedural personality running even
+//             though a mixer is attached, for types whose clip does not itself
+//             carry enough visible motion. Absent means "the clip owns movement",
+//             which is the right default for every walker.
 const ENEMY_VIS = {
   footman:    { model: 'enemy_footman2',    scale: 0.278, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.00 },
   heavy:      { model: 'enemy_heavy2',      scale: 0.398, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.75 },
@@ -154,7 +159,13 @@ const ENEMY_VIS = {
   juggernaut: { model: 'enemy_juggernaut2', scale: 0.491, yOffset: 0,      moveClip: 'Walk',        animSpeed: 0.75 },
   slime:      { model: 'enemy_slime2',      scale: 0.394, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.00 },
   mini_slime: { model: 'enemy_slime2',      scale: 0.262, yOffset: 0,      moveClip: 'Walk',        animSpeed: 1.15 },
-  ghost:      { model: 'enemy_ghost2',      scale: 0.304, yOffset: -0.074, moveClip: 'Fast_Flying', animSpeed: 1.00 },
+  // proceduralMotion: this clip is too placid to carry the creature on its own,
+  // so syncEnemies keeps the procedural personality layered on top instead of
+  // treating the mixer as owning all movement. See the long note at that branch
+  // for the measurements. Ghost only — `mini_slime` measures nearly as low
+  // (0.153) but its readability is ADR-041 D41's OPEN size question, and D37
+  // forecloses inventing an instrument for it at a gate.
+  ghost:      { model: 'enemy_ghost2',      scale: 0.304, yOffset: -0.074, moveClip: 'Fast_Flying', animSpeed: 1.00, proceduralMotion: true },
   // ADR-040 D29. Follows the same targetHeight/measuredHeight rule as every
   // row above — an earlier draft argued for a wingspan-derived scale instead
   // and was wrong twice over: the span it cited was mis-measured, and at a
@@ -930,7 +941,7 @@ function syncEnemies(state) {
     let bobY = 0, scaleX = 1, scaleY = 1, scaleZ = 1, yawWobble = 0;
     if (!window.CTD3Ui.motionAllowed()) {
       // motion off — leave everything at neutral
-    } else if (animated) {
+    } else if (animated && !(vis && vis.proceduralMotion)) {
       // A real skeletal clip now owns this creature's movement, so the
       // procedural personality below is the FALLBACK for un-animated enemies
       // rather than a layer on top of animation. Running both would double it —
@@ -938,6 +949,22 @@ function syncEnemies(state) {
       // lurch on top of a walk cycle. Flying types keep their elevation, which
       // comes from baseY and not from this block. Yaw-toward-travel and the
       // hit-flash scale below still apply: neither is in the clips.
+      //
+      // THE EXCEPTION, and why it is not a hole in the rule above. "Running both
+      // would double it" is true only where the clip actually supplies the motion
+      // the procedural branch would add. `ENEMY_VIS.proceduralMotion` marks the
+      // types where it does NOT, so the short-circuit above would silently REMOVE
+      // motion rather than avoid duplicating it — which is what shipped for the
+      // ghost between ADR-039 and here. Measured rendered deformation (bone
+      // world-space travel x ENEMY_VIS.scale, sampled in play across all six
+      // campaign maps): walkers 0.62-1.12, drake 0.51, skirmisher 0.41 — and the
+      // ghost 0.11, the roster's lowest by a factor of ~4. What the swap took off
+      // the ghost was its 0.468 peak-to-peak float and its +/-0.15 rad yaw wobble;
+      // what it gave back was 0.11 of internal flutter. The net was a creep that
+      // hangs at a fixed height, which is what an operator playtest reported as
+      // "did not look animated" (docs/handoffs/2026-07-26-roster-playtest.md).
+      // The flag is per-type DATA rather than a name test in this branch, so the
+      // next asset with a placid clip is a one-line declaration, not a new branch.
     } else if (en.type === 'slime' || en.type === 'mini_slime') {
       const hop = Math.abs(Math.sin(t * 5.0 + phase));
       const squash = 1 - hop * 0.25;

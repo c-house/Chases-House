@@ -912,6 +912,41 @@ console.log('');
     ', survives-low-power=' + discSurvivesLowPower +
     ', FLYER_DISC_Y=' + flyerY + ' >0.296=' + clearsCorners + ', named-y=' + usesNamedY);
 
+  // (11b) THE PROCEDURAL LAYER IS NOT SILENTLY REMOVED (ADR-041, sprint-10 X-3).
+  //      syncEnemies treats a live mixer as owning ALL of a creep's movement and
+  //      short-circuits the per-type procedural personality. That is right only
+  //      where the clip actually supplies the motion being skipped. For the ghost
+  //      it did not: the ADR-039 swap took away a 0.468 peak-to-peak float plus a
+  //      yaw wobble and gave back 0.11 of internal flutter (rendered deformation,
+  //      measured in play on all six maps; the rest of the roster sits at
+  //      0.41-1.12). The creep still loaded, still resolved its clip, still had a
+  //      running mixer — every existing guard passed — and it read as unanimated.
+  //      So the failure this check exists for is a SILENT SUBTRACTION, which no
+  //      loading or clip-resolution assertion can see.
+  //
+  //      Asserted on the branch CONDITION, not on token presence. bodyOf() returns
+  //      the explanatory comment along with the code, and that comment necessarily
+  //      names `proceduralMotion` — so a `/proceduralMotion/.test(body)` check
+  //      would pass against a branch that had been reverted to a bare
+  //      `else if (animated)`. That is the identical false-green this file already
+  //      documents for the `/ownedMaterials/` guard at (12).
+  const syncEnemiesBody = bodyOf(src, 'function syncEnemies(');
+  const gateReadsFlag  = /else\s+if\s*\(\s*animated\s*&&\s*!\(\s*vis\s*&&\s*vis\.proceduralMotion\s*\)\s*\)/.test(syncEnemiesBody);
+  const gateIsBare     = /else\s+if\s*\(\s*animated\s*\)/.test(syncEnemiesBody);
+  //      Declared set parsed from ENEMY_VIS itself, so a flag misspelt on the DATA
+  //      side (where it would silently do nothing) fails just as loudly as one
+  //      misspelt in the branch.
+  const proceduralTypes = [...visBody.matchAll(/^\s{2}([a-z_]+):\s*\{[^}]*proceduralMotion:\s*true/gm)].map(m => m[1]);
+  const allReal = proceduralTypes.every(t => enemyTypes.includes(t));
+  //      The ghost is pinned BY NAME because it is the type the defect was
+  //      diagnosed on; dropping its flag is a regression, not a preference.
+  const ghostKeepsIt = proceduralTypes.includes('ghost');
+  check('enemy-vis-procedural-motion',
+    gateReadsFlag && !gateIsBare && proceduralTypes.length > 0 && allReal && ghostKeepsIt,
+    'gate-reads-flag=' + gateReadsFlag + ', gate-is-bare=' + gateIsBare +
+    ', declared=[' + proceduralTypes.join(',') + '], all-real-types=' + allReal +
+    ', ghost-declared=' + ghostKeepsIt);
+
   // (12) LOW-POWER RECOVERY IS TWO-WAY (ADR-041 D39). Both halves were one-way
   //      and both failed silently: castShadow was cleared with no else branch, so
   //      only creeps spawned after recovery ever cast again; and mixers were
