@@ -1352,6 +1352,42 @@ function setLowPowerShadows(on) {
   else attachAllEnemyMixers();
 }
 
+// ─── Reduced-motion recovery (ADR-042 D44) ──────────────────
+// The SECOND gate in mixersAllowed(), and until now the one-way one. Low power
+// got its two-way channel in `ec3aa8d`; reduced motion had no change event at
+// all, so every enemy spawned while it held stayed permanently mixer-less and
+// turning the setting back off repaired nothing.
+//
+// Deliberately the same pair of calls as setLowPowerShadows, and the two gates
+// compose without a combined-state matrix because attachAllEnemyMixers()
+// re-checks mixersAllowed() itself: re-enabling motion while low power still
+// holds correctly re-attaches NOTHING. `allowed` is the effective
+// motion-allowed state (class AND OS query), not the raw toggle, so this reads
+// the same predicate the spawn path does.
+//
+// No shadow half here, and that asymmetry is real rather than an omission:
+// reduced motion never touched castShadow.
+//
+// SCOPE, stated precisely because "reduced motion is now two-way" would
+// overstate it. This repairs the MIXER consumer of the gate. `initFireflies`
+// reads the same OS query as a one-way CREATION gate and has no recovery path
+// at all, so an OS flip mid-session now restores animation while still leaving
+// fireflies absent. That predates this change and is not fixed here; it is
+// named so the gap stays documented instead of being papered over by the word
+// "recovery". The warden aura re-checks per frame and was always two-way.
+//
+// KNOWN COSMETIC COST of the release half, recorded rather than fixed late:
+// attachEnemyMixer desyncs with `action.time = Math.random() * duration`, so a
+// motion-off→on toggle snaps every live creep to a random point in its walk
+// cycle. Dropping the `else` would avoid it — reduced motion has no per-frame
+// cost motive for releasing, unlike low power, since updateEnemyMixers already
+// early-returns while the gate holds. Left as-is in this commit because the
+// in-browser gate was measured against this form.
+function setMotionAllowed(allowed) {
+  if (allowed) attachAllEnemyMixers();
+  else releaseAllEnemyMixers();
+}
+
 // ─── ?test=roster visual gate (ADR-039) ─────────────────────
 // Renders the whole enemy roster side by side, labelled, animated, isolated from
 // gameplay. Same pattern as ?test=tile-debug below: turn "did the swap look
@@ -1563,5 +1599,6 @@ window.CTD3Scene = {
   paintTileDebug,
   paintRosterDebug, tickRosterDebug,
   setLowPowerShadows,
+  setMotionAllowed,
   tickFireflies
 };

@@ -1305,6 +1305,118 @@ console.log('');
   check('enemy-lowpower-recovers', recordsShadow && restoresShadow && reattachesMixers,
     'castShadow recorded on trip=' + recordsShadow + ', restored on clear=' + restoresShadow +
     ', mixers re-attached on clear=' + reattachesMixers);
+
+  // (13) REDUCED-MOTION RECOVERY IS TWO-WAY (ADR-042 D44). mixersAllowed() has
+  //      TWO gates; (12) covers only the low-power one. Reduced motion had no
+  //      change event at all, so every enemy spawned while it held stayed
+  //      permanently mixer-less and turning it back off repaired nothing.
+  //
+  //      A SECOND NAMED CHECK rather than a widening of (12), deliberately: the
+  //      fix lives in a different function with no castShadow half, so folding
+  //      it in would either weaken (12)'s shadow assertions or make one check's
+  //      failure ambiguous across two unrelated channels.
+  //
+  //      Same falsifiability principle as (12) and as enemy-vis-procedural-
+  //      motion: asserted on the WIRING, never on token presence. bodyOf()
+  //      returns the explanatory comments too, and those necessarily name every
+  //      identifier involved — so `/onMotionChange/.test(src)` would pass
+  //      against a build with the whole channel deleted and the comment left.
+  //
+  //      COMMENTS ARE STRIPPED BEFORE ANY PREDICATE RUNS, and that is the
+  //      load-bearing part rather than tidiness. Commenting a live line out IS
+  //      "the channel deleted, the tokens left" — the ordinary way wiring dies
+  //      while someone isolates something else. Measured against the first cut
+  //      of this check: `//`-prefixing the game.js wiring line, the emit call,
+  //      the `cb(allowed)` invocation, or the whole scene handler body left all
+  //      four GREEN. Same false-green this file documents for `/ownedMaterials/`
+  //      at (1). Stripping first turns all four red.
+  //
+  //      It also removes a second hazard the first cut shipped: a `{0,400}`
+  //      window measured on source WITH a four-line comment inside it had six
+  //      characters of headroom, so reflowing that comment would have false-
+  //      FAILED acceptance and reported "the emit is gone" about working code.
+  //
+  //      This is the first check in this file to read ui.js and game.js. That is
+  //      required, not incidental: two of the four ways this defect can return
+  //      live in those files, and a scene.js-only assertion cannot see them.
+  //      path.join(__dirname, …) keeps it CWD-independent like every sibling.
+  //
+  //      Strips /* … */ blocks and `//` line comments. The `:` guard keeps a
+  //      `https://` inside a string literal from truncating its own line.
+  const stripComments = (s) => s
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .map(line => {
+      let i = line.indexOf('//');
+      while (i > 0 && line[i - 1] === ':') i = line.indexOf('//', i + 2);
+      return i >= 0 ? line.slice(0, i) : line;
+    })
+    .join('\n');
+  const uiSrc   = stripComments(fs.readFileSync(path.join(__dirname, '..', 'ui.js'), 'utf8'));
+  const gameSrc = stripComments(fs.readFileSync(path.join(__dirname, '..', 'game.js'), 'utf8'));
+  const sceneSrcNC = stripComments(src);
+
+  //      Brace-matched function body, because bodyOf() cannot be used here.
+  //      bodyOf() terminates on `\n}` — a brace in COLUMN 0 — which is right for
+  //      scene.js's top-level functions and useless inside ui.js, where every
+  //      function lives in an IIFE and closes at `\n  }`. Measured: bodyOf() on
+  //      `function setReducedMotion(` returned everything from that function to
+  //      the end of the module, so commenting out the real emit call still went
+  //      green off a neighbouring `emitMotionChange()` further down the file.
+  //      Comments must already be stripped — a `{` or `}` inside one would
+  //      unbalance the count.
+  const fnBody = (source, header) => {
+    const at = source.indexOf(header);
+    if (at < 0) return '';
+    const open = source.indexOf('{', at);
+    if (open < 0) return '';
+    let depth = 0;
+    for (let i = open; i < source.length; i++) {
+      const c = source[i];
+      if (c === '{') depth++;
+      else if (c === '}' && --depth === 0) return source.slice(at, i + 1);
+    }
+    return '';
+  };
+
+  //      (a) CTD3Ui publishes, and setReducedMotion actually emits. Testing for
+  //          the emit CALL inside setReducedMotion is what stops a listener
+  //          array that is registered into and never fired.
+  const uiExports   = /onMotionChange\s*[,}]/.test(uiSrc.slice(uiSrc.indexOf('window.CTD3Ui = ')));
+  //          Bounded to the FUNCTION BODY, not a character window. A `{0,400}`
+  //          window reached past the end of setReducedMotion and matched the
+  //          `emitMotionChange()` inside the media-query handler below it — so
+  //          commenting out the real emit call still went green (measured). A
+  //          body-bounded test has no window to tune and no neighbour to catch.
+  const uiEmits     = /emitMotionChange\s*\(/.test(fnBody(uiSrc, 'function setReducedMotion('));
+  //          Accepts either iteration form: pinning `.forEach` alone would
+  //          false-FAIL a `for (const cb of …)` rewrite and report a defect
+  //          that is not there.
+  const uiInvokes   = /motionListeners\.forEach\s*\(\s*cb\s*=>[\s\S]{0,120}cb\s*\(/.test(uiSrc) ||
+                      /for\s*\(\s*(const|let|var)\s+cb\s+of\s+motionListeners\s*\)[\s\S]{0,120}cb\s*\(/.test(uiSrc);
+  //      (b) The OS-level source is wired too — motionAllowed() is a conjunction
+  //          and a class-only channel leaves half the defect live.
+  const uiMediaSrc  = /matchMedia\(\s*['"]\(prefers-reduced-motion: reduce\)['"]\s*\)[\s\S]{0,400}?add(EventListener|Listener)\s*\(/.test(uiSrc);
+  //      (c) game.js subscribes and routes it to the scene.
+  const gameWires   = /CTD3Ui\.onMotionChange\s*\([\s\S]{0,120}CTD3Scene\.setMotionAllowed\s*\(/.test(gameSrc);
+  //      (d) The scene handler does BOTH halves — a release-only handler is the
+  //          original one-way bug wearing a new name — and is exported, since an
+  //          unexported handler is exactly why this defect outlived `ec3aa8d`.
+  //          Read from the comment-stripped copy, and tolerant of an arrow-
+  //          function rewrite — `bodyOf` keys on a literal, so pinning only the
+  //          `function` form would false-FAIL an equivalent refactor.
+  const sceneBody   = fnBody(sceneSrcNC, 'function setMotionAllowed(') ||
+                      fnBody(sceneSrcNC, 'setMotionAllowed = ');
+  const sceneAttach = /if\s*\(\s*allowed\s*\)\s*\{?\s*attachAllEnemyMixers\s*\(/.test(sceneBody);
+  const sceneRelease = /else\s*\{?\s*releaseAllEnemyMixers\s*\(/.test(sceneBody);
+  const sceneExported = /setMotionAllowed\s*[,}]/.test(sceneSrcNC.slice(sceneSrcNC.indexOf('window.CTD3Scene = ')));
+  check('enemy-reducedmotion-recovers',
+    uiExports && uiEmits && uiInvokes && uiMediaSrc && gameWires &&
+    sceneAttach && sceneRelease && sceneExported,
+    'ui publishes=' + uiExports + ', setReducedMotion emits=' + uiEmits +
+    ', listeners invoked=' + uiInvokes + ', OS media-query source=' + uiMediaSrc +
+    ', game.js wires ui->scene=' + gameWires + ', scene re-attaches=' + sceneAttach +
+    ', scene releases=' + sceneRelease + ', scene handler exported=' + sceneExported);
 }
 
 // ─── Summary ─────────────────────────────────────────────────

@@ -129,6 +129,13 @@ async function start() {
   // UI
   window.CTD3Ui.init();
 
+  // Reduced-motion wiring (ADR-042 D44) — the symmetric twin of the low-power
+  // line above. Both gates in scene.js's mixersAllowed() now have a two-way
+  // channel published by whichever module owns the state. Subscribed AFTER
+  // CTD3Ui.init() and BEFORE the settings restore below, so the restore's own
+  // setReducedMotion call is already covered.
+  window.CTD3Ui.onMotionChange((allowed) => window.CTD3Scene.setMotionAllowed(allowed));
+
   // Settings → audio + render
   const settings = loadSettings();
   window.CTD3Audio.setMusicVolume(settings.musicVolume);

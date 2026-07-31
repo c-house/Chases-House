@@ -189,7 +189,28 @@ Inclusion must leave X-1's calibrated **≤15 % dominance margin** holding, **me
 
 ---
 
-## Addendum — 2026-07-31
+## Addendum — 2026-07-31 (X-2): D43's gate FAILED. The slime hop is measured and NOT shipped.
+
+D43 shipped the slimes' `proceduralMotion` flag only on a two-limb doubling check clearing. **It did not clear — on both limbs — so the flag is not shipped and D43 closes as measured-and-declined.**
+
+Measured in play on **forest/quiet w3** ("The Ooze"), a live `slime` at gameplay camera, 150 consecutive rAF frames, no-store server, hard reload.
+
+**The controls first, because they are what make this a clip-only reading.** `slime` carries no `proceduralMotion` flag today, so `syncEnemies`' short-circuit already suppresses the procedural layer for it — and the frames confirm it rather than assuming it: `node.position.y` peak-to-peak **0.0000** (no `bobY`) and `node.scale.y` peak-to-peak **0.0000** at a constant **0.394** (no squash, and equal to the configured `ENEMY_VIS.scale`). Everything below is therefore the clip alone.
+
+| limb | bar | measured | verdict |
+|---|---|---|---|
+| **(i)** clip-only vertical body travel | < 0.055 world units | **0.0922** (centroid; 0.1254 at the lowest bone) | **FAIL** — 42 % of the procedural hop's 0.22, not the ≤25 % the bar allows |
+| **(ii)** clip-only body-height oscillation | < 8 % | **12.57 %** (mean body height 0.5116) | **FAIL** — 38 % of the procedural squash's +33 % swing |
+
+**The `enemy_slime2` `Walk` clip already hops AND already squashes.** Layering the procedural personality on top would produce precisely the double-hop-and-double-squash that `scene.js`'s own short-circuit comment names as its motivating hazard — *"a squash-and-stretch hop applied to a model that is already hopping."*
+
+**This vindicates X-3's judgement on measurement rather than on preference.** X-3 declined the flag to keep the slimes clip-owned; D43 re-opened it on the ghost's restoration precedent and required a measurement to settle it. The measurement says X-3 was right, and the reason is now recorded rather than inferred: the ghost's clip supplied *no* float (X-3 measured `bodyFloatY` 0.0000), which is why restoring it was addition; the slime's clip supplies both channels, which makes the same edit duplication.
+
+**Consequence.** `ENEMY_VIS` is unchanged. The slime hop in `scene.js` stays unreachable in normal play, and that is now a documented deliberate state rather than an accident — it remains live for any future type that declares the flag. `mini_slime`'s 0.153 rendered motion is therefore **not** improved by this sprint, exactly as D42 anticipated when it declined to treat motion as an independent axis.
+
+---
+
+## Addendum — 2026-07-31 (X-1): the drake-in-endless verdict
 
 X-1's verdict on **D45**, appended as that decision requires. Measured with a paired with/without sweep over **6 official maps × 3 seeds (7 / 101 / 2029)**, **quiet only**, all three scripted arms, `maxWaves` 60. The candidate template mirrors the shape of the existing air templates: `drake ×4, skirmisher ×5, runner ×5`.
 

@@ -270,7 +270,57 @@
   }
   function getScreen() { return body.getAttribute('data-screen'); }
 
-  function setReducedMotion(on) { body.classList.toggle('reduced-motion', !!on); }
+  // ─── Reduced motion, and its change channel (ADR-042 D44) ────
+  // `setReducedMotion` used to toggle a class and nothing else, which made
+  // reduced motion a ONE-WAY gate for anything that reads it once at spawn
+  // time: scene.js's mixersAllowed() denies a skeletal mixer to every enemy
+  // created while it holds, and turning the setting back off never re-attached
+  // one. Low power had the identical defect and shipped its fix in `ec3aa8d` by
+  // publishing changes from the state's OWNER (CTD3Renderer.onLowPowerChange)
+  // and letting game.js wire it to a scene handler.
+  //
+  // This is that same channel for the state CTD3Ui owns. Publishing here rather
+  // than exporting a scene helper for the settings toggle to call is what makes
+  // it cover EVERY caller of setReducedMotion — including game.js's
+  // settings-restore path at init — instead of only the call site someone
+  // remembered to edit.
+  const motionListeners = [];
+  function onMotionChange(cb) { if (typeof cb === 'function') motionListeners.push(cb); }
+  function emitMotionChange() {
+    // motionAllowed() reads `body`, which is unassigned until init() runs — and
+    // the media-query listener below is registered at SCRIPT LOAD, so an OS
+    // preference flip landing in that window would otherwise throw a TypeError
+    // straight out of the change handler, past the per-listener catch.
+    if (!body) return;
+    const allowed = motionAllowed();
+    motionListeners.forEach(cb => { try { cb(allowed); } catch (e) {} });
+  }
+  function setReducedMotion(on) {
+    const before = motionAllowed();
+    body.classList.toggle('reduced-motion', !!on);
+    // Fires on the EFFECTIVE state, not on the class: with the OS query already
+    // suppressing motion, toggling the in-game setting changes nothing a
+    // listener should react to, and re-attaching mixers there would defeat the
+    // OS preference.
+    if (motionAllowed() !== before) emitMotionChange();
+  }
+  // The OS-level half. motionAllowed() is the conjunction of the body class AND
+  // this query, so a channel fed only by the class leaves an OS toggle flipped
+  // mid-session as an uncovered one-way path — the same defect, different
+  // source. `addEventListener` is feature-detected because older WebKit exposes
+  // only the deprecated `addListener` on a MediaQueryList.
+  //
+  // `motionMq` is held at module scope rather than inside a block ON PURPOSE:
+  // the historical "engine GCs the MediaQueryList and silently drops its
+  // listener" bug lives on the legacy `addListener` path, which is exactly the
+  // branch this feature-detect exists to serve. A strong reference costs one
+  // binding and removes the question.
+  const motionMq = matchMedia('(prefers-reduced-motion: reduce)');
+  {
+    const onMq = () => emitMotionChange();
+    if (typeof motionMq.addEventListener === 'function') motionMq.addEventListener('change', onMq);
+    else if (typeof motionMq.addListener === 'function') motionMq.addListener(onMq);
+  }
 
   // ─── Palette: render 4 tower cards using pre-baked icons ─────
   function paintPalette() {
@@ -797,7 +847,7 @@
 
   window.CTD3Ui = {
     init, setScreen, getScreen,
-    setReducedMotion, motionAllowed,
+    setReducedMotion, motionAllowed, onMotionChange,
     update, paintPalette, updatePalette,
     hydrateMapSelect, fillGameOver,
     setMapTab, getActiveMapTab,
