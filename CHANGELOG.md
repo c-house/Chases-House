@@ -2,6 +2,11 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-09-06 — StockWatch replaces Shopping in the nav (ADR-043)
+
+- Nav slot 5 is now **StockWatch**, probing `https://stockwatch.chases.house/health` (a Cloudflare Worker with no local tunnel or origin). The Shopping entry it replaces depended on a tunnel to a PC-hosted container that has been down for months; that surface is parked pending a larger consolidation
+- Same `enableNavWhenLive` helper, cross-origin Counting House pattern; no CSS or slot changes
+
 ## 2026-05-31 — Crawler control: robots.txt + Cloudflare noindex (deindex LIVE, curl-verified)
 
 - The site is now kept **out of search results** while staying publicly reachable, and AI training crawlers are disallowed — curl-verified live

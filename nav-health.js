@@ -39,9 +39,11 @@
   // a Cloudflare Worker that splits traffic to a Tunnel). See ADR-024.
   enableNavWhenLive('lookout-nav', '/the-lookout/health',             'Lookout');
 
-  // Shopping: same-origin path-based (chases.house/shop/health behind the
-  // chases-house-router Worker → Smart-Shopper tunnel). Mirrors Lookout.
-  enableNavWhenLive('shop-nav',    '/shop/health',                    'Shopping');
+  // StockWatch: Cloudflare Worker on its own subdomain (no tunnel, no local
+  // origin); cross-origin probe. /health sends ACAO https://chases.house and
+  // bypasses the Access gate (Counting House pattern). Replaces the Shopping
+  // entry (ADR-032), whose tunnel is parked. See ADR-043.
+  enableNavWhenLive('stockwatch-nav', 'https://stockwatch.chases.house/health', 'StockWatch');
 
   // Counting House: own subdomain via a dedicated Tunnel; cross-origin probe.
   // /health sends ACAO https://chases.house and bypasses the site's Access
