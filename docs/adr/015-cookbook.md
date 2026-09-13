@@ -112,3 +112,40 @@ The source `.docx.md` files embed the recipe photos as base64 `data:image/png;ba
 - Favorites, notes, checked ingredients, checked steps persist across reloads under `rustic:*` localStorage keys
 - Zero console errors, zero failed network requests (Google Fonts, unpkg React/Babel, Unsplash photos all 200)
 - Nav link on homepage, games, and files all point to `/cookbook/`; homepage room card renders alongside Games
+
+## Addendum — 2026-09-13 (mobile layout)
+
+The cookbook shipped desktop-only. On a Pixel 6 (412 CSS px) a recipe page was unusable: the recipe body is a `340px 1fr` grid with a 56px gap inside 56px page padding, so the ingredient rail alone consumed the viewport and pushed Directions off-screen to the right, with the "start cook mode" button clipped at the edge. Display type was fixed-pixel (84px masthead, 64px recipe title, 120px cook-mode step number) and every layout value lived in a JSX inline `style`, where no media query can reach it.
+
+### Decision
+
+Move the layout-bearing values out of inline styles into the injected `#rustic-styles` sheet under named classes, then let two media queries override them. Inline styles stay for one-off decoration (colours, borders, margins) — only what needs to respond moved.
+
+Classes added: `.rustic-page(.home|.recipe)`, `.rustic-searchbar`, `.rustic-tabs`, `.rustic-card-grid`, `.rustic-actionbar`, `.rustic-meta`, `.rustic-hero-photo`, `.rustic-recipe-body`, `.rustic-ing-panel`, `.rustic-dirhead`, `.rustic-step-row`, `.rustic-step-num`, `.rustic-cook-{bar,rail,main,num,title,text,foot}`, and four `*-title` type classes.
+
+Two breakpoints rather than one:
+
+- **≤ 900px** — recipe body collapses to one column and the ingredient rail stops being sticky. Chosen above tablet width because at 768px the two-column grid already squeezed the steps to a ~26-character measure with an empty rail beside it.
+- **≤ 760px** — phone treatment: 18px page gutters, single-column cards, wrapped tab strip, 3/2 hero crop, smaller step numerals, full-width cook-mode button, tighter button labels so back/print/save fit one row.
+
+Fluid display type via `clamp()` (e.g. masthead `clamp(42px, 10.5vw, 84px)`) instead of a second set of fixed sizes — the desktop maximum is unchanged, so the desktop rendering is untouched.
+
+Two non-layout fixes rode along because they only misbehave on touch: every `:hover` rule moved inside `@media (hover: hover)` (on a phone they latch after a tap — a tapped card stayed lifted), and the ingredient checkbox gets a 44px hit area via a transparent `::after` inset, without growing the 26px drawn circle.
+
+`min-height: 100vh` → `100dvh` in cook mode so the footer isn't buried under Chrome's address bar.
+
+### Verification
+
+Headless Chromium (Playwright, Pixel 6 viewport 412×915 + touch), served from `python -m http.server 3030`:
+
+- No horizontal overflow at 320/360/390/412/480/600/768/820/1024/1440px — `scrollWidth === clientWidth` and no element extending past the viewport on home, recipe, and cook-mode views. Before the change the recipe view overflowed on every width below ~900px
+- Zero console errors, zero failed requests on all three views
+- **Desktop is pixel-identical**: full-page screenshots at 1440px before/after the change diff to 0 differing pixels of 7.7M (home) and 3.2M (recipe) via pixelmatch
+- Touch interactions exercised by tap, not click: search filter, category tab, servings stepper (4 → 5), ingredient checkbox, cook-mode next/exit — all correct
+- Print unaffected: `.no-print` elements still hide and the print grid is unchanged under `emulateMedia({media:'print'})`
+
+Google Fonts and unpkg are unreachable from the verification sandbox, so the pinned React/Babel and the four webfont families were served from npm equivalents via request interception — same versions, real type metrics.
+
+### Known follow-up (not in this change)
+
+`formatAmount` falls back to a decimal when a scaled amount doesn't land near a unicode fraction, so scaling 4 servings → 3 can render "0.08 tsp black pepper". Cosmetic, pre-existing, and identical on desktop — a rounding-policy fix, not a layout one.

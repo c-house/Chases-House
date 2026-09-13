@@ -2,6 +2,15 @@
 
 All notable changes to [chases.house](https://chases.house) are documented here.
 
+## 2026-09-13 — Cookbook: mobile layout (ADR-015 addendum)
+
+- Recipe pages are usable on a phone. The `340px 1fr` ingredient/directions grid overflowed a 412px viewport and pushed Directions off-screen; it now collapses to one column at ≤900px (tablets included — at 768px the steps had been squeezed to a ~26-character measure)
+- Phone treatment at ≤760px: 18px gutters instead of 56px, wrapped category tabs, 3/2 hero crop, full-width "start cook mode" button, back/print/save on one row
+- Display type is fluid via `clamp()` — 84px masthead, 64px recipe title and 120px cook-mode numeral now scale down instead of forcing a horizontal scroll. Desktop maxima unchanged
+- Layout values moved from JSX inline styles into named classes in the injected `#rustic-styles` sheet, since a media query can't override an inline style
+- `:hover` rules confined to `@media (hover: hover)` — on touch they latched after a tap (a tapped card stayed lifted); ingredient checkboxes get a 44px hit area without growing the drawn circle; cook mode uses `100dvh` so its footer clears the browser chrome
+- **Desktop renders pixel-identically** — 1440px full-page screenshots before/after diff to 0 differing pixels. Verified in headless Chromium at 10 widths (320–1440px) with zero console errors and touch interactions exercised by tap
+
 ## 2026-09-06 — StockWatch replaces Shopping in the nav (ADR-043)
 
 - Nav slot 5 is now **StockWatch**, probing `https://stockwatch.chases.house/health` (a Cloudflare Worker with no local tunnel or origin). The Shopping entry it replaces depended on a tunnel to a PC-hosted container that has been down for months; that surface is parked pending a larger consolidation
