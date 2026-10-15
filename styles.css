@@ -154,25 +154,9 @@ body::after {
 
 .nav-link.active::after { display: none; }
 
-/* Coming soon nav state */
-.nav-link.coming-soon {
-  color: var(--text-muted);
-  pointer-events: none;
-  cursor: default;
-}
-
-.nav-link.coming-soon::after { display: none; }
-
-.coming-soon-tag {
-  font-family: var(--font-body);
-  font-size: 0.5em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-faint);
-  vertical-align: super;
-  margin-left: 0.3em;
-}
+/* A tunneled app's nav entry stays hidden until nav-health.js swaps it for a
+   live link (ADR-044). */
+.nav-link.coming-soon { display: none; }
 
 /* ── Nav-link activation (Music, Lookout, future tunneled subsites) ──
    Triggered by nav-health.js when the corresponding /health endpoint

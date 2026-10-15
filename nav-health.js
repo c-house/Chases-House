@@ -1,7 +1,7 @@
 // Nav-link health-probe helper. Each top-level page that has a "coming-soon"
 // nav span tied to a Cloudflare-tunneled subsite calls enableNavWhenLive once
-// per nav. On a 200 from the tunnel's /health, the <span> is replaced with a
-// live <a> link.
+// per nav. On a 200 from the tunnel's /health, the hidden <span> is replaced
+// with a live <a> link (ADR-044: an app that isn't running doesn't show).
 //
 // Replaces the per-page inline IIFE that previously did the same probe just
 // for Music. See docs/adr/024-lookout-nav-and-shared-health-helper.md.
@@ -29,7 +29,7 @@
         a.textContent = label;
         el.replaceWith(a);
       })
-      .catch(function () { /* tunnel down or timed out — keep "soon" placeholder */ });
+      .catch(function () { /* tunnel down or timed out: the placeholder stays hidden (ADR-044) */ });
   }
 
   // Music: separate Cloudflare zone (thewiseguy.ai), cross-origin probe.
