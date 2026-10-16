@@ -308,7 +308,7 @@ const RECIPES = [
     baseServings: 10,
     rating: 5.0,
     tags: ['beef', 'onion', 'garlic', 'tomato', 'pasta'],
-    photo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Chili_mac_prepared_with_spaghetti.jpg/960px-Chili_mac_prepared_with_spaghetti.jpg',
+    photo: 'images/krolls-chili/image1.jpg',
     ingredients: [
       { amount: 4,   unit: 'lb',     name: 'ground beef' },
       { amount: 4,   unit: 'medium', name: 'onions, diced' },
@@ -325,7 +325,7 @@ const RECIPES = [
       { title: 'Simmer',   text: 'Add {i:3} and bring to a simmer. Turn the heat to low and simmer 3 to 4 hours, stirring now and then, until thick and deep red.' },
       { title: 'Serve',    text: 'Ladle the chili over {i:7}.' },
     ],
-    notes: 'The original card calls for 3 packages of Frank\'s chili powder ("Franks Chili pd."); this version swaps in 1.5 oz of A Bowl of Red Original Texas Style chili mix — half a 3 oz package. Taste after the first hour and add more mix if you want it bolder. The mix may carry its own salt, so you can hold back some of the 4 tsp and adjust at the end. The card is marked "(oven)" — likely meaning a Dutch oven; the long simmer also works covered in a 300°F oven. Green Bay style: top with shredded cheddar, raw onion, beans, or oyster crackers. (Photo: jeffreyw on Flickr, CC BY 2.0.)',
+    notes: 'The original card calls for 3 packages of Frank\'s chili powder ("Franks Chili pd."); this version swaps in 1.5 oz of A Bowl of Red Original Texas Style chili mix — half a 3 oz package. Taste after the first hour and add more mix if you want it bolder. The mix may carry its own salt, so you can hold back some of the 4 tsp and adjust at the end. The card is marked "(oven)" — likely meaning a Dutch oven; the long simmer also works covered in a 300°F oven. Toppings: shredded cheddar is the classic, with diced raw onion or sliced scallions for crunch and oyster crackers on the side; a spoonful of sour cream cools it down, and kidney beans stirred in at serving make it a Green Bay–style bowl.'
   },
 
   // ──────────────────────────────────────────────────────────────
