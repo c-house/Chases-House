@@ -296,6 +296,40 @@ const RECIPES = [
 
   // ──────────────────────────────────────────────────────────────
   {
+    id: 'krolls-chili',
+    title: "Kroll's Chili",
+    blurb: 'Off a well-worn recipe card — Green Bay–style chili in the Kroll\'s tradition. Beef, onions, and tomato juice simmered low for hours, then ladled over spaghetti.',
+    author: 'Family recipe card',
+    category: 'Mains',
+    cuisine: 'American',
+    difficulty: 'Easy',
+    prepMin: 20,
+    cookMin: 225,
+    baseServings: 10,
+    rating: 5.0,
+    tags: ['beef', 'onion', 'garlic', 'tomato', 'pasta'],
+    photo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Chili_mac_prepared_with_spaghetti.jpg/960px-Chili_mac_prepared_with_spaghetti.jpg',
+    ingredients: [
+      { amount: 4,   unit: 'lb',     name: 'ground beef' },
+      { amount: 4,   unit: 'medium', name: 'onions, diced' },
+      { amount: 4,   unit: 'cloves', name: 'garlic, diced' },
+      { amount: 1,   unit: 'qt',     name: 'tomato juice' },
+      { amount: 1.5, unit: 'oz',     name: 'A Bowl of Red Original Texas Style chili mix' },
+      { amount: 4,   unit: 'tsp',    name: 'salt' },
+      { amount: 0.5, unit: 'tsp',    name: 'pepper' },
+      { amount: 2,   unit: 'lb',     name: 'spaghetti, cooked, for serving' },
+    ],
+    steps: [
+      { title: 'Brown',    text: 'In a large Dutch oven over medium-high heat, brown {i:0} with {i:1} and {i:2}, breaking up the meat as it cooks. Stir in {i:4}, {i:5}, and {i:6} and cook until the beef has no pink left.' },
+      { title: 'Drain',    text: 'Tip the pot and spoon or pour off the excess fat.' },
+      { title: 'Simmer',   text: 'Add {i:3} and bring to a simmer. Turn the heat to low and simmer 3 to 4 hours, stirring now and then, until thick and deep red.' },
+      { title: 'Serve',    text: 'Ladle the chili over {i:7}.' },
+    ],
+    notes: 'The original card calls for 3 packages of Frank\'s chili powder ("Franks Chili pd."); this version swaps in 1.5 oz of A Bowl of Red Original Texas Style chili mix — half a 3 oz package. Taste after the first hour and add more mix if you want it bolder. The mix may carry its own salt, so you can hold back some of the 4 tsp and adjust at the end. The card is marked "(oven)" — likely meaning a Dutch oven; the long simmer also works covered in a 300°F oven. Green Bay style: top with shredded cheddar, raw onion, beans, or oyster crackers. (Photo: jeffreyw on Flickr, CC BY 2.0.)',
+  },
+
+  // ──────────────────────────────────────────────────────────────
+  {
     id: 'blueberry-ice-cream',
     title: 'Blueberry Ice Cream with Optional Crisp',
     blurb: 'Deep purple summer blueberries simmered with sugar, strained to satin, and folded into half-and-half. A buttery oat crumble stirred in at the last churn gives every scoop a crisp topping baked right in.',
