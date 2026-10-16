@@ -213,11 +213,59 @@ if (!document.getElementById('rustic-styles')) {
       resize: vertical;
     }
 
-    .rustic-printable { display: block; }
+    /* Layout — kept in classes (not inline) so the breakpoints below can override it */
+    .rustic-page { max-width: 1120px; margin: 0 auto; padding: 48px 56px 80px; }
+    .rustic-recipe-page { max-width: 1040px; padding-top: 32px; }
+    .rustic-masthead-title { font-size: 84px; line-height: 0.95; margin: 14px 0 6px; font-weight: 500; }
+    .rustic-search-row { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; margin-bottom: 24px; }
+    .rustic-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+    .rustic-recipe-title { font-size: 64px; line-height: 1.02; margin: 0 0 14px; font-weight: 500; text-wrap: balance; }
+    .rustic-hero { aspect-ratio: 16 / 7; background-size: cover; background-position: center; margin-bottom: 36px; box-shadow: 0 4px 24px rgba(60,40,20,0.15), inset 0 0 0 1px rgba(0,0,0,0.04); }
+    .rustic-recipe-grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 56px; }
+    .rustic-sticky { position: sticky; top: 20px; }
+    .rustic-section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .rustic-step { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; padding: 18px 0; }
+    .rustic-step-num { font-size: 42px; }
+    .rustic-cook-bar { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px 16px; }
+    .rustic-cook-progress { padding: 0 40px; margin-top: 24px; }
+    .rustic-cook-main { flex: 1; padding: 60px 40px; max-width: 960px; margin: 0 auto; width: 100%; }
+    .rustic-cook-num { font-size: 120px; }
+    .rustic-cook-title { font-size: 56px; }
+    .rustic-cook-text { font-size: 28px; }
+    .rustic-print-only { display: none; }
+
+    @media screen and (max-width: 760px) {
+      .rustic-page { padding: 24px 16px 56px; }
+      .rustic-recipe-page { padding-top: 16px; }
+      .rustic-masthead-title { font-size: 52px; }
+      .rustic-search-row { grid-template-columns: 1fr; gap: 14px; }
+      .rustic-recipe-title { font-size: 40px; }
+      .rustic-hero { aspect-ratio: 4 / 3; margin-bottom: 28px; }
+      .rustic-recipe-grid { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+      .rustic-sticky { position: static; }
+      .rustic-step { grid-template-columns: 34px minmax(0, 1fr); gap: 12px; }
+      .rustic-step-num { font-size: 34px; }
+      .rustic-cook-bar { padding: 14px 16px; }
+      .rustic-cook-progress { padding: 0 16px; }
+      .rustic-cook-main { padding: 32px 16px; }
+      .rustic-cook-num { font-size: 72px; }
+      .rustic-cook-title { font-size: 36px; }
+      .rustic-cook-text { font-size: 21px; }
+    }
+
     @media print {
+      @page { margin: 0.6in; }
       .rustic { background: white !important; color: black !important; }
       .rustic .no-print { display: none !important; }
+      .rustic .rustic-print-only { display: block; }
       .rustic .thumb { max-height: 2.5in; }
+      .rustic-fade { animation: none; }
+      .rustic-page { max-width: none; padding: 0; zoom: 0.8; }
+      .rustic-recipe-title { font-size: 30pt; }
+      .rustic-recipe-grid { grid-template-columns: 2.4in minmax(0, 1fr); gap: 0.35in; }
+      .rustic-sticky { position: static; }
+      .rustic-step { padding: 10px 0; break-inside: avoid; }
+      .rustic li, .rustic-chef-note { break-inside: avoid; }
     }
 
     @keyframes rustic-fade {
@@ -323,14 +371,14 @@ function RusticHome({ query, setQuery, selectedTags, toggleTag, tagCounts, categ
   const categories = ['All', 'Mains', 'Sides', 'Appetizers', 'Sauces', 'Breakfast', 'Desserts'];
 
   return (
-    <div className="rustic-fade" style={{ maxWidth: 1120, margin: '0 auto', padding: '48px 56px 80px' }}>
+    <div className="rustic-fade rustic-page">
       {/* Masthead */}
       <header style={{ borderBottom: '1.5px solid var(--ink)', paddingBottom: 20, marginBottom: 28 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <div className="smallcaps" style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Est. 2026 · Vol. I</div>
           <div className="smallcaps" style={{ fontSize: 11, color: 'var(--ink-mute)' }}>"Hello my friends —"</div>
         </div>
-        <h1 className="display" style={{ fontSize: 84, lineHeight: 0.95, margin: '14px 0 6px', fontWeight: 500 }}>
+        <h1 className="display rustic-masthead-title">
           The Family Cookbook
         </h1>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 10 }}>
@@ -342,7 +390,7 @@ function RusticHome({ query, setQuery, selectedTags, toggleTag, tagCounts, categ
       </header>
 
       {/* Search + category tabs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 32, alignItems: 'center', marginBottom: 24 }}>
+      <div className="rustic-search-row">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1.5px solid var(--ink)' }}>
           <div style={{ color: 'var(--ink-soft)' }}>{RIcon.search()}</div>
           <input className="rustic-input" style={{ borderBottom: 'none' }}
@@ -451,14 +499,14 @@ function RusticCard({ recipe, idx, favorite, onFav, onOpen }) {
 function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, setServings, note, setNote, checkedIng, toggleIng }) {
   const bump = (d) => setServings(Math.max(1, servings + d));
   return (
-    <div className="rustic-fade" style={{ maxWidth: 1040, margin: '0 auto', padding: '32px 56px 80px' }}>
+    <div className="rustic-fade rustic-page rustic-recipe-page">
       {/* Back + actions */}
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div className="no-print rustic-actions">
         <button onClick={onBack} className="rustic-btn ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           {RIcon.back()} back to book
         </button>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="rustic-btn ghost" onClick={() => window.print()} title="Print recipe" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button className="rustic-btn ghost" onClick={() => window.print()} title="Print a clean, ink-friendly copy of this recipe" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             {RIcon.print()} print
           </button>
           <button className="rustic-btn ghost" onClick={toggleFav} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: favorite ? 'var(--burgundy)' : undefined, boxShadow: favorite ? 'inset 0 0 0 1.5px var(--burgundy)' : undefined }}>
@@ -470,10 +518,10 @@ function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, s
       {/* Hero */}
       <header style={{ marginBottom: 36 }}>
         <div className="smallcaps" style={{ fontSize: 11, color: 'var(--terracotta)', marginBottom: 12 }}>{recipe.category} · {recipe.cuisine}</div>
-        <h1 className="display" style={{ fontSize: 64, lineHeight: 1.02, margin: '0 0 14px', fontWeight: 500, textWrap: 'balance' }}>{recipe.title}</h1>
+        <h1 className="display rustic-recipe-title">{recipe.title}</h1>
         <p style={{ fontSize: 18, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '0 0 20px', maxWidth: 640, lineHeight: 1.5, textWrap: 'pretty' }}>{recipe.blurb}</p>
 
-        <div style={{ display: 'flex', gap: 28, fontSize: 13, color: 'var(--ink-soft)', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px 28px', fontSize: 13, color: 'var(--ink-soft)', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="script" style={{ fontSize: 22, color: 'var(--terracotta)' }}>— from {recipe.author}</span>
           <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>{RIcon.clock()} prep {recipe.prepMin}′ · cook {recipe.cookMin}′</span>
@@ -486,15 +534,16 @@ function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, s
       </header>
 
       {/* Hero photo */}
-      <div style={{ aspectRatio: '16 / 7', backgroundImage: `url(${recipe.photo})`, backgroundSize: 'cover', backgroundPosition: 'center', marginBottom: 36, boxShadow: '0 4px 24px rgba(60,40,20,0.15), inset 0 0 0 1px rgba(0,0,0,0.04)' }} />
+      <div className="rustic-hero no-print" style={{ backgroundImage: `url(${recipe.photo})` }} />
 
       {/* Main content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 56 }}>
+      <div className="rustic-recipe-grid">
         {/* Ingredients column */}
         <aside>
-          <div style={{ position: 'sticky', top: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div className="rustic-sticky">
+            <div className="rustic-section-head">
               <h2 className="display" style={{ fontSize: 30, margin: 0, fontWeight: 500, fontStyle: 'italic' }}>Ingredients</h2>
+              <span className="rustic-print-only smallcaps" style={{ fontSize: 10, color: 'var(--ink-mute)' }}>Serves {servings}</span>
             </div>
             <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, padding: '12px 0', borderTop: '1px solid var(--line-soft)', borderBottom: '1px solid var(--line-soft)' }}>
               <span className="smallcaps" style={{ fontSize: 10, color: 'var(--ink-mute)' }}>Servings</span>
@@ -533,7 +582,7 @@ function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, s
 
         {/* Steps + notes column */}
         <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div className="rustic-section-head">
             <h2 className="display" style={{ fontSize: 30, margin: 0, fontWeight: 500, fontStyle: 'italic' }}>Directions</h2>
             <button className="rustic-btn terra no-print" onClick={onCook}>Start cook mode →</button>
           </div>
@@ -542,8 +591,8 @@ function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, s
             {recipe.steps.map((step, i) => {
               const chunks = renderStepText(step.text, recipe, servings);
               return (
-                <li key={i} style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: 16, padding: '18px 0', borderBottom: i < recipe.steps.length - 1 ? '1px solid var(--line-soft)' : 'none' }}>
-                  <div className="display" style={{ fontSize: 42, color: 'var(--terracotta)', lineHeight: 1, fontStyle: 'italic', fontWeight: 400 }}>{i + 1}</div>
+                <li key={i} className="rustic-step" style={{ borderBottom: i < recipe.steps.length - 1 ? '1px solid var(--line-soft)' : 'none' }}>
+                  <div className="display rustic-step-num" style={{ color: 'var(--terracotta)', lineHeight: 1, fontStyle: 'italic', fontWeight: 400 }}>{i + 1}</div>
                   <div>
                     <div className="smallcaps" style={{ fontSize: 10, color: 'var(--ink-mute)', marginBottom: 6 }}>{step.title}</div>
                     <p style={{ fontSize: 17, lineHeight: 1.6, margin: 0, color: 'var(--ink)', textWrap: 'pretty' }}>
@@ -559,24 +608,25 @@ function RusticRecipe({ recipe, onBack, onCook, favorite, toggleFav, servings, s
           </ol>
 
           {recipe.notes && (
-            <div style={{ marginTop: 36, padding: '20px 24px', background: 'var(--paper-deep)', borderLeft: '3px solid var(--terracotta)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.55, color: 'var(--ink-soft)' }}>
+            <div className="rustic-chef-note" style={{ marginTop: 36, padding: '20px 24px', background: 'var(--paper-deep)', borderLeft: '3px solid var(--terracotta)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.55, color: 'var(--ink-soft)' }}>
               <div className="smallcaps" style={{ fontSize: 10, color: 'var(--terracotta)', marginBottom: 8, fontStyle: 'normal' }}>Chef's note</div>
               {recipe.notes}
             </div>
           )}
 
           {/* Personal notes */}
-          <div style={{ marginTop: 36 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
+          <div className={note ? '' : 'no-print'} style={{ marginTop: 36 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 12px', marginBottom: 8 }}>
               <h3 className="display" style={{ fontSize: 24, margin: 0, fontWeight: 500, fontStyle: 'italic' }}>My notes</h3>
               <span className="script" style={{ fontSize: 16, color: 'var(--ink-mute)' }}>— what happened when you made it</span>
             </div>
             <textarea
-              className="rustic-note"
+              className="rustic-note no-print"
               placeholder="e.g. 3lb roast, 90 min at 325°, added extra garlic — perfect."
               value={note}
               onChange={e => setNote(e.target.value)}
             />
+            <div className="rustic-print-only" style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.5 }}>{note}</div>
           </div>
         </section>
       </div>
@@ -602,7 +652,7 @@ function RusticCookMode({ recipe, onBack, servings, checkedSteps, toggleStep }) 
 
   return (
     <div className="rustic-fade" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ padding: '20px 40px', borderBottom: '1.5px solid var(--ink)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header className="rustic-cook-bar" style={{ borderBottom: '1.5px solid var(--ink)' }}>
         <button onClick={onBack} className="rustic-btn ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           {RIcon.back()} exit cook mode
         </button>
@@ -612,7 +662,7 @@ function RusticCookMode({ recipe, onBack, servings, checkedSteps, toggleStep }) 
       </header>
 
       {/* Progress bar — chunky, hand-drawn */}
-      <div style={{ padding: '0 40px', marginTop: 24 }}>
+      <div className="rustic-cook-progress">
         <div style={{ display: 'flex', gap: 6 }}>
           {recipe.steps.map((_, i) => (
             <button key={i} onClick={() => setCurrent(i)} style={{
@@ -625,10 +675,10 @@ function RusticCookMode({ recipe, onBack, servings, checkedSteps, toggleStep }) 
       </div>
 
       {/* The step */}
-      <main style={{ flex: 1, padding: '60px 40px', maxWidth: 960, margin: '0 auto', width: '100%' }}>
-        <div className="display" style={{ fontSize: 120, color: 'var(--terracotta)', lineHeight: 1, fontStyle: 'italic', marginBottom: 16 }}>{current + 1}</div>
-        <h1 className="display" style={{ fontSize: 56, lineHeight: 1.05, margin: '0 0 28px', fontWeight: 500, textWrap: 'balance' }}>{step.title}</h1>
-        <p style={{ fontSize: 28, lineHeight: 1.5, color: 'var(--ink)', maxWidth: 820, textWrap: 'pretty' }}>
+      <main className="rustic-cook-main">
+        <div className="display rustic-cook-num" style={{ color: 'var(--terracotta)', lineHeight: 1, fontStyle: 'italic', marginBottom: 16 }}>{current + 1}</div>
+        <h1 className="display rustic-cook-title" style={{ lineHeight: 1.05, margin: '0 0 28px', fontWeight: 500, textWrap: 'balance' }}>{step.title}</h1>
+        <p className="rustic-cook-text" style={{ lineHeight: 1.5, color: 'var(--ink)', maxWidth: 820, textWrap: 'pretty' }}>
           {chunks.map((c, j) => c.type === 'ing'
             ? <span key={j} style={{ color: 'var(--terracotta-deep)', fontWeight: 500, background: 'rgba(184,80,42,0.08)', padding: '0 4px', borderRadius: 2 }}>{c.value}</span>
             : <span key={j}>{c.value}</span>
@@ -651,7 +701,7 @@ function RusticCookMode({ recipe, onBack, servings, checkedSteps, toggleStep }) 
       </main>
 
       {/* Footer nav */}
-      <footer style={{ padding: '20px 40px', borderTop: '1px solid var(--line-soft)', display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+      <footer className="rustic-cook-bar" style={{ borderTop: '1px solid var(--line-soft)' }}>
         <button className="rustic-btn ghost" disabled={current === 0} onClick={() => setCurrent(c => c - 1)} style={{ opacity: current === 0 ? 0.4 : 1 }}>← previous</button>
         {current < recipe.steps.length - 1 ? (
           <button className="rustic-btn terra" onClick={() => { toggleStep(current); setCurrent(c => c + 1); }}>next step →</button>
