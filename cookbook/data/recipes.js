@@ -310,6 +310,7 @@ const RECIPES = [
     tags: ['beef', 'onion', 'garlic', 'tomato', 'pasta'],
     photo: 'images/krolls-chili/image1.jpg',
     ingredients: [
+      { amount: 2,   unit: 'tbsp',   name: 'wagyu beef tallow' },
       { amount: 4,   unit: 'lb',     name: 'ground beef' },
       { amount: 4,   unit: 'medium', name: 'onions, diced' },
       { amount: 4,   unit: 'cloves', name: 'garlic, diced' },
@@ -320,12 +321,12 @@ const RECIPES = [
       { amount: 2,   unit: 'lb',     name: 'spaghetti, cooked, for serving' },
     ],
     steps: [
-      { title: 'Brown',    text: 'In a large Dutch oven over medium-high heat, brown {i:0} with {i:1} and {i:2}, breaking up the meat as it cooks. Stir in {i:4}, {i:5}, and {i:6} and cook until the beef has no pink left.' },
+      { title: 'Brown',    text: 'Melt {i:0} in a large Dutch oven over medium-high heat. Add {i:1} and brown it with {i:2} and {i:3}, breaking up the meat as it cooks. Stir in {i:5}, {i:6}, and {i:7} and cook until the beef has no pink left.' },
       { title: 'Drain',    text: 'Tip the pot and spoon or pour off the excess fat.' },
-      { title: 'Simmer',   text: 'Add {i:3} and bring to a simmer. Turn the heat to low and simmer 3 to 4 hours, stirring now and then, until thick and deep red.' },
-      { title: 'Serve',    text: 'Ladle the chili over {i:7}.' },
+      { title: 'Simmer',   text: 'Add {i:4} and bring to a simmer. Turn the heat to low and simmer 3 to 4 hours, stirring now and then, until thick and deep red.' },
+      { title: 'Serve',    text: 'Ladle the chili over {i:8}.' },
     ],
-    notes: 'The original card calls for 3 packages of Frank\'s chili powder ("Franks Chili pd."); this version swaps in 1.5 oz of A Bowl of Red Original Texas Style chili mix — half a 3 oz package. Taste after the first hour and add more mix if you want it bolder. The mix may carry its own salt, so you can hold back some of the 4 tsp and adjust at the end. The card is marked "(oven)" — likely meaning a Dutch oven; the long simmer also works covered in a 300°F oven. Toppings: shredded cheddar is the classic, with diced raw onion or sliced scallions for crunch and oyster crackers on the side; a spoonful of sour cream cools it down, and kidney beans stirred in at serving make it a Green Bay–style bowl.'
+    notes: 'Wagyu beef tallow is our addition — it isn\'t on the original card. Browning the beef in it adds a rich, beefy depth. The original card calls for 3 packages of Frank\'s chili powder ("Franks Chili pd."); this version swaps in 1.5 oz of A Bowl of Red Original Texas Style chili mix — half a 3 oz package. Taste after the first hour and add more mix if you want it bolder. The mix may carry its own salt, so you can hold back some of the 4 tsp and adjust at the end. The card is marked "(oven)" — likely meaning a Dutch oven; the long simmer also works covered in a 300°F oven. Toppings: shredded cheddar is the classic, with diced raw onion or sliced scallions for crunch and oyster crackers on the side; a spoonful of sour cream cools it down, and kidney beans stirred in at serving make it a Green Bay–style bowl.'
   },
 
   // ──────────────────────────────────────────────────────────────
