@@ -1,5 +1,18 @@
 # Chrome DevTools MCP Server Comprehensive Guide
 
+> **Workstation setup (2026-10-17).** On this machine Claude Code uses the named `chrome-devtools`
+> server, attached to the Chrome that `/open-chrome` starts on port 9222. It is configured once at
+> user scope (`~/.claude.json`); a repo `.mcp.json` entry with the same name overrides it. The
+> launcher is `cmd /c npx -y chrome-devtools-mcp@latest --browserUrl=http://127.0.0.1:9222
+> --no-usage-statistics`. Do not wrap it in Git Bash `bash -l -c`: that detaches the npx process
+> tree, which can outlive the session. The `chrome-devtools-mcp` plugin stays installed for its
+> skills, but its own MCP server is turned off (`deniedMcpServers` in `~/.claude/settings.json`), so
+> the tools are `mcp__chrome-devtools__*`, never `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*`.
+> Usage statistics are off everywhere: `--no-usage-statistics` in every config, plus
+> `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1` as a Windows user environment variable and in the
+> user settings `env`, which also covers clients that cannot pass flags. The canonical config is
+> AI-Hub `mcp-servers/chrome-devtools/server.json`.
+
 > **Purpose**: A quick-reference guide for effectively using Chrome DevTools MCP tools with AI coding assistants.
 >
 > **Why This Exists**: AI coding agents face a fundamental problem—they cannot see what the code they generate actually does when it runs in the browser. Chrome DevTools MCP bridges this gap by giving agents direct access to browser debugging capabilities.
