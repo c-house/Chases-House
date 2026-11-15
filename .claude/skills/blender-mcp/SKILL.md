@@ -120,6 +120,12 @@ permission for every step — ask once for the plan, then execute.
 (`get_object_info` or `get_objects_summary`), then act. Confirm the name
 matches before applying.
 
+**For node trees** (Geometry Nodes, shaders) that you build or edit from
+Python, follow the `node-tree-notes` skill when it is installed: a title
+card, numbered sections with one short note each, and a `Drives:` line per
+exposed input, checked by its notes receipt. Read a saved tree back through
+its outline, not a screenshot of the node editor.
+
 **When something fails:** read the error, identify the wrong assumption (bad
 object name, Poly Haven not enabled, asset name wrong), and tell the user
 what's needed. Don't retry the same call hoping for a different result.
